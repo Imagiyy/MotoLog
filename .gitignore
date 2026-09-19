@@ -1,0 +1,45 @@
+# Built outputs
+/build/
+/app/build/
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# IDE - Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+
+# Keystore
+*.jks
+*.keystore
+
+# Local configuration
+local.properties
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# APK / AAB / Mapping
+*.apk
+*.aab
+*.ap_
+output.json
+mapping/
+
+# Crash logs
+crash-report-*.txt
+
+# Generated
+gen/
+
+# NDK
+obj/
+
+# Kotlin
+.kotlin/
