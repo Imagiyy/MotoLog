@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.abrar.motolog.MainActivity
 import com.abrar.motolog.R
 import com.abrar.motolog.domain.TrackingConstants
+import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
@@ -53,9 +54,11 @@ class RideNotificationManager @Inject constructor(
 
     fun buildNotification(
         stats: RideStats,
-        isPaused: Boolean,
-        accuracyMeters: Float,
-        isWaitingGps: Boolean
+        isPaused: Boolean = false,
+        accuracyMeters: Float = 0f,
+        isWaitingGps: Boolean = false,
+        pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+        isGpsLost: Boolean = false
     ): Notification {
         // Content Intent: Open MainActivity
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -68,8 +71,11 @@ class RideNotificationManager @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val effectivelyPaused = isPaused || pauseState.isPaused
+        val isManuallyPaused = pauseState == PauseState.MANUALLY_PAUSED || isPaused
+
         // Pause/Resume Intent
-        val pauseResumeAction = if (isPaused) {
+        val pauseResumeAction = if (isManuallyPaused) {
             val resumeIntent = Intent(context, TrackingService::class.java).apply {
                 action = TrackingService.ACTION_RESUME
             }
@@ -120,30 +126,47 @@ class RideNotificationManager @Inject constructor(
 
         val title = when {
             isWaitingGps -> "MotoLog: Waiting for GPS"
-            isPaused -> "MotoLog: PAUSED"
+            isGpsLost -> "MotoLog: GPS Signal Lost"
+            pauseState == PauseState.AUTO_PAUSED -> "MotoLog: AUTO-PAUSED"
+            isManuallyPaused -> "MotoLog: PAUSED"
             else -> "MotoLog: Recording Ride"
         }
 
-        val contentText = if (isWaitingGps) {
-            val acc = if (accuracyMeters < Float.MAX_VALUE) "${accuracyMeters.toInt()}m" else "--"
-            "Waiting for precise fix (current accuracy: ±$acc)"
+        val totalSec = stats.movingTimeMs / 1000
+        val mins = (totalSec % 3600) / 60
+        val secs = totalSec % 60
+        val hrs = totalSec / 3600
+        val timeStr = if (hrs > 0) {
+            String.format(Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
         } else {
-            val totalSec = stats.movingTimeMs / 1000
-            val mins = (totalSec % 3600) / 60
-            val secs = totalSec % 60
-            val hrs = totalSec / 3600
-            val timeStr = if (hrs > 0) {
-                String.format(Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
-            } else {
-                String.format(Locale.US, "%02d:%02d", mins, secs)
+            String.format(Locale.US, "%02d:%02d", mins, secs)
+        }
+
+        val contentText = when {
+            isWaitingGps -> {
+                val acc = if (accuracyMeters < Float.MAX_VALUE) "${accuracyMeters.toInt()}m" else "--"
+                "Waiting for precise fix (current accuracy: ±$acc)"
             }
-            String.format(
-                Locale.US,
-                "Speed: %.0f km/h  •  Dist: %.1f km  •  Time: %s",
-                stats.currentSpeedKmh,
-                stats.totalDistanceMeters / 1000.0,
-                timeStr
-            )
+            isGpsLost -> {
+                "Searching for satellites... (Stats preserved)"
+            }
+            pauseState == PauseState.AUTO_PAUSED -> {
+                String.format(
+                    Locale.US,
+                    "Auto-paused • Dist: %.1f km  •  Time: %s",
+                    stats.totalDistanceMeters / 1000.0,
+                    timeStr
+                )
+            }
+            else -> {
+                String.format(
+                    Locale.US,
+                    "Speed: %.0f km/h  •  Dist: %.1f km  •  Time: %s",
+                    stats.currentSpeedKmh,
+                    stats.totalDistanceMeters / 1000.0,
+                    timeStr
+                )
+            }
         }
 
         val builder = NotificationCompat.Builder(context, TrackingConstants.NOTIFICATION_CHANNEL_ID)

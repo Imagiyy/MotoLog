@@ -199,7 +199,7 @@ class RideCalculatorTest {
 
     @Test
     fun speed_fallsBackToDistanceOverTimeWhenMissing() {
-        val calculator = RideCalculator()
+        val calculator = RideCalculator(startConfirmationDistanceMeters = 0.0)
 
         // Missing speed on first point
         calculator.process(GpsPoint(1000L, 12.0000, 77.0000, null, 5f))
@@ -214,7 +214,7 @@ class RideCalculatorTest {
 
     @Test
     fun maxSpeed_unconfirmedNoisySpikeDoesNotSetMaxSpeed() {
-        val calculator = RideCalculator()
+        val calculator = RideCalculator(startConfirmationDistanceMeters = 0.0)
 
         // Normal driving at 60 km/h (16.67 m/s)
         calculator.process(GpsPoint(1000L, 12.0000, 77.0000, 16.67f, 5f))
@@ -283,5 +283,55 @@ class RideCalculatorTest {
         assertEquals("Moving average speed must not increase while stopped", movingAvgBeforeStop, movingAvgAfterStop, 0.01)
         // Overall average speed decreases as elapsed time accumulates while stopped
         assertTrue(calculator.stats.avgOverallSpeedKmh < movingAvgBeforeStop)
+    }
+
+    @Test
+    fun startConfirmation_suppressesSpeedAndDistanceUnder100mAndCreditsOnCrossingThreshold() {
+        // Standard RideCalculator with 100m start confirmation gate
+        val calculator = RideCalculator(startConfirmationDistanceMeters = 100.0)
+
+        // Point 1: At home / driveway (0m)
+        calculator.process(GpsPoint(1000L, 12.0000, 77.0000, 0f, 5f))
+        assertEquals(0.0, calculator.stats.totalDistanceMeters, 0.001)
+        assertEquals(0.0, calculator.stats.currentSpeedKmh, 0.001)
+
+        // Points moving: 20m, 50m, 80m from origin (< 100m)
+        // Bike is starting to roll at 25 km/h (6.94 m/s)
+        var lat = 12.0000
+        var time = 2000L
+
+        // Step 1: 30m north (displacement = 30m < 100m)
+        lat += 30.0 / 111_139.0
+        val p1 = calculator.process(GpsPoint(time, lat, 77.0000, 6.94f, 5f))
+        assertTrue(p1 is PointFilterResult.Accepted)
+        assertEquals("Speed must remain 0 under 100m gate", 0.0, calculator.stats.currentSpeedKmh, 0.001)
+        assertEquals("Distance must remain 0 under 100m gate", 0.0, calculator.stats.totalDistanceMeters, 0.001)
+        assertEquals(0L, calculator.stats.movingTimeMs)
+
+        // Step 2: Another 40m north (total displacement = 70m < 100m)
+        time += 5000L
+        lat += 40.0 / 111_139.0
+        calculator.process(GpsPoint(time, lat, 77.0000, 8.0f, 5f))
+        assertEquals("Speed must remain 0 under 100m gate", 0.0, calculator.stats.currentSpeedKmh, 0.001)
+        assertEquals("Distance must remain 0 under 100m gate", 0.0, calculator.stats.totalDistanceMeters, 0.001)
+        assertEquals(0L, calculator.stats.movingTimeMs)
+
+        // Step 3: Another 40m north (total displacement = 110m >= 100m threshold!)
+        time += 5000L
+        lat += 40.0 / 111_139.0
+        val p3 = calculator.process(GpsPoint(time, lat, 77.0000, 8.0f, 5f))
+        assertTrue(p3 is PointFilterResult.Accepted)
+
+        // Threshold reached: ALL 110 meters must now be credited!
+        assertEquals("Full displacement must be credited once threshold is reached", 110.0, calculator.stats.totalDistanceMeters, 2.0)
+        assertEquals(28.8, calculator.stats.currentSpeedKmh, 0.5) // 8.0 m/s = 28.8 km/h
+        assertTrue("Moving time must be credited", calculator.stats.movingTimeMs > 0L)
+
+        // Step 4: Next point continues tracking normally from 110m
+        time += 1000L
+        lat += 10.0 / 111_139.0
+        calculator.process(GpsPoint(time, lat, 77.0000, 10.0f, 5f))
+        assertEquals(120.0, calculator.stats.totalDistanceMeters, 2.0)
+        assertEquals(36.0, calculator.stats.currentSpeedKmh, 0.5)
     }
 }

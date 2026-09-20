@@ -1,6 +1,7 @@
 package com.abrar.motolog.ui.live
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import app.cash.turbine.test
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
@@ -67,6 +68,7 @@ class LiveViewModelTest {
     @Test
     fun startTracking_delegatesToRepository() = runTest(testDispatcher) {
         viewModel.startTracking()
+        advanceUntilIdle()
         assertTrue(fakeRepository.startCalled)
         assertEquals(LiveUiState.WaitingForGps(Float.MAX_VALUE), viewModel.uiState.value)
     }
@@ -195,25 +197,72 @@ class LiveViewModelTest {
 
     @Test
     fun disclaimer_acceptancePersists() = runTest(testDispatcher) {
-        assertFalse(viewModel.isDisclaimerAccepted.value)
-        viewModel.acceptDisclaimer()
-        advanceUntilIdle()
-        assertTrue(viewModel.isDisclaimerAccepted.value)
+        viewModel.isDisclaimerAccepted.test {
+            assertFalse(awaitItem())
+            viewModel.acceptDisclaimer()
+            assertTrue(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
     fun keepScreenOn_togglePersists() = runTest(testDispatcher) {
-        assertTrue(viewModel.keepScreenOn.value)
-        viewModel.setKeepScreenOn(false)
-        advanceUntilIdle()
-        assertFalse(viewModel.keepScreenOn.value)
+        viewModel.keepScreenOn.test {
+            assertTrue(awaitItem())
+            viewModel.setKeepScreenOn(false)
+            assertFalse(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
     fun batteryGuidance_togglePersists() = runTest(testDispatcher) {
-        assertFalse(viewModel.batteryGuidanceSeen.value)
-        viewModel.setBatteryGuidanceSeen(true)
+        viewModel.batteryGuidanceSeen.test {
+            assertFalse(awaitItem())
+            viewModel.setBatteryGuidanceSeen(true)
+            assertTrue(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun sessionState_autoPaused_mapsToAutoPausedUiState() = runTest(testDispatcher) {
+        fakeRepository.updateState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                pauseState = com.abrar.motolog.domain.model.PauseState.AUTO_PAUSED,
+                isGpsLost = false,
+                stats = RideStats(totalDistanceMeters = 1200.0),
+                accuracyMeters = 6.0f
+            )
+        )
         advanceUntilIdle()
-        assertTrue(viewModel.batteryGuidanceSeen.value)
+
+        val state = viewModel.uiState.value
+        assertTrue(state is LiveUiState.Tracking)
+        val trackingState = state as LiveUiState.Tracking
+        assertTrue(trackingState.isPaused)
+        assertEquals(com.abrar.motolog.domain.model.PauseState.AUTO_PAUSED, trackingState.pauseState)
+        assertFalse(trackingState.isGpsLost)
+    }
+
+    @Test
+    fun sessionState_gpsLost_mapsToGpsLostUiState() = runTest(testDispatcher) {
+        fakeRepository.updateState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                pauseState = com.abrar.motolog.domain.model.PauseState.RECORDING,
+                isGpsLost = true,
+                stats = RideStats(totalDistanceMeters = 3400.0),
+                accuracyMeters = 5.0f
+            )
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is LiveUiState.Tracking)
+        val trackingState = state as LiveUiState.Tracking
+        assertTrue(trackingState.isGpsLost)
+        assertEquals(com.abrar.motolog.domain.model.PauseState.RECORDING, trackingState.pauseState)
     }
 }

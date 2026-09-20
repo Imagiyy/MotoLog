@@ -9,4 +9,9 @@ import dagger.hilt.android.HiltAndroidApp
  * and serve as the application-level dependency container.
  */
 @HiltAndroidApp
-class MotoLogApp : Application()
+class MotoLogApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        com.abrar.motolog.service.MaintenanceCheckWorker.schedule(this)
+    }
+}

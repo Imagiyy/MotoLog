@@ -1,5 +1,6 @@
 package com.abrar.motolog.ui.live
 
+import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 
 /**
@@ -27,8 +28,26 @@ sealed interface LiveUiState {
         val speedKmh: Double,
         val accuracyMeters: Float,
         val isPaused: Boolean = false,
+        val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+        val isGpsLost: Boolean = false,
         val stats: RideStats = RideStats()
-    ) : LiveUiState
+    ) : LiveUiState {
+
+        constructor(
+            speedKmh: Double,
+            accuracyMeters: Float,
+            pauseState: PauseState,
+            isGpsLost: Boolean = false,
+            stats: RideStats = RideStats()
+        ) : this(
+            speedKmh = speedKmh,
+            accuracyMeters = accuracyMeters,
+            isPaused = pauseState.isPaused,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost,
+            stats = stats
+        )
+    }
 
     /**
      * Unfinished ride from crash/force-kill detected on app startup.

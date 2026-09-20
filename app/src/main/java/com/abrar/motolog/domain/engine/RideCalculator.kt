@@ -2,6 +2,7 @@ package com.abrar.motolog.domain.engine
 
 import com.abrar.motolog.domain.TrackingConstants
 import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -13,7 +14,8 @@ import kotlin.math.sqrt
  * Pure Kotlin calculation engine for motorcycle ride tracking.
  *
  * Implements strict GPS point filtering, Haversine distance computation,
- * stationary jitter elimination, signal gap handling, and robust speed smoothing.
+ * stationary jitter elimination, signal gap handling, robust speed smoothing,
+ * and auto-pause state machine integration.
  *
  * Completely free of Android framework dependencies, making it directly testable on the JVM.
  */
@@ -23,10 +25,17 @@ class RideCalculator(
     private val lowSpeedDistanceThresholdKmh: Double = TrackingConstants.LOW_SPEED_DISTANCE_THRESHOLD_KMH,
     private val maxPlausibleSpeedKmh: Double = TrackingConstants.MAX_PLAUSIBLE_SPEED_KMH,
     private val maxAccelerationMs2: Double = TrackingConstants.MAX_ACCELERATION_MS2,
-    private val gapThresholdMs: Long = TrackingConstants.GAP_THRESHOLD_MS
+    private val gapThresholdMs: Long = TrackingConstants.GAP_THRESHOLD_MS,
+    private val startConfirmationDistanceMeters: Double = TrackingConstants.START_CONFIRMATION_DISTANCE_METERS,
+    val autoPauseStateMachine: AutoPauseStateMachine = AutoPauseStateMachine(autoPauseEnabled = false)
 ) {
 
     private var firstPointTimestampMs: Long? = null
+    private var originPoint: GpsPoint? = null
+    private var isConfirmed: Boolean = startConfirmationDistanceMeters <= 0.0
+    private var pendingDistanceMeters: Double = 0.0
+    private var pendingMovingTimeMs: Long = 0L
+
     private var lastAcceptedPoint: GpsPoint? = null
     private var lastAcceptedSpeedKmh: Double = 0.0
     private var previousPotentialMaxSpeedKmh: Double = 0.0
@@ -45,7 +54,7 @@ class RideCalculator(
      */
     val stats: RideStats
         get() {
-            val elapsed = if (firstPointTimestampMs != null) {
+            val elapsed = if (isConfirmed && firstPointTimestampMs != null) {
                 max(0L, latestTimestampMs - firstPointTimestampMs!!)
             } else 0L
 
@@ -103,16 +112,25 @@ class RideCalculator(
             firstPointTimestampMs = point.timestampEpochMs
             latestTimestampMs = point.timestampEpochMs
             lastAcceptedPoint = point
+            originPoint = point
             acceptedPointCount++
 
             val speed = determineSpeed(point, 0.0, 0.0)
-            currentSpeedKmh = speed
             lastAcceptedSpeedKmh = speed
-            updateMaxSpeed(speed, point.speedAccuracyMps)
+            val pauseState = if (point.isPaused) {
+                autoPauseStateMachine.manualPause()
+            } else {
+                autoPauseStateMachine.onSpeedUpdate(speed, point.timestampEpochMs)
+            }
+            if (isConfirmed) {
+                currentSpeedKmh = if (pauseState.isPaused) 0.0 else speed
+                updateMaxSpeed(speed, point.speedAccuracyMps)
+            }
             return PointFilterResult.Accepted(
                 distanceIncrementMeters = 0.0,
-                speedKmh = speed,
-                isGap = false
+                speedKmh = if (isConfirmed && !pauseState.isPaused) speed else 0.0,
+                isGap = false,
+                pauseState = pauseState
             )
         }
 
@@ -129,33 +147,52 @@ class RideCalculator(
             point.latitude, point.longitude
         )
 
-        // 3. Speed Spike Check (Implied distance / time)
-        val impliedSpeedKmh = (segmentDistance / deltaSec) * 3.6
-        if (impliedSpeedKmh > maxPlausibleSpeedKmh) {
-            rejectedPointCount++
-            return PointFilterResult.Rejected(RejectionReason.SPIKE_SPEED)
-        }
-
-        // 4. Current Speed Calculation
-        val calculatedSpeedKmh = determineSpeed(point, segmentDistance, deltaSec)
-
-        // 5. Acceleration Spike Check
-        val lastSpeedMps = lastAcceptedSpeedKmh / 3.6
-        val currentSpeedMps = calculatedSpeedKmh / 3.6
-        val impliedAccelMs2 = kotlin.math.abs(currentSpeedMps - lastSpeedMps) / deltaSec
-        if (impliedAccelMs2 > maxAccelerationMs2) {
-            rejectedPointCount++
-            return PointFilterResult.Rejected(RejectionReason.SPIKE_ACCELERATION)
-        }
-
-        // 6. Signal Gap Check
-        val isGap = deltaMs > gapThresholdMs
+        // 3. Signal Gap Check
+        val isGap = deltaMs > gapThresholdMs || point.isGap
         if (isGap) {
             gapCount++
         }
 
-        // 7. Distance & Stationary Noise Filtering
+        // 4. Speed Spike Check (Implied distance / time) - skip across gaps
+        if (!isGap) {
+            val impliedSpeedKmh = (segmentDistance / deltaSec) * 3.6
+            if (impliedSpeedKmh > maxPlausibleSpeedKmh) {
+                rejectedPointCount++
+                return PointFilterResult.Rejected(RejectionReason.SPIKE_SPEED)
+            }
+        }
+
+        // 5. Current Speed Calculation
+        val calculatedSpeedKmh = if (isGap) {
+            determineSpeed(point, 0.0, 0.0)
+        } else {
+            determineSpeed(point, segmentDistance, deltaSec)
+        }
+
+        // 6. Acceleration Spike Check - skip across gaps
+        if (!isGap) {
+            val lastSpeedMps = lastAcceptedSpeedKmh / 3.6
+            val currentSpeedMps = calculatedSpeedKmh / 3.6
+            val impliedAccelMs2 = kotlin.math.abs(currentSpeedMps - lastSpeedMps) / deltaSec
+            if (impliedAccelMs2 > maxAccelerationMs2) {
+                rejectedPointCount++
+                return PointFilterResult.Rejected(RejectionReason.SPIKE_ACCELERATION)
+            }
+        }
+
+        // 7. Auto-Pause and Manual Pause State Machine Evaluation
+        val pauseState = if (point.isPaused) {
+            autoPauseStateMachine.manualPause()
+        } else {
+            if (autoPauseStateMachine.pauseState == PauseState.MANUALLY_PAUSED) {
+                autoPauseStateMachine.manualResume(point.timestampEpochMs)
+            }
+            autoPauseStateMachine.onSpeedUpdate(calculatedSpeedKmh, point.timestampEpochMs)
+        }
+
+        // 8. Distance & Stationary Noise Filtering
         val distanceToAdd = when {
+            pauseState.isPaused -> 0.0
             isGap -> 0.0 // Do not invent distance across gaps per AGENTS.md
             calculatedSpeedKmh < stationarySpeedThresholdKmh -> {
                 // When stationary (speed < 1.5 km/h), zero distance added to prevent drift inflation
@@ -168,28 +205,83 @@ class RideCalculator(
             else -> segmentDistance
         }
 
-        // 8. Time Accumulation
-        latestTimestampMs = point.timestampEpochMs
-        if (!isGap && calculatedSpeedKmh >= stationarySpeedThresholdKmh && distanceToAdd > 0.0) {
-            movingTimeMs += deltaMs
+        // 9. Time Accumulation
+        val movingDeltaMs = if (!pauseState.isPaused && !isGap && calculatedSpeedKmh >= stationarySpeedThresholdKmh && distanceToAdd > 0.0) {
+            deltaMs
+        } else {
+            0L
         }
 
-        totalDistanceMeters += distanceToAdd
-        currentSpeedKmh = calculatedSpeedKmh
-
-        // 9. Robust Max Speed Update
-        updateMaxSpeed(calculatedSpeedKmh, point.speedAccuracyMps)
-
+        latestTimestampMs = point.timestampEpochMs
         lastAcceptedPoint = point
         lastAcceptedSpeedKmh = calculatedSpeedKmh
         acceptedPointCount++
 
-        return PointFilterResult.Accepted(
-            distanceIncrementMeters = distanceToAdd,
-            speedKmh = calculatedSpeedKmh,
-            isGap = isGap
-        )
+        val displaySpeedKmh = if (pauseState.isPaused) 0.0 else calculatedSpeedKmh
+
+        if (!isConfirmed) {
+            pendingDistanceMeters += distanceToAdd
+            pendingMovingTimeMs += movingDeltaMs
+
+            val origin = originPoint ?: point
+            val displacement = haversineDistanceMeters(
+                origin.latitude, origin.longitude,
+                point.latitude, point.longitude
+            )
+
+            if (displacement >= startConfirmationDistanceMeters || pendingDistanceMeters >= startConfirmationDistanceMeters) {
+                // 100m threshold reached: confirm ride and credit all initial distance and moving time
+                isConfirmed = true
+                totalDistanceMeters += pendingDistanceMeters
+                movingTimeMs += pendingMovingTimeMs
+                currentSpeedKmh = displaySpeedKmh
+                if (!pauseState.isPaused) {
+                    updateMaxSpeed(calculatedSpeedKmh, point.speedAccuracyMps)
+                }
+
+                return PointFilterResult.Accepted(
+                    distanceIncrementMeters = pendingDistanceMeters,
+                    speedKmh = displaySpeedKmh,
+                    isGap = isGap,
+                    pauseState = pauseState
+                )
+            } else {
+                // Before reaching 100m: keep display at zero to eliminate mounting/driveway drift
+                currentSpeedKmh = 0.0
+                return PointFilterResult.Accepted(
+                    distanceIncrementMeters = 0.0,
+                    speedKmh = 0.0,
+                    isGap = isGap,
+                    pauseState = pauseState
+                )
+            }
+        } else {
+            // Already confirmed: accumulate normally
+            totalDistanceMeters += distanceToAdd
+            movingTimeMs += movingDeltaMs
+            currentSpeedKmh = displaySpeedKmh
+            if (!pauseState.isPaused) {
+                updateMaxSpeed(calculatedSpeedKmh, point.speedAccuracyMps)
+            }
+
+            return PointFilterResult.Accepted(
+                distanceIncrementMeters = distanceToAdd,
+                speedKmh = displaySpeedKmh,
+                isGap = isGap,
+                pauseState = pauseState
+            )
+        }
     }
+
+    /**
+     * Explicitly pause calculation via manual rider action.
+     */
+    fun manualPause(): PauseState = autoPauseStateMachine.manualPause()
+
+    /**
+     * Explicitly resume calculation via manual rider action.
+     */
+    fun manualResume(timestampMs: Long? = null): PauseState = autoPauseStateMachine.manualResume(timestampMs)
 
     /**
      * Determine point speed, preferring GPS Doppler speed when available,
@@ -237,6 +329,10 @@ class RideCalculator(
      */
     fun reset() {
         firstPointTimestampMs = null
+        originPoint = null
+        isConfirmed = startConfirmationDistanceMeters <= 0.0
+        pendingDistanceMeters = 0.0
+        pendingMovingTimeMs = 0L
         lastAcceptedPoint = null
         lastAcceptedSpeedKmh = 0.0
         previousPotentialMaxSpeedKmh = 0.0
@@ -248,6 +344,7 @@ class RideCalculator(
         acceptedPointCount = 0
         rejectedPointCount = 0
         latestTimestampMs = 0L
+        autoPauseStateMachine.reset()
     }
 
     companion object {

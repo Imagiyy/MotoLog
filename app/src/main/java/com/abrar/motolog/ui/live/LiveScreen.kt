@@ -37,7 +37,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
+import com.abrar.motolog.domain.model.PauseState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -85,6 +87,7 @@ import kotlin.math.roundToInt
 @Composable
 fun LiveScreen(
     modifier: Modifier = Modifier,
+    onNavigateToSettings: () -> Unit = {},
     viewModel: LiveViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -149,11 +152,6 @@ fun LiveScreen(
             return
         }
 
-        if (!batteryGuidanceSeen) {
-            showBatteryGuidanceDialog = true
-            return
-        }
-
         val fineGranted = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -167,11 +165,13 @@ fun LiveScreen(
         } else true
 
         if (fineGranted && notifGranted) {
-            viewModel.startTracking()
-        } else if (!fineGranted) {
-            showPermissionRationaleDialog = true
+            if (!batteryGuidanceSeen) {
+                showBatteryGuidanceDialog = true
+            } else {
+                viewModel.startTracking()
+            }
         } else {
-            showNotificationRationaleDialog = true
+            showPermissionRationaleDialog = true
         }
     }
 
@@ -182,11 +182,12 @@ fun LiveScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Bar: Status and Keep Screen On Toggle
+        // Top Bar: Status and Keep Screen On Toggle & Settings
         LiveTopBar(
             uiState = uiState,
             keepScreenOn = keepScreenOn,
-            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) }
+            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+            onNavigateToSettings = onNavigateToSettings
         )
 
         // Middle Section: Live Speedometer & Metrics
@@ -483,7 +484,8 @@ fun LiveScreen(
 private fun LiveTopBar(
     uiState: LiveUiState,
     keepScreenOn: Boolean,
-    onToggleKeepScreenOn: () -> Unit
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -496,7 +498,14 @@ private fun LiveTopBar(
         val (statusText, statusColor) = when (uiState) {
             is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> "READY" to MaterialTheme.colorScheme.onSurfaceVariant
             is LiveUiState.WaitingForGps -> "WAITING FOR GPS" to GpsWaiting
-            is LiveUiState.Tracking -> if (uiState.isPaused) "PAUSED" to Color(0xFFFFB300) else "RECORDING" to SpeedGreen
+            is LiveUiState.Tracking -> {
+                when {
+                    uiState.isGpsLost -> "GPS SIGNAL LOST" to MaterialTheme.colorScheme.error
+                    uiState.pauseState == PauseState.AUTO_PAUSED -> "AUTO-PAUSED" to Color(0xFFFFB300)
+                    uiState.isPaused -> "PAUSED" to Color(0xFFFF9800)
+                    else -> "RECORDING" to SpeedGreen
+                }
+            }
             is LiveUiState.Stopped -> "STOPPED" to MaterialTheme.colorScheme.error
         }
 
@@ -525,16 +534,30 @@ private fun LiveTopBar(
             }
         }
 
-        // Screen Keep-On Indicator / Toggle
-        IconButton(
-            onClick = onToggleKeepScreenOn,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
-                contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
-                tint = if (keepScreenOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Screen Keep-On Indicator / Toggle
+            IconButton(
+                onClick = onToggleKeepScreenOn,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
+                    contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
+                    tint = if (keepScreenOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Settings Navigation Button
+            IconButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SettingsIcon,
+                    contentDescription = "Open Settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -576,34 +599,74 @@ private fun LiveSpeedometer(
             }
 
             is LiveUiState.Tracking -> {
+                val speedColor = when {
+                    uiState.isGpsLost -> MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+                    uiState.pauseState == PauseState.AUTO_PAUSED -> Color(0xFFFFB300)
+                    uiState.isPaused -> Color(0xFFFF9800)
+                    else -> MaterialTheme.colorScheme.primary
+                }
+                val speedSubtitle = when {
+                    uiState.pauseState == PauseState.AUTO_PAUSED -> "KM/H (AUTO-PAUSED)"
+                    uiState.isPaused -> "KM/H (PAUSED)"
+                    else -> "KM/H"
+                }
+
                 Text(
                     text = "${uiState.speedKmh.roundToInt()}",
                     fontSize = 110.sp,
                     fontWeight = FontWeight.Black,
                     lineHeight = 110.sp,
-                    color = if (uiState.isPaused) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary,
+                    color = speedColor,
                     letterSpacing = (-2).sp
                 )
                 Text(
-                    text = if (uiState.isPaused) "KM/H (PAUSED)" else "KM/H",
+                    text = speedSubtitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.GpsFixed,
-                        contentDescription = "GPS locked",
-                        tint = SpeedGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "±${uiState.accuracyMeters.roundToInt()}m accuracy",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+                if (uiState.isGpsLost) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GpsNotFixed,
+                                contentDescription = "GPS Lost",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "GPS signal lost • Searching for satellites...",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.GpsFixed,
+                            contentDescription = "GPS locked",
+                            tint = SpeedGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "±${uiState.accuracyMeters.roundToInt()}m accuracy",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 

@@ -37,6 +37,11 @@ object TrackingConstants {
      *  consecutive points are rejected as GPS spikes. */
     const val MAX_ACCELERATION_MS2: Double = 15.0
 
+    /** Distance (meters) of movement required before activating live ride
+     *  metrics, suppressing mounting/driveway drift.
+     *  Once reached, this initial 100m is credited into total distance. */
+    const val START_CONFIRMATION_DISTANCE_METERS: Double = 100.0
+
     // ============================================================
     // Auto-Pause
     // ============================================================
@@ -98,4 +103,57 @@ object TrackingConstants {
 
     const val NOTIFICATION_CHANNEL_ID: String = "motolog_tracking_channel"
     const val NOTIFICATION_ID: Int = 1001
+
+    // ============================================================
+    // Maintenance & Garage
+    // ============================================================
+
+    /** Remaining distance (km) below which a maintenance item is marked DUE_SOON */
+    const val DUE_SOON_KM_THRESHOLD: Double = 100.0
+
+    /** Remaining days below which a maintenance item is marked DUE_SOON */
+    const val DUE_SOON_DAYS_THRESHOLD: Int = 7
+
+    /** Maintenance reminder notification channel */
+    const val MAINTENANCE_NOTIFICATION_CHANNEL_ID: String = "motolog_maintenance_channel"
+    const val MAINTENANCE_NOTIFICATION_ID_BASE: Int = 2000
+
+    // ============================================================
+    // Elevation Tracking
+    // ============================================================
+
+    /** Minimum elevation change from barometer (meters) to count as real gain/loss. */
+    const val ELEVATION_MIN_CHANGE_BAROMETER_METERS: Double = 3.0
+
+    /** Minimum elevation change from GPS altitude (meters) to count as real gain/loss. */
+    const val ELEVATION_MIN_CHANGE_GPS_METERS: Double = 10.0
+
+    /** Number of consecutive readings to smooth before calculating gain/loss. */
+    const val ELEVATION_SMOOTHING_WINDOW: Int = 5
+
+    /** Barometer sample interval in milliseconds (roughly 1 Hz to match GPS). */
+    const val BAROMETER_SAMPLE_INTERVAL_MS: Long = 1_000L
+
+    /** Hardware FIFO latency allowance for low-power pressure sampling. */
+    const val BAROMETER_MAX_REPORT_LATENCY_MS: Long = 5_000L
+
+    // ============================================================
+    // Route Downsampling
+    // ============================================================
+
+    /** Tolerance in meters for Ramer-Douglas-Peucker simplification. */
+    const val DOWNSAMPLE_TOLERANCE_METERS: Double = 5.0
+
+    /** Maximum number of points after downsampling for map display. */
+    const val DOWNSAMPLE_MAX_POINTS: Int = 2000
+
+    // ============================================================
+    // Speed Color Scale
+    // ============================================================
+
+    /** If ride speed range is narrower than this (km/h), use fallback window. */
+    const val SPEED_COLOR_MIN_RANGE_KMH: Double = 5.0
+
+    /** Fallback half-window (km/h) around median when speed range is too narrow. */
+    const val SPEED_COLOR_FALLBACK_WINDOW_KMH: Double = 10.0
 }

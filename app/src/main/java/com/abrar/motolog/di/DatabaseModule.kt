@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import com.abrar.motolog.data.local.MotoLogDatabase
 import com.abrar.motolog.data.local.dao.BikeDao
+import com.abrar.motolog.data.local.dao.FuelLogDao
+import com.abrar.motolog.data.local.dao.MaintenanceDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import dagger.Module
@@ -30,7 +32,9 @@ object DatabaseModule {
             context,
             MotoLogDatabase::class.java,
             "motolog.db"
-        ).build()
+        )
+            .addMigrations(MotoLogDatabase.MIGRATION_1_2, MotoLogDatabase.MIGRATION_2_3)
+            .build()
     }
 
     @Provides
@@ -41,4 +45,10 @@ object DatabaseModule {
 
     @Provides
     fun provideRidePointDao(database: MotoLogDatabase): RidePointDao = database.ridePointDao()
+
+    @Provides
+    fun provideMaintenanceDao(database: MotoLogDatabase): MaintenanceDao = database.maintenanceDao()
+
+    @Provides
+    fun provideFuelLogDao(database: MotoLogDatabase): FuelLogDao = database.fuelLogDao()
 }

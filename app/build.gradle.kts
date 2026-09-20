@@ -98,6 +98,12 @@ dependencies {
     // Location
     implementation(libs.play.services.location)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    // Map
+    implementation(libs.maplibre.compose.material3)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

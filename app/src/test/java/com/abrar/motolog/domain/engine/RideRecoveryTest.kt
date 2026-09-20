@@ -90,7 +90,7 @@ class RideRecoveryTest {
             GpsPoint(3000L, 12.0002, 77.0000, 10f, 5f)
         )
 
-        val calculator = RideCalculator()
+        val calculator = RideCalculator(startConfirmationDistanceMeters = 0.0)
         val results = points.map { calculator.process(it) }
 
         assertTrue(results.all { it is PointFilterResult.Accepted })

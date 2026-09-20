@@ -11,14 +11,19 @@ import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import com.abrar.motolog.data.sensor.BarometerSource
+import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.domain.TrackingConstants
+import com.abrar.motolog.domain.engine.ElevationCalculator
 import com.abrar.motolog.domain.engine.PointFilterResult
 import com.abrar.motolog.domain.engine.RideCalculator
 import com.abrar.motolog.domain.location.LocationSource
 import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 import com.abrar.motolog.domain.repository.TrackingRepository
 import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.domain.time.Clock
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,19 +33,21 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 /**
  * Foreground Service owning the motorcycle ride tracking session.
  *
  * Runs with foregroundServiceType="location" independently of any UI.
- * Collects GPS updates, feeds RideCalculator, buffers and batch-writes
- * points to Room, periodically checkpoints the active ride, and maintains
- * an ongoing notification with live glanceable stats and controls.
+ * Collects GPS updates, feeds RideCalculator, coordinates auto-pause and manual pause,
+ * monitors GPS signal loss, buffers and batch-writes points to Room, periodically checkpoints
+ * the active ride, and maintains an ongoing notification with live glanceable stats and controls.
  */
 @AndroidEntryPoint
 class TrackingService : Service() {
@@ -48,23 +55,38 @@ class TrackingService : Service() {
     @Inject lateinit var locationSource: LocationSource
     @Inject lateinit var rideNotificationManager: RideNotificationManager
     @Inject lateinit var trackingRepository: TrackingRepository
+    @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var rideDao: RideDao
     @Inject lateinit var ridePointDao: RidePointDao
+    @Inject lateinit var clock: Clock
+    @Inject lateinit var maintenanceNotificationManager: MaintenanceNotificationManager
+    @Inject lateinit var barometerSource: BarometerSource
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val rideCalculator = RideCalculator()
     private var activeRideId: Long = 0L
-    private val isPaused = AtomicBoolean(false)
     private val isTracking = AtomicBoolean(false)
+    private val isGpsLost = AtomicBoolean(false)
+    private val isHardwareGpsAvailable = AtomicBoolean(true)
 
     private var locationJob: Job? = null
+    private var availabilityJob: Job? = null
+    private var signalLossMonitorJob: Job? = null
+    private var settingsJob: Job? = null
     private var batchWriterJob: Job? = null
     private var checkpointJob: Job? = null
+    private var barometerJob: Job? = null
+
+    /** Latest barometer altitude reading. Null if barometer not available. */
+    private val latestBarometerAltitude = AtomicReference<Double?>(null)
+    /** Whether barometer is available and providing data for this ride. */
+    private var usingBarometer = false
 
     // Non-dropping queue for batching points to Room
     private val pointChannel = Channel<RidePointEntity>(Channel.UNLIMITED)
 
+    private var lastLocationPointTime = 0L
     private var lastNotificationUpdateTime = 0L
     private var lastObservedAccuracy = Float.MAX_VALUE
 
@@ -76,10 +98,6 @@ class TrackingService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: return START_NOT_STICKY
@@ -103,12 +121,22 @@ class TrackingService : Service() {
             return
         }
         isTracking.set(true)
-        isPaused.set(false)
+        isGpsLost.set(false)
+        lastLocationPointTime = 0L
+
+        // Observe auto-pause setting
+        settingsJob?.cancel()
+        settingsJob = serviceScope.launch {
+            settingsRepository.autoPauseEnabled.collect { enabled ->
+                rideCalculator.autoPauseStateMachine.autoPauseEnabled = enabled
+            }
+        }
 
         // 1. Immediately promote to Foreground to satisfy Android 14 requirements
         promoteToForeground(
             RideStats(),
-            isPaused = false,
+            pauseState = PauseState.RECORDING,
+            isGpsLost = false,
             accuracyMeters = Float.MAX_VALUE,
             isWaitingGps = true
         )
@@ -117,21 +145,31 @@ class TrackingService : Service() {
 
         serviceScope.launch {
             // 2. Create Ride row in Room
+            val currentBikeId = settingsRepository.currentBikeId.firstOrNull()
             val initialRide = RideEntity(
+                bikeId = currentBikeId,
                 startTime = System.currentTimeMillis(),
                 status = RideStatus.ACTIVE
             )
             activeRideId = rideDao.insert(initialRide)
             rideCalculator.reset()
+            latestBarometerAltitude.set(null)
 
-            // 3. Start background point batch writer
+            // 3. Start barometer if available
+            usingBarometer = false
+            if (barometerSource.isAvailable()) {
+                startBarometerCollection()
+            }
+
+            // 4. Start background point batch writer
             startBatchWriter()
 
-            // 4. Start periodic checkpoint runner
+            // 5. Start periodic checkpoint runner
             startCheckpointRunner()
 
-            // 5. Start location collection
+            // 6. Start location collection & signal monitoring
             startLocationCollection()
+            startSignalLossMonitor()
         }
     }
 
@@ -147,7 +185,11 @@ class TrackingService : Service() {
                     handleStop()
                 }
                 .collect { locationPoint ->
+                    lastLocationPointTime = clock.currentTimeMillis()
                     lastObservedAccuracy = locationPoint.accuracyMeters
+
+                    // If we previously flagged GPS lost, clear it upon new fix arrival
+                    val wasGpsLost = isGpsLost.getAndSet(false)
 
                     // Check accuracy fix
                     if (locationPoint.accuracyMeters > TrackingConstants.MIN_GPS_ACCURACY_METERS) {
@@ -157,11 +199,13 @@ class TrackingService : Service() {
                             )
                             updateNotificationThrottled(
                                 rideCalculator.stats,
-                                isPaused = isPaused.get(),
+                                pauseState = rideCalculator.autoPauseStateMachine.pauseState,
+                                isGpsLost = false,
                                 accuracyMeters = locationPoint.accuracyMeters,
                                 isWaitingGps = true
                             )
                         }
+                        // Ignore points with accuracy worse than 25m while tracking per rule 7
                         return@collect
                     }
 
@@ -173,20 +217,25 @@ class TrackingService : Service() {
                         accuracyMeters = locationPoint.accuracyMeters
                     )
 
-                    val pausedNow = isPaused.get()
-                    val filterResult = if (!pausedNow) {
-                        rideCalculator.process(gpsPoint)
+                    val filterResult = rideCalculator.process(gpsPoint)
+
+                    val (isGap, pauseState) = if (filterResult is PointFilterResult.Accepted) {
+                        filterResult.isGap to filterResult.pauseState
                     } else {
-                        null
+                        false to rideCalculator.autoPauseStateMachine.pauseState
                     }
 
                     // Buffer point for database write
-                    val isGap = filterResult is PointFilterResult.Accepted && filterResult.isGap
                     val speedMs = if (locationPoint.speedMps != null) {
                         locationPoint.speedMps.toDouble()
                     } else {
                         (filterResult as? PointFilterResult.Accepted)?.speedKmh?.div(3.6) ?: 0.0
                     }
+
+                    // Determine best altitude: barometer > GPS
+                    val altitude = latestBarometerAltitude.get()
+                        ?: locationPoint.altitudeMeters
+                        ?: 0.0
 
                     val pointEntity = RidePointEntity(
                         rideId = activeRideId,
@@ -195,7 +244,8 @@ class TrackingService : Service() {
                         longitude = locationPoint.longitude,
                         speedMs = speedMs,
                         accuracyMeters = locationPoint.accuracyMeters,
-                        isPaused = pausedNow,
+                        altitudeMeters = altitude,
+                        isPaused = pauseState.isPaused,
                         isGap = isGap
                     )
                     pointChannel.trySend(pointEntity)
@@ -204,58 +254,151 @@ class TrackingService : Service() {
                     trackingRepository.updateState(
                         TrackingSessionState.Tracking(
                             rideId = activeRideId,
-                            isPaused = pausedNow,
+                            pauseState = pauseState,
+                            isGpsLost = false,
                             stats = currentStats,
                             accuracyMeters = locationPoint.accuracyMeters
                         )
                     )
 
-                    updateNotificationThrottled(
-                        currentStats,
-                        isPaused = pausedNow,
-                        accuracyMeters = locationPoint.accuracyMeters,
-                        isWaitingGps = false
-                    )
+                    if (wasGpsLost) {
+                        // Immediately inform user of recovered fix
+                        updateNotificationImmediate(
+                            currentStats,
+                            pauseState = pauseState,
+                            isGpsLost = false,
+                            accuracyMeters = locationPoint.accuracyMeters,
+                            isWaitingGps = false
+                        )
+                    } else {
+                        updateNotificationThrottled(
+                            currentStats,
+                            pauseState = pauseState,
+                            isGpsLost = false,
+                            accuracyMeters = locationPoint.accuracyMeters,
+                            isWaitingGps = false
+                        )
+                    }
+                }
+        }
+
+        // Availability callback monitor
+        availabilityJob?.cancel()
+        availabilityJob = serviceScope.launch {
+            locationSource.getLocationAvailability()
+                .catch { /* ignore */ }
+                .collect { available ->
+                    isHardwareGpsAvailable.set(available)
                 }
         }
     }
 
     /**
-     * Pause active ride.
+     * Start collecting barometer altitude readings.
+     * The latest reading is stored atomically for the location callback to pick up.
      */
-    private fun handlePause() {
-        if (!isTracking.get() || isPaused.get()) return
-        isPaused.set(true)
-
-        val stats = rideCalculator.stats
-        trackingRepository.updateState(
-            TrackingSessionState.Tracking(
-                rideId = activeRideId,
-                isPaused = true,
-                stats = stats,
-                accuracyMeters = lastObservedAccuracy
-            )
-        )
-        updateNotificationImmediate(stats, isPaused = true, accuracyMeters = lastObservedAccuracy, isWaitingGps = false)
+    private fun startBarometerCollection() {
+        barometerJob?.cancel()
+        barometerJob = serviceScope.launch {
+            barometerSource.getAltitudeUpdates()
+                .catch { /* Barometer failure is non-critical; fall back to GPS altitude */ }
+                    .collect { altitude ->
+                        usingBarometer = true
+                    latestBarometerAltitude.set(altitude)
+                }
+        }
     }
 
     /**
-     * Resume paused ride.
+     * Periodic monitor declaring GPS signal lost if no update arrives within GPS_SIGNAL_LOST_TIMEOUT_SECONDS.
      */
-    private fun handleResume() {
-        if (!isTracking.get() || !isPaused.get()) return
-        isPaused.set(false)
+    private fun startSignalLossMonitor() {
+        signalLossMonitorJob?.cancel()
+        signalLossMonitorJob = serviceScope.launch {
+            while (isActive && isTracking.get()) {
+                delay(1_000L)
+                val now = clock.currentTimeMillis()
+                val lastPoint = lastLocationPointTime
+                val isTimedOut = lastPoint > 0L && (now - lastPoint >= TrackingConstants.GPS_SIGNAL_LOST_TIMEOUT_SECONDS * 1000L)
+                val isUnavailable = !isHardwareGpsAvailable.get()
+
+                if ((isTimedOut || isUnavailable) && !isGpsLost.get() && rideCalculator.stats.acceptedPointCount > 0) {
+                    isGpsLost.set(true)
+                    val stats = rideCalculator.stats
+                    val pauseState = rideCalculator.autoPauseStateMachine.pauseState
+
+                    trackingRepository.updateState(
+                        TrackingSessionState.Tracking(
+                            rideId = activeRideId,
+                            pauseState = pauseState,
+                            isGpsLost = true,
+                            stats = stats,
+                            accuracyMeters = lastObservedAccuracy
+                        )
+                    )
+
+                    updateNotificationImmediate(
+                        stats = stats,
+                        pauseState = pauseState,
+                        isGpsLost = true,
+                        accuracyMeters = lastObservedAccuracy,
+                        isWaitingGps = false
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Pause active ride manually.
+     */
+    private fun handlePause() {
+        if (!isTracking.get()) return
+        val pauseState = rideCalculator.manualPause()
 
         val stats = rideCalculator.stats
         trackingRepository.updateState(
             TrackingSessionState.Tracking(
                 rideId = activeRideId,
-                isPaused = false,
+                pauseState = pauseState,
+                isGpsLost = isGpsLost.get(),
                 stats = stats,
                 accuracyMeters = lastObservedAccuracy
             )
         )
-        updateNotificationImmediate(stats, isPaused = false, accuracyMeters = lastObservedAccuracy, isWaitingGps = false)
+        updateNotificationImmediate(
+            stats,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost.get(),
+            accuracyMeters = lastObservedAccuracy,
+            isWaitingGps = false
+        )
+    }
+
+    /**
+     * Resume paused ride manually.
+     */
+    private fun handleResume() {
+        if (!isTracking.get()) return
+        val pauseState = rideCalculator.manualResume(clock.currentTimeMillis())
+
+        val stats = rideCalculator.stats
+        trackingRepository.updateState(
+            TrackingSessionState.Tracking(
+                rideId = activeRideId,
+                pauseState = pauseState,
+                isGpsLost = isGpsLost.get(),
+                stats = stats,
+                accuracyMeters = lastObservedAccuracy
+            )
+        )
+        updateNotificationImmediate(
+            stats,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost.get(),
+            accuracyMeters = lastObservedAccuracy,
+            isWaitingGps = false
+        )
     }
 
     /**
@@ -266,9 +409,14 @@ class TrackingService : Service() {
         isTracking.set(false)
 
         serviceScope.launch {
-            // 1. Cease GPS location updates
+            // 1. Cease GPS location updates, barometer & monitors
             locationJob?.cancel()
+            availabilityJob?.cancel()
+            signalLossMonitorJob?.cancel()
+            settingsJob?.cancel()
+            barometerJob?.cancel()
             locationSource.stopLocationUpdates()
+            barometerSource.stopListening()
 
             // 2. Stop periodic tasks
             checkpointJob?.cancel()
@@ -280,9 +428,18 @@ class TrackingService : Service() {
             // 4. Checkpoint final stats & mark COMPLETED
             val finalStats = rideCalculator.stats
             val now = System.currentTimeMillis()
+            val existingRide = rideDao.getRideById(activeRideId)
+            val startTime = existingRide?.startTime ?: now
+            val rideName = if (existingRide?.name.isNullOrBlank()) {
+                com.abrar.motolog.domain.util.RideNameGenerator.defaultNameForTimestamp(startTime)
+            } else {
+                existingRide.name
+            }
             val completedRide = RideEntity(
                 id = activeRideId,
-                startTime = (rideDao.getRideById(activeRideId)?.startTime) ?: now,
+                bikeId = existingRide?.bikeId,
+                name = rideName,
+                startTime = startTime,
                 endTime = now,
                 distanceMeters = finalStats.totalDistanceMeters,
                 elapsedTimeMs = finalStats.elapsedTimeMs,
@@ -292,12 +449,31 @@ class TrackingService : Service() {
                 maxSpeedMs = finalStats.maxSpeedKmh / 3.6,
                 status = RideStatus.COMPLETED
             )
-            rideDao.update(completedRide)
+
+            // 4b. Compute elevation gain/loss from stored points
+            val elevationResult = computeElevation()
+            val finalRide = completedRide.copy(
+                elevationGainMeters = elevationResult?.gainMeters ?: 0.0,
+                elevationLossMeters = elevationResult?.lossMeters ?: 0.0,
+                elevationSource = when {
+                    usingBarometer && elevationResult != null -> "barometer"
+                    elevationResult != null -> "gps"
+                    else -> ""
+                }
+            )
+            rideDao.update(finalRide)
 
             // 5. Update shared state
             trackingRepository.updateState(TrackingSessionState.Stopped(finalStats))
 
-            // 6. Tear down foreground service and dismiss notification
+            // 6. Check maintenance reminders for this bike
+            try {
+                maintenanceNotificationManager.checkAndNotify(completedRide.bikeId)
+            } catch (e: Exception) {
+                // Non-critical, ignore
+            }
+
+            // 7. Tear down foreground service and dismiss notification
             withContext(Dispatchers.Main) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -372,12 +548,17 @@ class TrackingService : Service() {
      */
     private fun promoteToForeground(
         stats: RideStats,
-        isPaused: Boolean,
+        pauseState: PauseState,
+        isGpsLost: Boolean,
         accuracyMeters: Float,
         isWaitingGps: Boolean
     ) {
         val notification = rideNotificationManager.buildNotification(
-            stats, isPaused, accuracyMeters, isWaitingGps
+            stats = stats,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost,
+            accuracyMeters = accuracyMeters,
+            isWaitingGps = isWaitingGps
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
@@ -396,35 +577,71 @@ class TrackingService : Service() {
      */
     private fun updateNotificationThrottled(
         stats: RideStats,
-        isPaused: Boolean,
+        pauseState: PauseState,
+        isGpsLost: Boolean,
         accuracyMeters: Float,
         isWaitingGps: Boolean
     ) {
-        val now = System.currentTimeMillis()
+        val now = clock.currentTimeMillis()
         if (now - lastNotificationUpdateTime >= TrackingConstants.NOTIFICATION_UPDATE_INTERVAL_MS) {
             lastNotificationUpdateTime = now
-            updateNotificationImmediate(stats, isPaused, accuracyMeters, isWaitingGps)
+            updateNotificationImmediate(stats, pauseState, isGpsLost, accuracyMeters, isWaitingGps)
         }
     }
 
     private fun updateNotificationImmediate(
         stats: RideStats,
-        isPaused: Boolean,
+        pauseState: PauseState,
+        isGpsLost: Boolean,
         accuracyMeters: Float,
         isWaitingGps: Boolean
     ) {
         val notification = rideNotificationManager.buildNotification(
-            stats, isPaused, accuracyMeters, isWaitingGps
+            stats = stats,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost,
+            accuracyMeters = accuracyMeters,
+            isWaitingGps = isWaitingGps
         )
         val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         manager.notify(TrackingConstants.NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Compute elevation gain and loss from stored points for the active ride.
+     */
+    private suspend fun computeElevation(): ElevationCalculator.ElevationResult? = withContext(Dispatchers.IO) {
+        val points = ridePointDao.getPointsForRideOnce(activeRideId)
+        if (points.size < 2) return@withContext null
+
+        val rawElevations = points.map { it.altitudeMeters }
+        // If all altitudes are 0.0 (no elevation recorded), return null
+        if (rawElevations.all { it == 0.0 }) return@withContext null
+
+        val threshold = if (usingBarometer) {
+            TrackingConstants.ELEVATION_MIN_CHANGE_BAROMETER_METERS
+        } else {
+            TrackingConstants.ELEVATION_MIN_CHANGE_GPS_METERS
+        }
+
+        ElevationCalculator.calculate(
+            rawElevations = rawElevations,
+            minimumChangeThreshold = threshold,
+            smoothingWindow = TrackingConstants.ELEVATION_SMOOTHING_WINDOW
+        )
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isTracking.set(false)
         locationJob?.cancel()
+        availabilityJob?.cancel()
+        signalLossMonitorJob?.cancel()
+        settingsJob?.cancel()
+        barometerJob?.cancel()
+        barometerSource.stopListening()
         locationSource.stopLocationUpdates()
         serviceScope.cancel()
     }
 }
+

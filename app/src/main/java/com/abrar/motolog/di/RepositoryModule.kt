@@ -17,4 +17,16 @@ abstract class RepositoryModule {
     abstract fun bindTrackingRepository(
         impl: TrackingRepositoryImpl
     ): TrackingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRideRepository(
+        impl: com.abrar.motolog.data.repository.RideRepositoryImpl
+    ): com.abrar.motolog.domain.repository.RideRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGarageRepository(
+        impl: com.abrar.motolog.data.repository.GarageRepositoryImpl
+    ): com.abrar.motolog.domain.repository.GarageRepository
 }

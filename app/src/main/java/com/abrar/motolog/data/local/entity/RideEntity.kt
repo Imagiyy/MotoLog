@@ -70,6 +70,12 @@ data class RideEntity(
     /** Total elevation gain in meters (when available) */
     val elevationGainMeters: Double = 0.0,
 
+    /** Total elevation loss in meters (when available) */
+    val elevationLossMeters: Double = 0.0,
+
+    /** Source of elevation data: "barometer", "gps", or "" (none) */
+    val elevationSource: String = "",
+
     /** Current ride lifecycle status */
     val status: RideStatus = RideStatus.ACTIVE
 )

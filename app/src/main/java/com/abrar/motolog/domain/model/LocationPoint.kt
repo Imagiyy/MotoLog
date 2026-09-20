@@ -11,5 +11,6 @@ data class LocationPoint(
     val longitude: Double,
     val speedMps: Float?,
     val accuracyMeters: Float,
-    val timestamp: Long
+    val timestamp: Long,
+    val altitudeMeters: Double? = null
 )

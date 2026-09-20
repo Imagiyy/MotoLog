@@ -18,6 +18,12 @@ interface LocationSource {
     fun getLocationUpdates(): Flow<LocationPoint>
 
     /**
+     * Flow providing GPS location availability status.
+     * Emits false when GPS hardware fix is lost or unavailable.
+     */
+    fun getLocationAvailability(): Flow<Boolean> = kotlinx.coroutines.flow.flowOf(true)
+
+    /**
      * Explicitly stop any active location updates and release hardware resources.
      */
     fun stopLocationUpdates()

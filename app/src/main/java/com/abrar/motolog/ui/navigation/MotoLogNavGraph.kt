@@ -27,11 +27,29 @@ import kotlinx.serialization.Serializable
 // Type-safe navigation routes
 // ============================================================
 
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TwoWheeler
+import com.abrar.motolog.ui.garage.GarageScreen
+import com.abrar.motolog.ui.garage.detail.BikeDetailScreen
+import com.abrar.motolog.ui.settings.SettingsScreen
+
 @Serializable
 data object LiveRoute
 
 @Serializable
+data object GarageRoute
+
+@Serializable
 data object HistoryRoute
+
+@Serializable
+data object SettingsRoute
+
+@Serializable
+data class BikeDetailRoute(val bikeId: Long)
+
+@Serializable
+data class RideDetailRoute(val rideId: Long)
 
 /**
  * Bottom navigation destinations for MotoLog.
@@ -42,7 +60,9 @@ enum class TopLevelDestination(
     val route: Any
 ) {
     LIVE("Live", Icons.Default.Speed, LiveRoute),
-    HISTORY("History", Icons.Default.History, HistoryRoute)
+    GARAGE("Garage", Icons.Default.TwoWheeler, GarageRoute),
+    HISTORY("History", Icons.Default.History, HistoryRoute),
+    SETTINGS("Settings", Icons.Default.Settings, SettingsRoute)
 }
 
 /**
@@ -87,10 +107,46 @@ fun MotoLogNavGraph() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable<LiveRoute> {
-                LiveScreen()
+                LiveScreen(
+                    onNavigateToSettings = {
+                        navController.navigate(SettingsRoute)
+                    }
+                )
+            }
+            composable<GarageRoute> {
+                GarageScreen(
+                    onNavigateToBikeDetail = { bikeId ->
+                        navController.navigate(BikeDetailRoute(bikeId))
+                    }
+                )
             }
             composable<HistoryRoute> {
-                HistoryScreen()
+                HistoryScreen(
+                    onNavigateToRideDetail = { rideId ->
+                        navController.navigate(RideDetailRoute(rideId))
+                    }
+                )
+            }
+            composable<SettingsRoute> {
+                SettingsScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<BikeDetailRoute> {
+                BikeDetailScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<RideDetailRoute> {
+                com.abrar.motolog.ui.history.detail.RideDetailScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
             }
         }
     }

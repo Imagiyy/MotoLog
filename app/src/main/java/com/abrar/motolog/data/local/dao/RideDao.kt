@@ -40,4 +40,24 @@ interface RideDao {
     /** Find any ride left in ACTIVE status — used for crash recovery */
     @Query("SELECT * FROM rides WHERE status = 'ACTIVE' LIMIT 1")
     suspend fun findActiveRide(): RideEntity?
+
+    /** Flow of finished rides (COMPLETED and RECOVERED only, excluding ACTIVE), newest first */
+    @Query("SELECT * FROM rides WHERE status IN ('COMPLETED', 'RECOVERED') ORDER BY startTime DESC")
+    fun getFinishedRides(): Flow<List<RideEntity>>
+
+    /** Updates the name of a ride */
+    @Query("UPDATE rides SET name = :name WHERE id = :rideId")
+    suspend fun updateRideName(rideId: Long, name: String)
+
+    /** Reassigns a ride to a different bike (or unassigns if null) */
+    @Query("UPDATE rides SET bikeId = :bikeId WHERE id = :rideId")
+    suspend fun updateRideBike(rideId: Long, bikeId: Long?)
+
+    /** Cumulative distance in meters for a bike from finished rides */
+    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED')")
+    fun getTotalDistanceMetersForBike(bikeId: Long): Flow<Double?>
+
+    /** Cumulative distance in meters for a bike (one-shot query) */
+    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED')")
+    suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double?
 }

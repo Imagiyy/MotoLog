@@ -31,6 +31,7 @@ class SettingsRepository @Inject constructor(
         val USE_METRIC_UNITS = booleanPreferencesKey("use_metric_units")
         val DISCLAIMER_ACCEPTED = booleanPreferencesKey("disclaimer_accepted")
         val BATTERY_GUIDANCE_SEEN = booleanPreferencesKey("battery_guidance_seen")
+        val CURRENT_BIKE_ID = androidx.datastore.preferences.core.longPreferencesKey("current_bike_id")
     }
 
     // ============================================================
@@ -119,6 +120,24 @@ class SettingsRepository @Inject constructor(
     suspend fun setBatteryGuidanceSeen(seen: Boolean) {
         dataStore.edit { prefs ->
             prefs[Keys.BATTERY_GUIDANCE_SEEN] = seen
+        }
+    }
+
+    // ============================================================
+    // Active Bike Selection
+    // ============================================================
+
+    val currentBikeId: Flow<Long?> = dataStore.data.map { prefs ->
+        prefs[Keys.CURRENT_BIKE_ID]
+    }
+
+    suspend fun setCurrentBikeId(bikeId: Long?) {
+        dataStore.edit { prefs ->
+            if (bikeId != null) {
+                prefs[Keys.CURRENT_BIKE_ID] = bikeId
+            } else {
+                prefs.remove(Keys.CURRENT_BIKE_ID)
+            }
         }
     }
 }

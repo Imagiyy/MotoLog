@@ -18,10 +18,16 @@ data class BikeEntity(
     /** Make and model (e.g., "Honda CB300R") */
     val makeModel: String = "",
 
+    /** Initial odometer reading when bike was registered */
+    val initialOdometerKm: Double = 0.0,
+
     /** Odometer offset in kilometers — used to sync with the
-     *  bike's actual odometer when the app is installed mid-life. */
+     *  bike's actual odometer when calibrated. */
     val odometerOffsetKm: Double = 0.0,
 
     /** Timestamp when this bike was added */
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+
+    /** True if the bike is archived (hidden from active selection, preserved for history) */
+    val isArchived: Boolean = false
 )

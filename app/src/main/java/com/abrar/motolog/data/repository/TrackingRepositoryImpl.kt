@@ -29,7 +29,8 @@ import javax.inject.Singleton
 class TrackingRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val rideDao: RideDao,
-    private val ridePointDao: RidePointDao
+    private val ridePointDao: RidePointDao,
+    private val maintenanceNotificationManager: javax.inject.Provider<com.abrar.motolog.service.MaintenanceNotificationManager>
 ) : TrackingRepository {
 
     private val _sessionState = MutableStateFlow<TrackingSessionState>(TrackingSessionState.Idle)
@@ -79,7 +80,9 @@ class TrackingRepositoryImpl @Inject constructor(
                 latitude = p.latitude,
                 longitude = p.longitude,
                 speedMps = p.speedMs.toFloat(),
-                accuracyMeters = p.accuracyMeters
+                accuracyMeters = p.accuracyMeters,
+                isPaused = p.isPaused,
+                isGap = p.isGap
             )
         }
 
@@ -87,7 +90,14 @@ class TrackingRepositoryImpl @Inject constructor(
         val recoveredStats = RideCalculator.processAll(gpsPoints)
         val endTime = rawPoints.lastOrNull()?.timestamp ?: System.currentTimeMillis()
 
+        val rideName = if (activeRide.name.isBlank()) {
+            com.abrar.motolog.domain.util.RideNameGenerator.defaultNameForTimestamp(activeRide.startTime)
+        } else {
+            activeRide.name
+        }
+
         val recoveredRide = activeRide.copy(
+            name = rideName,
             endTime = endTime,
             distanceMeters = recoveredStats.totalDistanceMeters,
             elapsedTimeMs = recoveredStats.elapsedTimeMs,
@@ -100,6 +110,11 @@ class TrackingRepositoryImpl @Inject constructor(
         rideDao.update(recoveredRide)
 
         _sessionState.value = TrackingSessionState.Stopped(recoveredStats)
+        try {
+            maintenanceNotificationManager.get().checkAndNotify(activeRide.bikeId)
+        } catch (e: Exception) {
+            // Non-critical
+        }
         recoveredStats
     }
 

@@ -1,5 +1,6 @@
 package com.abrar.motolog.domain.repository
 
+import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 
 /**
@@ -16,13 +17,31 @@ sealed interface TrackingSessionState {
         val accuracyMeters: Float = Float.MAX_VALUE
     ) : TrackingSessionState
 
-    /** Tracking is actively recording or manually paused. */
+    /** Tracking is actively recording or paused. */
     data class Tracking(
         val rideId: Long,
         val isPaused: Boolean = false,
+        val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+        val isGpsLost: Boolean = false,
         val stats: RideStats = RideStats(),
         val accuracyMeters: Float = 0f
-    ) : TrackingSessionState
+    ) : TrackingSessionState {
+
+        constructor(
+            rideId: Long,
+            pauseState: PauseState,
+            isGpsLost: Boolean = false,
+            stats: RideStats = RideStats(),
+            accuracyMeters: Float = 0f
+        ) : this(
+            rideId = rideId,
+            isPaused = pauseState.isPaused,
+            pauseState = pauseState,
+            isGpsLost = isGpsLost,
+            stats = stats,
+            accuracyMeters = accuracyMeters
+        )
+    }
 
     /** Tracking session finished via Stop. */
     data class Stopped(

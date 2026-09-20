@@ -34,6 +34,9 @@ class FusedLocationSource @Inject constructor(
 ) : LocationSource {
 
     private val activeCallback = AtomicReference<LocationCallback?>(null)
+    private val _isLocationAvailable = kotlinx.coroutines.flow.MutableStateFlow(true)
+
+    override fun getLocationAvailability(): Flow<Boolean> = _isLocationAvailable
 
     @SuppressLint("MissingPermission")
     override fun getLocationUpdates(): Flow<LocationPoint> = callbackFlow {
@@ -47,16 +50,22 @@ class FusedLocationSource @Inject constructor(
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                _isLocationAvailable.value = true
                 for (location in result.locations) {
                     val point = LocationPoint(
                         latitude = location.latitude,
                         longitude = location.longitude,
                         speedMps = if (location.hasSpeed()) location.speed else null,
                         accuracyMeters = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE,
-                        timestamp = location.elapsedRealtimeNanos / 1_000_000L
+                        timestamp = location.elapsedRealtimeNanos / 1_000_000L,
+                        altitudeMeters = if (location.hasAltitude()) location.altitude else null
                     )
                     trySend(point)
                 }
+            }
+
+            override fun onLocationAvailability(availability: com.google.android.gms.location.LocationAvailability) {
+                _isLocationAvailable.value = availability.isLocationAvailable
             }
         }
 

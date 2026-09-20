@@ -12,5 +12,7 @@ data class GpsPoint(
     val speedMps: Float? = null,
     val accuracyMeters: Float = Float.MAX_VALUE,
     val speedAccuracyMps: Float? = null,
-    val altitudeMeters: Double? = null
+    val altitudeMeters: Double? = null,
+    val isPaused: Boolean = false,
+    val isGap: Boolean = false
 )

@@ -68,6 +68,8 @@ class LiveViewModel @Inject constructor(
                         speedKmh = sessionState.stats.currentSpeedKmh,
                         accuracyMeters = sessionState.accuracyMeters,
                         isPaused = sessionState.isPaused,
+                        pauseState = sessionState.pauseState,
+                        isGpsLost = sessionState.isGpsLost,
                         stats = sessionState.stats
                     )
                     is TrackingSessionState.Stopped -> LiveUiState.Stopped(
