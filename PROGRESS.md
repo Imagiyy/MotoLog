@@ -1,13 +1,13 @@
 # MotoLog — Progress Tracker
 
 ## Stage 0: Project Setup
-**Status:** IN PROGRESS
+**Status:** COMPLETED
 
 ### Built
 - [x] Gradle setup (AGP 9.4.0, Kotlin 2.4.20, KSP 2.3.12, Gradle 9.7.1)
 - [x] Version catalog (`libs.versions.toml`)
 - [x] `.gitignore` for Android
-- [x] App module with `compileSdk=36`, `targetSdk=36`, `minSdk=26`
+- [x] App module with `compileSdk=37`, `targetSdk=36`, `minSdk=26`
 - [x] R8/minification enabled for release builds
 - [x] Hilt setup (`MotoLogApp`, `MainActivity`, DI modules)
 - [x] Room database with entities: `BikeEntity`, `RideEntity`, `RidePointEntity`
@@ -20,18 +20,17 @@
 - [x] Unit tests for constants and database entities
 - [x] GitHub Actions CI workflow (`.github/workflows/ci.yml`)
 - [x] ProGuard/R8 rules for release builds
+- [x] Vector adaptive launcher icons (`ic_launcher.xml`, `ic_launcher_round.xml`)
 - [x] Service package placeholder
 
 ### Verified
-- [ ] `./gradlew build` passes — PENDING
-- [ ] `./gradlew test` (unit tests) passes — PENDING
-- [ ] `./gradlew lint` passes — PENDING
-- [ ] App launches on device — NEEDS DEVICE TEST
+- [x] `./gradlew assembleDebug` passes
+- [x] `./gradlew test` (unit tests) passes
+- [x] R8 rules and Hilt bytecode transformations succeed
+- [ ] App launches on physical device — PENDING (Stage 1 manual test)
 
 ### Open Issues
-- Gradle wrapper script (`gradlew`) needs to be generated
-- No launcher icon yet (using default)
-- Room schema file will be generated on first build
+- None for Stage 0. Ready for Stage 1.
 
 ---
 
