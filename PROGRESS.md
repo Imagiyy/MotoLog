@@ -67,11 +67,51 @@
 ---
 
 ## Stage 2: Calculation Engine
-**Status:** NOT STARTED
+**Status:** BUILT & VERIFIED VIA TESTS
 
 ### Built
+- [x] Pure Kotlin `GpsPoint` domain class (no Android framework dependencies, JVM testable)
+- [x] `RideStats` immutable statistics snapshot model
+- [x] `PointFilterResult` sealed interface (`Accepted`, `Rejected` with `RejectionReason`)
+- [x] `RideCalculator` streaming processor with batch `processAll` companion support
+- [x] Haversine distance formula with mean earth radius $R = 6,371,000.0\text{ m}$
+- [x] Speed fallback logic: prefers GPS speed, falls back to $\Delta d / \Delta t$ if missing, zeroes noise $< 1.5\text{ km/h}$
+- [x] Strict point filtering pipeline:
+  - Reject accuracy $> 25.0\text{ m}$ (`MIN_GPS_ACCURACY_METERS`)
+  - Reject non-monotonic timestamps ($\Delta t \le 0$)
+  - Reject implied speed spikes $> 250.0\text{ km/h}$ (`MAX_PLAUSIBLE_SPEED_KMH`)
+  - Reject implied acceleration spikes $> 15.0\text{ m/s}^2$ (`MAX_ACCELERATION_MS2`)
+  - Signal gap detection: $\Delta t > 10.0\text{ s}$ (`GAP_THRESHOLD_MS`), $0\text{ m}$ distance added across gaps
+  - Low-speed stationary jitter filter: speed $< 3.0\text{ km/h}$ and $\Delta d < \text{accuracy radius} \implies 0\text{ m}$ distance added
+- [x] Robust max speed algorithm: rejects unconfirmed single-point speed glitches unless Doppler GPS confidence $\le 1.5\text{ m/s}$
+- [x] Test-only `GpxParser` for track point ingestion
+- [x] Deterministic programmatic test fixtures (`stationary_jitter.gpx`, `highway_ride.gpx`, `stop_and_go.gpx`, `tunnel_gap.gpx`, `city_ride.gpx`)
+- [x] Unit test suite (`RideCalculatorTest`) asserting analytical ground truths
+- [x] Wired `RideCalculator` into `LiveViewModel` and `LiveScreen` metric cards with toggleable Moving vs Overall elapsed views (Distance in km, Moving/Elapsed Time, Moving/Overall Avg Speed in km/h)
+- [x] Stationary distance decoupling fix: speed < 1.5 km/h strictly suppresses distance addition, preventing drift accumulation while stationary
+- [x] Early-ride speed stabilization: gracefully returns current speed during first 5 seconds to prevent small-denominator GPS quantization noise
+- [x] Monotonic hardware clock in `FusedLocationSource`: switched to `location.elapsedRealtimeNanos / 1_000_000L` to eliminate wall-clock UTC jitter
+
 ### Verified
-### Open Issues
+- [x] `./gradlew test` (35 unit tests pass) — VERIFIED
+- [x] Stationary jitter fixture (5 minutes of GPS drift adds under 10 m: strictly 0.0 m added) — VERIFIED
+- [x] Stationary drift test: zero speed does not add distance even if displacement exceeds accuracy radius — VERIFIED
+- [x] Traffic light stop test: moving average speed does not increase while stopped — VERIFIED
+- [x] Highway ride fixture (sustained 90 km/h computes 30 km and 90 km/h average) — VERIFIED
+- [x] Stop-and-go fixture (correctly separates moving vs stopped time) — VERIFIED
+- [x] Tunnel gap fixture (gap marked, zero distance added across the 45s blackout) — VERIFIED
+- [x] City ride fixture (urban route with traffic lights calculates accurately) — VERIFIED
+- [x] Edge case tests (speed spike rejection, acceleration spike rejection, non-monotonic timestamps, poor accuracy rejection, fallback speed) — VERIFIED
+- [x] `./gradlew assembleDebug` (debug APK packaging passes with 0 errors) — VERIFIED
+- [x] `./gradlew lintDebug` (0 lint errors) — VERIFIED
+- [ ] Real-world live speed smoothing on physical device — PENDING USER RETEST
+
+### Thresholds & Judgment Calls
+- **Earth Radius:** Used $R = 6,371,000.0\text{ m}$ (WGS-84 mean radius).
+- **Max Speed Robustness:** Required either Doppler GPS confidence (`speedAccuracyMps` $\le 1.5\text{ m/s}$) or confirmation over 2 consecutive readings within 15% tolerance.
+- **Acceleration Spike:** Computed between consecutive speeds $\Delta v / \Delta t$ against $15.0\text{ m/s}^2$.
+- **Signal Gap:** Points separated by $> 10.0\text{ s}$ marked as gaps with zero distance accumulated across them.
+- **Average Speed Stability:** Stationary speed (< 1.5 km/h) enforces 0.0 m distance added; moving time and distance strictly coupled; early ride (< 5s) displays current speed to prevent discretization swings.
 
 ---
 

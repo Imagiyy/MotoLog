@@ -1,5 +1,7 @@
 package com.abrar.motolog.ui.live
 
+import com.abrar.motolog.domain.model.RideStats
+
 /**
  * UI State for the Live tracking screen.
  */
@@ -19,16 +21,27 @@ sealed interface LiveUiState {
 
     /**
      * Active tracking with a usable GPS fix.
-     * Displays live speed in km/h (smoothed / stationary-filtered).
+     * Displays live speed in km/h and accumulated ride statistics.
      */
     data class Tracking(
         val speedKmh: Double,
-        val accuracyMeters: Float
+        val accuracyMeters: Float,
+        val isPaused: Boolean = false,
+        val stats: RideStats = RideStats()
+    ) : LiveUiState
+
+    /**
+     * Unfinished ride from crash/force-kill detected on app startup.
+     */
+    data class RecoveryPrompt(
+        val activeRide: com.abrar.motolog.data.local.entity.RideEntity
     ) : LiveUiState
 
     /**
      * Tracking stopped after confirming 2-second Hold-to-Stop.
      * Location updates are completely ceased.
      */
-    data object Stopped : LiveUiState
+    data class Stopped(
+        val stats: RideStats = RideStats()
+    ) : LiveUiState
 }

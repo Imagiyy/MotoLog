@@ -2,23 +2,28 @@ package com.abrar.motolog.ui.live
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.location.LocationSource
+import com.abrar.motolog.domain.repository.TrackingRepository
+import com.abrar.motolog.domain.repository.TrackingSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for the Live ride tracking screen.
+ *
+ * Does NOT hold the tracking session or GPS math itself; observes shared state
+ * from [TrackingRepository] and forwards user intent to the foreground service.
+ */
 @HiltViewModel
 class LiveViewModel @Inject constructor(
-    private val locationSource: LocationSource,
+    private val trackingRepository: TrackingRepository,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
@@ -39,84 +44,104 @@ class LiveViewModel @Inject constructor(
             initialValue = true
         )
 
-    private var trackingJob: Job? = null
+    val batteryGuidanceSeen: StateFlow<Boolean> = settingsRepository.batteryGuidanceSeen
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = false
+        )
 
-    /**
-     * Start location tracking.
-     * Transitions immediately to WaitingForGps until accuracy <= 25m fix arrives.
-     */
+    init {
+        // Observe repository session state from foreground service
+        viewModelScope.launch {
+            trackingRepository.sessionState.collect { sessionState ->
+                // Do not override an active recovery prompt with Idle
+                if (_uiState.value is LiveUiState.RecoveryPrompt && sessionState is TrackingSessionState.Idle) {
+                    return@collect
+                }
+                _uiState.value = when (sessionState) {
+                    is TrackingSessionState.Idle -> LiveUiState.Idle
+                    is TrackingSessionState.WaitingForGps -> LiveUiState.WaitingForGps(
+                        currentAccuracyMeters = sessionState.accuracyMeters
+                    )
+                    is TrackingSessionState.Tracking -> LiveUiState.Tracking(
+                        speedKmh = sessionState.stats.currentSpeedKmh,
+                        accuracyMeters = sessionState.accuracyMeters,
+                        isPaused = sessionState.isPaused,
+                        stats = sessionState.stats
+                    )
+                    is TrackingSessionState.Stopped -> LiveUiState.Stopped(
+                        stats = sessionState.stats
+                    )
+                }
+            }
+        }
+
+        // Check for unfinished ride on startup (crash/force-kill recovery)
+        checkActiveRideRecovery()
+    }
+
+    private fun checkActiveRideRecovery() {
+        viewModelScope.launch {
+            if (trackingRepository.sessionState.value is TrackingSessionState.Idle) {
+                val activeRide = trackingRepository.checkActiveRideOnStartup()
+                if (activeRide != null) {
+                    _uiState.value = LiveUiState.RecoveryPrompt(activeRide)
+                }
+            }
+        }
+    }
+
     fun startTracking() {
-        if (_uiState.value is LiveUiState.Tracking || _uiState.value is LiveUiState.WaitingForGps) {
-            return
-        }
-
-        _uiState.value = LiveUiState.WaitingForGps()
-
-        trackingJob?.cancel()
-        trackingJob = viewModelScope.launch {
-            locationSource.getLocationUpdates()
-                .catch {
-                    // Handle failure or cancellation by stopping updates
-                    stopTracking()
-                }
-                .collect { point ->
-                    if (point.accuracyMeters > TrackingConstants.MIN_GPS_ACCURACY_METERS) {
-                        _uiState.value = LiveUiState.WaitingForGps(currentAccuracyMeters = point.accuracyMeters)
-                    } else {
-                        val rawSpeedKmh = (point.speedMps ?: 0f) * 3.6
-                        val speedKmh = if (rawSpeedKmh < TrackingConstants.STATIONARY_SPEED_THRESHOLD_KMH) {
-                            0.0
-                        } else {
-                            rawSpeedKmh
-                        }
-                        _uiState.value = LiveUiState.Tracking(
-                            speedKmh = speedKmh,
-                            accuracyMeters = point.accuracyMeters
-                        )
-                    }
-                }
-        }
+        trackingRepository.startTracking()
     }
 
-    /**
-     * Stop location tracking.
-     * Cancels collection and explicitly releases GPS hardware updates.
-     */
+    fun pauseTracking() {
+        trackingRepository.pauseTracking()
+    }
+
+    fun resumeTracking() {
+        trackingRepository.resumeTracking()
+    }
+
     fun stopTracking() {
-        trackingJob?.cancel()
-        trackingJob = null
-        locationSource.stopLocationUpdates()
-        _uiState.value = LiveUiState.Stopped
+        trackingRepository.stopTracking()
     }
 
-    /**
-     * Reset from Stopped back to Idle state.
-     */
     fun resetToIdle() {
-        stopTracking()
+        trackingRepository.resetToIdle()
         _uiState.value = LiveUiState.Idle
     }
 
-    /**
-     * Acknowledge the one-time rider safety disclaimer.
-     */
+    fun recoverRide(activeRide: RideEntity) {
+        viewModelScope.launch {
+            val stats = trackingRepository.recoverRide(activeRide)
+            _uiState.value = LiveUiState.Stopped(stats)
+        }
+    }
+
+    fun discardRide(activeRide: RideEntity) {
+        viewModelScope.launch {
+            trackingRepository.discardRide(activeRide)
+            _uiState.value = LiveUiState.Idle
+        }
+    }
+
     fun acceptDisclaimer() {
         viewModelScope.launch {
             settingsRepository.setDisclaimerAccepted(true)
         }
     }
 
-    /**
-     * Toggle the keep-screen-on setting.
-     */
     fun setKeepScreenOn(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setKeepScreenOn(enabled)
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        stopTracking()
+    fun setBatteryGuidanceSeen(seen: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setBatteryGuidanceSeen(seen)
+        }
     }
 }

@@ -30,6 +30,7 @@ class SettingsRepository @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val USE_METRIC_UNITS = booleanPreferencesKey("use_metric_units")
         val DISCLAIMER_ACCEPTED = booleanPreferencesKey("disclaimer_accepted")
+        val BATTERY_GUIDANCE_SEEN = booleanPreferencesKey("battery_guidance_seen")
     }
 
     // ============================================================
@@ -104,6 +105,20 @@ class SettingsRepository @Inject constructor(
     suspend fun setDisclaimerAccepted(accepted: Boolean) {
         dataStore.edit { prefs ->
             prefs[Keys.DISCLAIMER_ACCEPTED] = accepted
+        }
+    }
+
+    // ============================================================
+    // Battery Optimization Guidance
+    // ============================================================
+
+    val batteryGuidanceSeen: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.BATTERY_GUIDANCE_SEEN] ?: false
+    }
+
+    suspend fun setBatteryGuidanceSeen(seen: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.BATTERY_GUIDANCE_SEEN] = seen
         }
     }
 }

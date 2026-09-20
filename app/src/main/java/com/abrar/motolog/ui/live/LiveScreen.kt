@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ScreenLockPortrait
@@ -90,6 +92,7 @@ fun LiveScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDisclaimerAccepted by viewModel.isDisclaimerAccepted.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
+    val batteryGuidanceSeen by viewModel.batteryGuidanceSeen.collectAsStateWithLifecycle()
 
     // Keep screen on during active tracking if setting is enabled
     val isTrackingActive = uiState is LiveUiState.WaitingForGps || uiState is LiveUiState.Tracking
@@ -103,7 +106,9 @@ fun LiveScreen(
 
     // Permission and Disclaimer Dialog States
     var showDisclaimerDialog by remember { mutableStateOf(false) }
+    var showBatteryGuidanceDialog by remember { mutableStateOf(false) }
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+    var showNotificationRationaleDialog by remember { mutableStateOf(false) }
     var showApproximatePermissionDialog by remember { mutableStateOf(false) }
     var showPermanentlyDeniedDialog by remember { mutableStateOf(false) }
 
@@ -112,17 +117,21 @@ fun LiveScreen(
     ) { permissions ->
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val notifGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions[Manifest.permission.POST_NOTIFICATIONS] == true
+        } else true
 
         when {
-            fineGranted -> {
+            fineGranted && notifGranted -> {
                 viewModel.startTracking()
             }
-            coarseGranted -> {
-                // Coarse only: user selected "approximate location"
+            coarseGranted && fineGranted.not() -> {
                 showApproximatePermissionDialog = true
             }
+            fineGranted && !notifGranted -> {
+                showNotificationRationaleDialog = true
+            }
             else -> {
-                // Denied
                 val shouldShowRationale = activity?.let {
                     ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION)
                 } ?: false
@@ -140,15 +149,29 @@ fun LiveScreen(
             return
         }
 
+        if (!batteryGuidanceSeen) {
+            showBatteryGuidanceDialog = true
+            return
+        }
+
         val fineGranted = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (fineGranted) {
+        val notifGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else true
+
+        if (fineGranted && notifGranted) {
             viewModel.startTracking()
-        } else {
+        } else if (!fineGranted) {
             showPermissionRationaleDialog = true
+        } else {
+            showNotificationRationaleDialog = true
         }
     }
 
@@ -175,14 +198,16 @@ fun LiveScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3 Glanceable Metric Placeholders for Stage 1
-            MetricsRow()
+            // 3 Glanceable Metric Displays for Distance, Moving Time, and Avg Speed
+            MetricsRow(uiState = uiState)
         }
 
         // Bottom Section: Glove-friendly action controls
         LiveBottomControls(
             uiState = uiState,
             onStartClick = { initiateStart() },
+            onPauseClick = { viewModel.pauseTracking() },
+            onResumeClick = { viewModel.resumeTracking() },
             onStopConfirmed = { viewModel.stopTracking() },
             onResetClick = { viewModel.resetToIdle() }
         )
@@ -226,11 +251,94 @@ fun LiveScreen(
         )
     }
 
+    // Battery Optimization Guidance Dialog (shown once before first ride)
+    if (showBatteryGuidanceDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showBatteryGuidanceDialog = false
+                viewModel.setBatteryGuidanceSeen(true)
+                initiateStart()
+            },
+            title = {
+                Text(
+                    text = "Battery Optimization Guidance",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Many phone manufacturers (Samsung, Xiaomi, OnePlus, Oppo, Vivo) aggressively kill background tracking when the screen turns off.\n\n" +
+                    "To guarantee your ride is recorded uninterrupted in your pocket or handlebar mount, we recommend setting MotoLog to 'Unrestricted' battery usage in system settings."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBatteryGuidanceDialog = false
+                        viewModel.setBatteryGuidanceSeen(true)
+                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text("Open Battery Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryGuidanceDialog = false
+                        viewModel.setBatteryGuidanceSeen(true)
+                        initiateStart()
+                    }
+                ) {
+                    Text("Continue")
+                }
+            }
+        )
+    }
+
+    // Crash / Force-Kill Recovery Prompt Dialog
+    if (uiState is LiveUiState.RecoveryPrompt) {
+        val activeRide = (uiState as LiveUiState.RecoveryPrompt).activeRide
+        AlertDialog(
+            onDismissRequest = { /* Rider must choose recover or discard */ },
+            title = {
+                Text(
+                    text = "Unfinished Ride Detected",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "An unfinished ride was detected from a previous session (interrupted by an app force-close or device crash).\n\n" +
+                    "Would you like to reconstruct and save your ride stats up to the last recorded point, or discard it?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.recoverRide(activeRide) },
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text("Recover Ride")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.discardRide(activeRide) },
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text("Discard")
+                }
+            }
+        )
+    }
+
     // Location Permission Rationale Dialog
     if (showPermissionRationaleDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionRationaleDialog = false },
-            title = { Text("Location Permission Required") },
+            title = { Text("Location Permission Required", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "MotoLog needs Precise (Fine) Location access to track your motorcycle speed, " +
@@ -242,12 +350,19 @@ fun LiveScreen(
                 Button(
                     onClick = {
                         showPermissionRationaleDialog = false
-                        permissionLauncher.launch(
+                        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            )
+                        } else {
                             arrayOf(
                                 Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.ACCESS_COARSE_LOCATION
                             )
-                        )
+                        }
+                        permissionLauncher.launch(permissions)
                     },
                     modifier = Modifier.height(56.dp)
                 ) {
@@ -262,57 +377,97 @@ fun LiveScreen(
         )
     }
 
-    // Approximate Location Warning Dialog
+    // Notification Permission Rationale Dialog (Android 13+)
+    if (showNotificationRationaleDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificationRationaleDialog = false },
+            title = { Text("Notification Permission Required", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "MotoLog needs notification permission to show live speed, distance, and lock-screen controls " +
+                    "while your screen is off.\n\n" +
+                    "This guarantees lock-screen controls so you can pause or stop without navigating menus while wearing gloves."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showNotificationRationaleDialog = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                        }
+                    },
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificationRationaleDialog = false }) {
+                    Text("Not Now")
+                }
+            }
+        )
+    }
+
+    // Approximate Only Warning Dialog
     if (showApproximatePermissionDialog) {
         AlertDialog(
             onDismissRequest = { showApproximatePermissionDialog = false },
-            title = { Text("Precise Location Needed") },
+            title = { Text("Precise Location Needed", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "You granted Approximate location only. Motorcycle speed calculation and distance " +
-                    "tracking require Precise location.\n\n" +
-                    "Please enable 'Precise location' in your device settings."
+                    "MotoLog was granted 'Approximate' location. Approximate location is not accurate " +
+                    "enough to derive a motorcycle speedometer or calculate travel distance.\n\n" +
+                    "Please choose 'Precise' location in system settings."
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showApproximatePermissionDialog = false
-                        openAppSettings(context)
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
                     },
                     modifier = Modifier.height(56.dp)
                 ) {
-                    Text("Open Settings")
+                    Text("Open App Settings")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showApproximatePermissionDialog = false }) {
-                    Text("Dismiss")
+                    Text("Cancel")
                 }
             }
         )
     }
 
-    // Permanently Denied Permission Dialog
+    // Permanently Denied Dialog
     if (showPermanentlyDeniedDialog) {
         AlertDialog(
             onDismissRequest = { showPermanentlyDeniedDialog = false },
-            title = { Text("Permission Denied Permanently") },
+            title = { Text("Location Access Disabled", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Location permission has been permanently denied. To track your rides, " +
-                    "please grant Location permission manually in App Settings."
+                    "Location permission is permanently denied. MotoLog cannot track motorcycle rides without " +
+                    "precise location access.\n\n" +
+                    "Please tap below to enable location permission in Android settings."
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showPermanentlyDeniedDialog = false
-                        openAppSettings(context)
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
                     },
                     modifier = Modifier.height(56.dp)
                 ) {
-                    Text("Open App Settings")
+                    Text("Open Settings")
                 }
             },
             dismissButton = {
@@ -339,9 +494,9 @@ private fun LiveTopBar(
     ) {
         // Status Badge
         val (statusText, statusColor) = when (uiState) {
-            is LiveUiState.Idle -> "READY" to MaterialTheme.colorScheme.onSurfaceVariant
+            is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> "READY" to MaterialTheme.colorScheme.onSurfaceVariant
             is LiveUiState.WaitingForGps -> "WAITING FOR GPS" to GpsWaiting
-            is LiveUiState.Tracking -> "RECORDING" to SpeedGreen
+            is LiveUiState.Tracking -> if (uiState.isPaused) "PAUSED" to Color(0xFFFFB300) else "RECORDING" to SpeedGreen
             is LiveUiState.Stopped -> "STOPPED" to MaterialTheme.colorScheme.error
         }
 
@@ -426,11 +581,11 @@ private fun LiveSpeedometer(
                     fontSize = 110.sp,
                     fontWeight = FontWeight.Black,
                     lineHeight = 110.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (uiState.isPaused) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary,
                     letterSpacing = (-2).sp
                 )
                 Text(
-                    text = "KM/H",
+                    text = if (uiState.isPaused) "KM/H (PAUSED)" else "KM/H",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -469,7 +624,7 @@ private fun LiveSpeedometer(
                 )
             }
 
-            is LiveUiState.Idle -> {
+            is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
                 Text(
                     text = "0",
                     fontSize = 110.sp,
@@ -490,27 +645,71 @@ private fun LiveSpeedometer(
 }
 
 @Composable
-private fun MetricsRow() {
+private fun MetricsRow(uiState: LiveUiState) {
+    val stats = when (uiState) {
+        is LiveUiState.Tracking -> uiState.stats
+        is LiveUiState.Stopped -> uiState.stats
+        else -> null
+    }
+
+    var showOverallMetrics by remember { mutableStateOf(false) }
+
+    val distanceText = if (stats != null) {
+        String.format(java.util.Locale.US, "%.1f", stats.totalDistanceMeters / 1000.0)
+    } else {
+        "0.0"
+    }
+
+    val displayTimeMs = if (showOverallMetrics) {
+        stats?.elapsedTimeMs ?: 0L
+    } else {
+        stats?.movingTimeMs ?: 0L
+    }
+
+    val timeText = run {
+        val totalSec = displayTimeMs / 1000
+        val hrs = totalSec / 3600
+        val mins = (totalSec % 3600) / 60
+        val secs = totalSec % 60
+        if (hrs > 0) {
+            String.format(java.util.Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
+        } else {
+            String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+        }
+    }
+
+    val avgSpeedValue = if (showOverallMetrics) {
+        stats?.avgOverallSpeedKmh ?: 0.0
+    } else {
+        stats?.avgMovingSpeedKmh ?: 0.0
+    }
+
+    val avgSpeedText = String.format(java.util.Locale.US, "%.1f", avgSpeedValue)
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         MetricCard(
             label = "DISTANCE",
-            value = "0.0",
+            value = distanceText,
             unit = "km",
             modifier = Modifier.weight(1f)
         )
         MetricCard(
-            label = "MOVING TIME",
-            value = "00:00",
-            unit = "min",
+            label = if (showOverallMetrics) "ELAPSED TIME" else "MOVING TIME",
+            badge = if (showOverallMetrics) "OVERALL" else "MOVING",
+            value = timeText,
+            unit = if (displayTimeMs >= 3_600_000L) "hrs" else "min",
+            onClick = { showOverallMetrics = !showOverallMetrics },
             modifier = Modifier.weight(1f)
         )
         MetricCard(
             label = "AVG SPEED",
-            value = "0.0",
+            badge = if (showOverallMetrics) "OVERALL" else "MOVING",
+            value = avgSpeedText,
             unit = "km/h",
+            onClick = { showOverallMetrics = !showOverallMetrics },
             modifier = Modifier.weight(1f)
         )
     }
@@ -521,27 +720,48 @@ private fun MetricCard(
     label: String,
     value: String,
     unit: String,
+    badge: String? = null,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    val cardColors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    )
+    val cardShape = RoundedCornerShape(12.dp)
+
+    val content = @Composable {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (badge != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = badge,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
@@ -559,12 +779,33 @@ private fun MetricCard(
             }
         }
     }
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            modifier = modifier,
+            colors = cardColors,
+            shape = cardShape
+        ) {
+            content()
+        }
+    } else {
+        Card(
+            modifier = modifier,
+            colors = cardColors,
+            shape = cardShape
+        ) {
+            content()
+        }
+    }
 }
 
 @Composable
 private fun LiveBottomControls(
     uiState: LiveUiState,
     onStartClick: () -> Unit,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onResetClick: () -> Unit
 ) {
@@ -575,7 +816,7 @@ private fun LiveBottomControls(
         contentAlignment = Alignment.Center
     ) {
         when (uiState) {
-            is LiveUiState.Idle -> {
+            is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
                 Button(
                     onClick = onStartClick,
                     modifier = Modifier
@@ -600,10 +841,68 @@ private fun LiveBottomControls(
                 }
             }
 
-            is LiveUiState.WaitingForGps, is LiveUiState.Tracking -> {
+            is LiveUiState.WaitingForGps -> {
                 HoldToStopButton(
                     onStopConfirmed = onStopConfirmed
                 )
+            }
+
+            is LiveUiState.Tracking -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Pause/Resume Glove-friendly button (at least 56dp height)
+                    if (uiState.isPaused) {
+                        Button(
+                            onClick = onResumeClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SpeedGreen
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Resume Ride",
+                                tint = Color.Black
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "RESUME",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onPauseClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Pause,
+                                contentDescription = "Pause Ride"
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "PAUSE",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // 2-Second Hold-To-Stop Button
+                    HoldToStopButton(
+                        onStopConfirmed = onStopConfirmed,
+                        modifier = Modifier.weight(1.4f)
+                    )
+                }
             }
 
             is LiveUiState.Stopped -> {
@@ -646,95 +945,103 @@ private fun HoldToStopButton(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
-    val progressColor = MaterialTheme.colorScheme.error
+    var isHolding by remember { mutableStateOf(false) }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
         modifier = modifier
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(96.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onPress = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val job = coroutineScope.launch {
-                                progress.snapTo(0f)
-                                progress.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(
-                                        durationMillis = 2000,
-                                        easing = LinearEasing
-                                    )
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (isHolding) {
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                }
+            )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isHolding = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val animJob = coroutineScope.launch {
+                            progress.snapTo(0f)
+                            progress.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(
+                                    durationMillis = 2000,
+                                    easing = LinearEasing
                                 )
-                                // Reached 100% hold
+                            )
+                        }
+
+                        val released = try {
+                            tryAwaitRelease()
+                            true
+                        } catch (e: Exception) {
+                            false
+                        }
+
+                        if (released) {
+                            if (progress.value >= 0.99f) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onStopConfirmed()
                             }
-                            tryAwaitRelease()
-                            job.cancel()
+                            animJob.cancel()
                             progress.snapTo(0f)
+                            isHolding = false
+                        } else {
+                            animJob.cancel()
+                            progress.snapTo(0f)
+                            isHolding = false
                         }
-                    )
-                }
-        ) {
-            // Background Canvas for Circular Progress Ring
-            Canvas(modifier = Modifier.size(96.dp)) {
-                // Background Track
-                drawArc(
-                    color = progressColor.copy(alpha = 0.2f),
-                    startAngle = -90f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                    }
                 )
-                // Active Progress Arc
-                drawArc(
-                    color = progressColor,
-                    startAngle = -90f,
-                    sweepAngle = 360f * progress.value,
-                    useCenter = false,
-                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        // Progress Fill Background
+        val progressFill = progress.value
+        val errorColor = MaterialTheme.colorScheme.error
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            if (progressFill > 0f) {
+                drawRect(
+                    color = errorColor.copy(alpha = 0.35f),
+                    size = size.copy(width = size.width * progressFill)
                 )
-            }
-
-            // Center Stop Button
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Stop,
-                        contentDescription = "Hold to stop",
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "HOLD 2S TO STOP",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error,
-            letterSpacing = 1.sp
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(28.dp)
+            ) {
+                if (isHolding) {
+                    CircularProgressIndicator(
+                        progress = { progress.value },
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.error,
+                        strokeWidth = 3.dp,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = "Stop Ride",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (isHolding) "HOLD TO STOP (2s)..." else "HOLD TO STOP",
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+        }
     }
-}
-
-private fun openAppSettings(context: Context) {
-    val intent = Intent(
-        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-        Uri.fromParts("package", context.packageName, null)
-    ).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    context.startActivity(intent)
 }

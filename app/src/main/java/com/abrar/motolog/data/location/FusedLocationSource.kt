@@ -53,7 +53,7 @@ class FusedLocationSource @Inject constructor(
                         longitude = location.longitude,
                         speedMps = if (location.hasSpeed()) location.speed else null,
                         accuracyMeters = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE,
-                        timestamp = location.time
+                        timestamp = location.elapsedRealtimeNanos / 1_000_000L
                     )
                     trySend(point)
                 }

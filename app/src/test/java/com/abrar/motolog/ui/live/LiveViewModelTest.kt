@@ -1,11 +1,12 @@
 package com.abrar.motolog.ui.live
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import app.cash.turbine.test
+import com.abrar.motolog.data.local.entity.RideEntity
+import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.model.LocationPoint
-import com.abrar.motolog.fake.FakeLocationSource
+import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.fake.FakeTrackingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -32,14 +33,14 @@ class LiveViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
 
-    private lateinit var fakeLocationSource: FakeLocationSource
+    private lateinit var fakeRepository: FakeTrackingRepository
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var viewModel: LiveViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        fakeLocationSource = FakeLocationSource()
+        fakeRepository = FakeTrackingRepository()
 
         val testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope,
@@ -48,7 +49,7 @@ class LiveViewModelTest {
         settingsRepository = SettingsRepository(testDataStore)
 
         viewModel = LiveViewModel(
-            locationSource = fakeLocationSource,
+            trackingRepository = fakeRepository,
             settingsRepository = settingsRepository
         )
     }
@@ -64,44 +65,36 @@ class LiveViewModelTest {
     }
 
     @Test
-    fun startTracking_transitionsToWaitingForGps() = runTest(testDispatcher) {
+    fun startTracking_delegatesToRepository() = runTest(testDispatcher) {
         viewModel.startTracking()
-        assertEquals(LiveUiState.WaitingForGps(currentAccuracyMeters = null), viewModel.uiState.value)
+        assertTrue(fakeRepository.startCalled)
+        assertEquals(LiveUiState.WaitingForGps(Float.MAX_VALUE), viewModel.uiState.value)
     }
 
     @Test
-    fun waitingForGps_inaccurateFix_staysInWaitingWithUpdatedAccuracy() = runTest(testDispatcher) {
-        viewModel.startTracking()
-
-        // Accuracy is 30m, which is > 25m threshold
-        fakeLocationSource.emitLocation(
-            LocationPoint(
-                latitude = 12.9716,
-                longitude = 77.5946,
-                speedMps = 10f,
-                accuracyMeters = 30f,
-                timestamp = System.currentTimeMillis()
-            )
-        )
+    fun sessionState_waitingForGps_updatesUiState() = runTest(testDispatcher) {
+        fakeRepository.updateState(TrackingSessionState.WaitingForGps(accuracyMeters = 18f))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertTrue(state is LiveUiState.WaitingForGps)
-        assertEquals(30f, (state as LiveUiState.WaitingForGps).currentAccuracyMeters)
+        assertEquals(18f, (state as LiveUiState.WaitingForGps).currentAccuracyMeters)
     }
 
     @Test
-    fun waitingForGps_accurateFix_transitionsToTracking() = runTest(testDispatcher) {
-        viewModel.startTracking()
-
-        // Fix accuracy is 12m (<= 25m) and speed is 15 m/s (54 km/h)
-        fakeLocationSource.emitLocation(
-            LocationPoint(
-                latitude = 12.9716,
-                longitude = 77.5946,
-                speedMps = 15f,
-                accuracyMeters = 12f,
-                timestamp = System.currentTimeMillis()
+    fun sessionState_tracking_updatesUiStateWithStats() = runTest(testDispatcher) {
+        val testStats = RideStats(
+            totalDistanceMeters = 5200.0,
+            movingTimeMs = 300_000L,
+            currentSpeedKmh = 45.0,
+            avgMovingSpeedKmh = 62.4
+        )
+        fakeRepository.updateState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                isPaused = false,
+                stats = testStats,
+                accuracyMeters = 5.0f
             )
         )
         advanceUntilIdle()
@@ -109,76 +102,118 @@ class LiveViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is LiveUiState.Tracking)
         val trackingState = state as LiveUiState.Tracking
-        assertEquals(54.0, trackingState.speedKmh, 0.01)
-        assertEquals(12f, trackingState.accuracyMeters)
+        assertEquals(45.0, trackingState.speedKmh, 0.1)
+        assertEquals(5200.0, trackingState.stats.totalDistanceMeters, 0.1)
+        assertFalse(trackingState.isPaused)
     }
 
     @Test
-    fun tracking_stationaryNoiseSpeed_treatedAsZero() = runTest(testDispatcher) {
-        viewModel.startTracking()
-
-        // 0.3 m/s = 1.08 km/h (< 1.5 km/h stationary threshold)
-        fakeLocationSource.emitLocation(
-            LocationPoint(
-                latitude = 12.9716,
-                longitude = 77.5946,
-                speedMps = 0.3f,
-                accuracyMeters = 10f,
-                timestamp = System.currentTimeMillis()
-            )
+    fun pauseAndResume_delegateToRepository() = runTest(testDispatcher) {
+        fakeRepository.updateState(
+            TrackingSessionState.Tracking(rideId = 1L, isPaused = false)
         )
         advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        assertTrue(state is LiveUiState.Tracking)
-        val trackingState = state as LiveUiState.Tracking
-        assertEquals(0.0, trackingState.speedKmh, 0.0)
+        viewModel.pauseTracking()
+        assertTrue(fakeRepository.pauseCalled)
+        advanceUntilIdle()
+        assertTrue((viewModel.uiState.value as LiveUiState.Tracking).isPaused)
+
+        viewModel.resumeTracking()
+        assertTrue(fakeRepository.resumeCalled)
+        advanceUntilIdle()
+        assertFalse((viewModel.uiState.value as LiveUiState.Tracking).isPaused)
     }
 
     @Test
-    fun stopTracking_stopsLocationUpdatesAndTransitionsToStopped() = runTest(testDispatcher) {
-        viewModel.startTracking()
-
-        fakeLocationSource.emitLocation(
-            LocationPoint(
-                latitude = 12.9716,
-                longitude = 77.5946,
-                speedMps = 10f,
-                accuracyMeters = 15f,
-                timestamp = System.currentTimeMillis()
-            )
-        )
-        advanceUntilIdle()
-        assertTrue(viewModel.uiState.value is LiveUiState.Tracking)
-
+    fun stopTracking_delegatesToRepository() = runTest(testDispatcher) {
         viewModel.stopTracking()
+        assertTrue(fakeRepository.stopCalled)
         advanceUntilIdle()
 
-        assertEquals(LiveUiState.Stopped, viewModel.uiState.value)
-        assertTrue(fakeLocationSource.stopCalled)
+        assertTrue(viewModel.uiState.value is LiveUiState.Stopped)
     }
 
     @Test
-    fun resetToIdle_transitionsFromStoppedToIdle() = runTest(testDispatcher) {
-        viewModel.startTracking()
-        viewModel.stopTracking()
-        advanceUntilIdle()
-        assertEquals(LiveUiState.Stopped, viewModel.uiState.value)
-
+    fun resetToIdle_delegatesToRepository() = runTest(testDispatcher) {
         viewModel.resetToIdle()
+        assertTrue(fakeRepository.resetCalled)
         assertEquals(LiveUiState.Idle, viewModel.uiState.value)
     }
 
     @Test
-    fun acceptDisclaimer_persistsToSettingsRepository() = runTest(testDispatcher) {
-        viewModel.isDisclaimerAccepted.test {
-            assertFalse(awaitItem())
+    fun recoveryOnStartup_unfinishedRideDetected_promptsRecovery() = runTest(testDispatcher) {
+        val unfinishedRide = RideEntity(
+            id = 99L,
+            startTime = 1000L,
+            distanceMeters = 1500.0,
+            status = RideStatus.ACTIVE
+        )
+        fakeRepository.activeRideToReturn = unfinishedRide
 
-            viewModel.acceptDisclaimer()
-            advanceUntilIdle()
+        val newVm = LiveViewModel(
+            trackingRepository = fakeRepository,
+            settingsRepository = settingsRepository
+        )
+        advanceUntilIdle()
 
-            assertTrue(awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
+        val state = newVm.uiState.value
+        assertTrue("Expected RecoveryPrompt state, but got $state", state is LiveUiState.RecoveryPrompt)
+        assertEquals(99L, (state as LiveUiState.RecoveryPrompt).activeRide.id)
+    }
+
+    @Test
+    fun recoveryPrompt_recover_delegatesToRepositoryAndStops() = runTest(testDispatcher) {
+        val unfinishedRide = RideEntity(
+            id = 99L,
+            startTime = 1000L,
+            distanceMeters = 1500.0,
+            status = RideStatus.ACTIVE
+        )
+        viewModel.recoverRide(unfinishedRide)
+        advanceUntilIdle()
+
+        assertTrue(fakeRepository.recoveredRideCalled)
+        val state = viewModel.uiState.value
+        assertTrue(state is LiveUiState.Stopped)
+        assertEquals(1500.0, (state as LiveUiState.Stopped).stats.totalDistanceMeters, 0.1)
+    }
+
+    @Test
+    fun recoveryPrompt_discard_delegatesToRepositoryAndResetsToIdle() = runTest(testDispatcher) {
+        val unfinishedRide = RideEntity(
+            id = 99L,
+            startTime = 1000L,
+            status = RideStatus.ACTIVE
+        )
+        viewModel.discardRide(unfinishedRide)
+        advanceUntilIdle()
+
+        assertTrue(fakeRepository.discardedRideCalled)
+        assertEquals(LiveUiState.Idle, viewModel.uiState.value)
+    }
+
+    @Test
+    fun disclaimer_acceptancePersists() = runTest(testDispatcher) {
+        assertFalse(viewModel.isDisclaimerAccepted.value)
+        viewModel.acceptDisclaimer()
+        advanceUntilIdle()
+        assertTrue(viewModel.isDisclaimerAccepted.value)
+    }
+
+    @Test
+    fun keepScreenOn_togglePersists() = runTest(testDispatcher) {
+        assertTrue(viewModel.keepScreenOn.value)
+        viewModel.setKeepScreenOn(false)
+        advanceUntilIdle()
+        assertFalse(viewModel.keepScreenOn.value)
+    }
+
+    @Test
+    fun batteryGuidance_togglePersists() = runTest(testDispatcher) {
+        assertFalse(viewModel.batteryGuidanceSeen.value)
+        viewModel.setBatteryGuidanceSeen(true)
+        advanceUntilIdle()
+        assertTrue(viewModel.batteryGuidanceSeen.value)
     }
 }

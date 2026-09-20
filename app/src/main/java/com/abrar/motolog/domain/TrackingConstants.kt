@@ -72,11 +72,30 @@ object TrackingConstants {
      *  declaring GPS signal lost. */
     const val GPS_SIGNAL_LOST_TIMEOUT_SECONDS: Int = 10
 
+    /** Maximum interval (milliseconds) between consecutive points before
+     *  treating the segment as a signal gap (no distance accumulated across it). */
+    const val GAP_THRESHOLD_MS: Long = 10_000L
+
     // ============================================================
-    // Database Batching
+    // Database Batching & Checkpointing
     // ============================================================
 
     /** Interval (milliseconds) for batching location point writes
      *  to the Room database during an active ride. */
     const val DB_BATCH_WRITE_INTERVAL_MS: Long = 3_000L
+
+    /** Interval (milliseconds) for checkpointing ride summary stats
+     *  to the rides table to ensure crash-resilience. */
+    const val CHECKPOINT_INTERVAL_MS: Long = 10_000L
+
+    // ============================================================
+    // Notification
+    // ============================================================
+
+    /** Minimum interval (milliseconds) between notification updates
+     *  to prevent notification churn and system UI overhead. */
+    const val NOTIFICATION_UPDATE_INTERVAL_MS: Long = 2_000L
+
+    const val NOTIFICATION_CHANNEL_ID: String = "motolog_tracking_channel"
+    const val NOTIFICATION_ID: Int = 1001
 }
