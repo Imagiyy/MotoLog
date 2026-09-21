@@ -37,13 +37,23 @@ import com.abrar.motolog.ui.theme.RetroIvory
 import kotlinx.coroutines.launch
 
 /**
- * 2-Second Hold-to-Stop button with vintage motorcycle ignition kill-switch styling
- * and visual progress ring animation. Complies with the 56dp glove-friendly touch target rule.
+ * 2-Second Hold-to-Stop button with customizable motorcycle styling
+ * and visual progress fill animation. Complies with the 56dp glove-friendly touch target rule.
  */
 @Composable
-fun RetroHoldToStopButton(
+fun ThemedHoldToStopButton(
     onStopConfirmed: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = "HOLD TO STOP",
+    progressLabel: String = "HOLD",
+    borderColor: Color = RetroBrass,
+    gradientColors: List<Color> = listOf(
+        Color(0xFF5E1717),
+        Color(0xFF2C0B0B)
+    ),
+    progressFillColor: Color = JewelRed.copy(alpha = 0.5f),
+    textColor: Color = RetroIvory,
+    cornerRadius: androidx.compose.ui.unit.Dp = 8.dp
 ) {
     val coroutineScope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
@@ -51,16 +61,9 @@ fun RetroHoldToStopButton(
     Box(
         modifier = modifier
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF5E1717),
-                        Color(0xFF2C0B0B)
-                    )
-                )
-            )
-            .border(1.5.dp, RetroBrass, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(Brush.verticalGradient(colors = gradientColors))
+            .border(1.5.dp, borderColor, RoundedCornerShape(cornerRadius))
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -93,7 +96,7 @@ fun RetroHoldToStopButton(
         if (progress.value > 0f) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(
-                    color = JewelRed.copy(alpha = 0.5f),
+                    color = progressFillColor,
                     topLeft = Offset.Zero,
                     size = Size(size.width * progress.value, size.height)
                 )
@@ -101,8 +104,12 @@ fun RetroHoldToStopButton(
         }
 
         Text(
-            text = if (progress.value > 0f) "HOLD (${(2.0 * (1f - progress.value) + 0.1).toInt()}s)" else "HOLD TO STOP",
-            color = RetroIvory,
+            text = if (progress.value > 0f) {
+                "$progressLabel (${(2.0 * (1f - progress.value) + 0.1).toInt()}s)"
+            } else {
+                label
+            },
+            color = textColor,
             fontSize = 15.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
@@ -110,4 +117,18 @@ fun RetroHoldToStopButton(
             modifier = Modifier.padding(horizontal = 8.dp)
         )
     }
+}
+
+/**
+ * Vintage 2-Second Hold-to-Stop button with classic motorcycle ignition kill-switch styling.
+ */
+@Composable
+fun RetroHoldToStopButton(
+    onStopConfirmed: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ThemedHoldToStopButton(
+        onStopConfirmed = onStopConfirmed,
+        modifier = modifier
+    )
 }

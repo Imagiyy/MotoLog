@@ -48,6 +48,10 @@ import com.abrar.motolog.ui.live.retro.RetroJewelLamp
 import com.abrar.motolog.ui.live.retro.RetroLiveMap
 import com.abrar.motolog.ui.live.retro.RetroOdometerDrum
 import com.abrar.motolog.ui.live.retro.RetroSpeedometerDial
+import com.abrar.motolog.ui.live.retro.TrackDayCockpitDashboard
+import com.abrar.motolog.ui.live.retro.NeonCyberCockpitDashboard
+import com.abrar.motolog.ui.live.retro.DesertRallyCockpitDashboard
+import com.abrar.motolog.ui.live.retro.CafeRacerCockpitDashboard
 import com.abrar.motolog.ui.theme.JewelAmber
 import com.abrar.motolog.ui.theme.JewelGreen
 import com.abrar.motolog.ui.theme.JewelRed
@@ -230,22 +234,98 @@ fun LiveScreen(
                     modifier = modifier.fillMaxSize()
                 )
             } else {
-                RetroCockpitDashboard(
-                    stats = state.stats,
-                    speedKmh = state.speedKmh,
-                    accuracyMeters = state.accuracyMeters,
-                    isMetric = useMetricUnits,
-                    pauseState = state.pauseState,
-                    isGpsLost = state.isGpsLost,
-                    isSpeedAlert = state.isSpeedAlert,
-                    bikeName = state.bikeName,
-                    onPauseClick = { viewModel.pauseTracking() },
-                    onResumeClick = { viewModel.resumeTracking() },
-                    onStopConfirmed = { viewModel.stopTracking() },
-                    onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                    palette = palette,
-                    modifier = modifier.fillMaxSize()
-                )
+                when (themeMode) {
+                    ThemeMode.TRACK_DAY -> {
+                        TrackDayCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = { viewModel.pauseTracking() },
+                            onResumeClick = { viewModel.resumeTracking() },
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.NEON_CYBER -> {
+                        NeonCyberCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = { viewModel.pauseTracking() },
+                            onResumeClick = { viewModel.resumeTracking() },
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.DESERT_RALLY -> {
+                        DesertRallyCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = { viewModel.pauseTracking() },
+                            onResumeClick = { viewModel.resumeTracking() },
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.CAFE_RACER -> {
+                        CafeRacerCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = { viewModel.pauseTracking() },
+                            onResumeClick = { viewModel.resumeTracking() },
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    else -> {
+                        RetroCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = { viewModel.pauseTracking() },
+                            onResumeClick = { viewModel.resumeTracking() },
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
 
