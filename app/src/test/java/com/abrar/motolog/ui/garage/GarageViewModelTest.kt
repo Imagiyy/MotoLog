@@ -27,16 +27,25 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.abrar.motolog.data.settings.SettingsRepository
+import kotlinx.coroutines.test.TestScope
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GarageViewModelTest {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeGarageRepository: FakeGarageRepository
     private lateinit var fakeBikeDao: FakeBikeDao
     private lateinit var fakeRideDao: FakeRideDao
     private lateinit var fakeMaintenanceDao: FakeMaintenanceDao
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var viewModel: GarageViewModel
 
     @Before
@@ -46,6 +55,12 @@ class GarageViewModelTest {
         fakeBikeDao = FakeBikeDao()
         fakeRideDao = FakeRideDao()
         fakeMaintenanceDao = FakeMaintenanceDao()
+
+        val testDataStore = PreferenceDataStoreFactory.create(
+            scope = TestScope(testDispatcher),
+            produceFile = { tempFolder.newFile("garage_settings.preferences_pb") }
+        )
+        settingsRepository = SettingsRepository(testDataStore)
     }
 
     @After
@@ -60,7 +75,7 @@ class GarageViewModelTest {
         fakeGarageRepository.currentBikeIdFlow.value = 1L
         fakeRideDao.distanceMap[1L] = 150_000.0 // 150 km recorded
 
-        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao)
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -79,7 +94,7 @@ class GarageViewModelTest {
         fakeGarageRepository.activeBikesFlow.value = listOf(bike1, bike2)
         fakeGarageRepository.currentBikeIdFlow.value = 1L
 
-        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao)
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
         advanceUntilIdle()
 
         assertEquals(1L, viewModel.uiState.value.currentBikeId)
@@ -92,7 +107,7 @@ class GarageViewModelTest {
 
     @Test
     fun addBikeDialog_lifecycleAndSubmission() = runTest(testDispatcher) {
-        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao)
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isAddBikeDialogOpen)
@@ -114,7 +129,7 @@ class GarageViewModelTest {
         val bikeWithRides = BikeEntity(id = 1L, name = "Ridden Bike")
         fakeBikeDao.rideCounts[1L] = 5
 
-        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao)
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
         advanceUntilIdle()
 
         viewModel.requestArchiveOrDelete(bikeWithRides)
@@ -192,6 +207,9 @@ class GarageViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = rideCounts[bikeId] ?: 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun getAllBikesOnce(): List<BikeEntity> = emptyList()
+        override suspend fun insertAll(bikes: List<BikeEntity>) {}
+        override suspend fun deleteAllBikes() {}
     }
 
     private class FakeRideDao : RideDao {
@@ -210,6 +228,10 @@ class GarageViewModelTest {
         override suspend fun updateRideBike(rideId: Long, bikeId: Long?) {}
         override fun getTotalDistanceMetersForBike(bikeId: Long): Flow<Double?> = MutableStateFlow(distanceMap[bikeId])
         override suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double? = distanceMap[bikeId]
+        override suspend fun findDuplicateRide(minStartTime: Long, maxStartTime: Long, minDistance: Double, maxDistance: Double): RideEntity? = null
+        override suspend fun getAllRidesOnce(): List<RideEntity> = emptyList()
+        override suspend fun insertAll(rides: List<RideEntity>) {}
+        override suspend fun deleteAllRides() {}
     }
 
     private class FakeMaintenanceDao : MaintenanceDao {
@@ -222,5 +244,7 @@ class GarageViewModelTest {
         override suspend fun getItemById(id: Long): MaintenanceItemEntity? = null
         override suspend fun markDone(id: Long, odometerKm: Double, dateEpochMs: Long) {}
         override suspend fun updateLastNotified(id: Long, notifiedEpochMs: Long) {}
+        override suspend fun insertAll(items: List<MaintenanceItemEntity>) {}
+        override suspend fun deleteAllMaintenance() {}
     }
 }

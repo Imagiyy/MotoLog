@@ -28,15 +28,24 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.abrar.motolog.data.settings.SettingsRepository
+import kotlinx.coroutines.test.TestScope
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BikeDetailViewModelTest {
 
+    @get:Rule
+    val tempFolder = TemporaryFolder()
+
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeGarageRepository: FakeGarageRepository
     private lateinit var fakeBikeDao: FakeBikeDao
     private lateinit var fakeRideDao: FakeRideDao
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var viewModel: BikeDetailViewModel
 
     private val testBike = BikeEntity(
@@ -53,6 +62,12 @@ class BikeDetailViewModelTest {
         fakeGarageRepository = FakeGarageRepository(testBike)
         fakeBikeDao = FakeBikeDao()
         fakeRideDao = FakeRideDao()
+
+        val testDataStore = PreferenceDataStoreFactory.create(
+            scope = TestScope(testDispatcher),
+            produceFile = { tempFolder.newFile("bike_detail_settings.preferences_pb") }
+        )
+        settingsRepository = SettingsRepository(testDataStore)
     }
 
     @After
@@ -66,6 +81,7 @@ class BikeDetailViewModelTest {
             garageRepository = fakeGarageRepository,
             bikeDao = fakeBikeDao,
             rideDao = fakeRideDao,
+            settingsRepository = settingsRepository,
             savedStateHandle = savedStateHandle
         )
     }
@@ -320,6 +336,9 @@ class BikeDetailViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = rideCounts[bikeId] ?: 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun getAllBikesOnce(): List<BikeEntity> = emptyList()
+        override suspend fun insertAll(bikes: List<BikeEntity>) {}
+        override suspend fun deleteAllBikes() {}
     }
 
     private class FakeRideDao : RideDao {
@@ -338,5 +357,9 @@ class BikeDetailViewModelTest {
         override suspend fun updateRideBike(rideId: Long, bikeId: Long?) {}
         override fun getTotalDistanceMetersForBike(bikeId: Long): Flow<Double?> = MutableStateFlow(distanceMap[bikeId])
         override suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double? = distanceMap[bikeId]
+        override suspend fun findDuplicateRide(minStartTime: Long, maxStartTime: Long, minDistance: Double, maxDistance: Double): RideEntity? = null
+        override suspend fun getAllRidesOnce(): List<RideEntity> = emptyList()
+        override suspend fun insertAll(rides: List<RideEntity>) {}
+        override suspend fun deleteAllRides() {}
     }
 }

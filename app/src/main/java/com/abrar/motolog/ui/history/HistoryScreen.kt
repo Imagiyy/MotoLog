@@ -85,6 +85,8 @@ fun HistoryScreen(
         }
     }
 
+    val useMetricUnits by viewModel.useMetricUnits.collectAsStateWithLifecycle()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -136,6 +138,7 @@ fun HistoryScreen(
                         ) { ride ->
                             RideCard(
                                 ride = ride,
+                                useMetricUnits = useMetricUnits,
                                 onClick = { onNavigateToRideDetail(ride.id) },
                                 onDeleteClick = { viewModel.deleteRide(ride) }
                             )
@@ -152,6 +155,7 @@ fun HistoryScreen(
 @Composable
 private fun RideCard(
     ride: RideEntity,
+    useMetricUnits: Boolean = true,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -244,7 +248,7 @@ private fun RideCard(
             ) {
                 MetricColumn(
                     label = "DISTANCE",
-                    value = FormatUtils.formatDistanceKm(ride.distanceMeters)
+                    value = com.abrar.motolog.domain.engine.UnitConverter.formatDistanceWithUnit(ride.distanceMeters, useMetricUnits)
                 )
 
                 Box(
@@ -268,7 +272,7 @@ private fun RideCard(
 
                 MetricColumn(
                     label = "AVG SPEED",
-                    value = FormatUtils.formatSpeedMsToKmh(ride.avgMovingSpeedMs)
+                    value = com.abrar.motolog.domain.engine.UnitConverter.formatSpeedWithUnit(ride.avgMovingSpeedMs * 3.6, useMetricUnits, decimals = 1)
                 )
             }
         }

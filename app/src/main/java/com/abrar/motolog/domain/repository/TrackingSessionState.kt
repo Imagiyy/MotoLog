@@ -24,7 +24,10 @@ sealed interface TrackingSessionState {
         val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
         val isGpsLost: Boolean = false,
         val stats: RideStats = RideStats(),
-        val accuracyMeters: Float = 0f
+        val accuracyMeters: Float = 0f,
+        val isSpeedAlert: Boolean = false,
+        val latitude: Double? = null,
+        val longitude: Double? = null
     ) : TrackingSessionState {
 
         constructor(
@@ -32,14 +35,20 @@ sealed interface TrackingSessionState {
             pauseState: PauseState,
             isGpsLost: Boolean = false,
             stats: RideStats = RideStats(),
-            accuracyMeters: Float = 0f
+            accuracyMeters: Float = 0f,
+            isSpeedAlert: Boolean = false,
+            latitude: Double? = null,
+            longitude: Double? = null
         ) : this(
             rideId = rideId,
             isPaused = pauseState.isPaused,
             pauseState = pauseState,
             isGpsLost = isGpsLost,
             stats = stats,
-            accuracyMeters = accuracyMeters
+            accuracyMeters = accuracyMeters,
+            isSpeedAlert = isSpeedAlert,
+            latitude = latitude,
+            longitude = longitude
         )
     }
 

@@ -37,6 +37,15 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import com.abrar.motolog.domain.engine.SpeedAlertEngine
+import com.abrar.motolog.domain.model.SpeedAlertStyle
+import com.abrar.motolog.domain.model.TrackingMode
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -89,6 +98,15 @@ class TrackingService : Service() {
     private var lastLocationPointTime = 0L
     private var lastNotificationUpdateTime = 0L
     private var lastObservedAccuracy = Float.MAX_VALUE
+    private var lastKnownLatitude: Double? = null
+    private var lastKnownLongitude: Double? = null
+
+    private val speedAlertEngine = SpeedAlertEngine()
+    private var isMetricUnits = true
+    private var speedAlertEnabled = false
+    private var speedAlertThresholdKmh = TrackingConstants.SPEED_ALERT_DEFAULT_THRESHOLD_KMH
+    private var speedAlertStyle = SpeedAlertStyle.ALL
+    private var activeTrackingMode = TrackingMode.HIGH_ACCURACY
 
     companion object {
         const val ACTION_START = "com.abrar.motolog.action.START"
@@ -123,12 +141,35 @@ class TrackingService : Service() {
         isTracking.set(true)
         isGpsLost.set(false)
         lastLocationPointTime = 0L
+        speedAlertEngine.reset()
 
-        // Observe auto-pause setting
+        // Observe settings
         settingsJob?.cancel()
         settingsJob = serviceScope.launch {
-            settingsRepository.autoPauseEnabled.collect { enabled ->
-                rideCalculator.autoPauseStateMachine.autoPauseEnabled = enabled
+            launch {
+                settingsRepository.autoPauseEnabled.collect { enabled ->
+                    rideCalculator.autoPauseStateMachine.autoPauseEnabled = enabled
+                }
+            }
+            launch {
+                settingsRepository.useMetricUnits.collect { metric ->
+                    isMetricUnits = metric
+                }
+            }
+            launch {
+                settingsRepository.speedAlertEnabled.collect { enabled ->
+                    speedAlertEnabled = enabled
+                }
+            }
+            launch {
+                settingsRepository.speedAlertThresholdKmh.collect { threshold ->
+                    speedAlertThresholdKmh = threshold
+                }
+            }
+            launch {
+                settingsRepository.speedAlertStyle.collect { style ->
+                    speedAlertStyle = style
+                }
             }
         }
 
@@ -144,7 +185,8 @@ class TrackingService : Service() {
         trackingRepository.updateState(TrackingSessionState.WaitingForGps())
 
         serviceScope.launch {
-            // 2. Create Ride row in Room
+            // 2. Read selected tracking mode before starting collection
+            activeTrackingMode = settingsRepository.trackingMode.firstOrNull() ?: TrackingMode.HIGH_ACCURACY
             val currentBikeId = settingsRepository.currentBikeId.firstOrNull()
             val initialRide = RideEntity(
                 bikeId = currentBikeId,
@@ -179,7 +221,7 @@ class TrackingService : Service() {
     private fun startLocationCollection() {
         locationJob?.cancel()
         locationJob = serviceScope.launch {
-            locationSource.getLocationUpdates()
+            locationSource.getLocationUpdates(activeTrackingMode)
                 .catch {
                     // Location stream failure: safely stop and preserve session data
                     handleStop()
@@ -209,6 +251,9 @@ class TrackingService : Service() {
                         return@collect
                     }
 
+                    lastKnownLatitude = locationPoint.latitude
+                    lastKnownLongitude = locationPoint.longitude
+
                     val gpsPoint = GpsPoint(
                         timestampEpochMs = locationPoint.timestamp,
                         latitude = locationPoint.latitude,
@@ -219,17 +264,28 @@ class TrackingService : Service() {
 
                     val filterResult = rideCalculator.process(gpsPoint)
 
-                    val (isGap, pauseState) = if (filterResult is PointFilterResult.Accepted) {
-                        filterResult.isGap to filterResult.pauseState
+                    val (isGap, pauseState, speedKmh) = if (filterResult is PointFilterResult.Accepted) {
+                        Triple(filterResult.isGap, filterResult.pauseState, filterResult.speedKmh)
                     } else {
-                        false to rideCalculator.autoPauseStateMachine.pauseState
+                        Triple(false, rideCalculator.autoPauseStateMachine.pauseState, 0.0)
+                    }
+
+                    // Evaluate speed alert
+                    val alertFired = speedAlertEngine.evaluate(
+                        currentSpeedKmh = speedKmh,
+                        thresholdKmh = speedAlertThresholdKmh,
+                        isEnabled = speedAlertEnabled,
+                        currentTimeMs = locationPoint.timestamp
+                    )
+                    if (alertFired) {
+                        triggerSpeedAlertFeedback(speedAlertStyle)
                     }
 
                     // Buffer point for database write
                     val speedMs = if (locationPoint.speedMps != null) {
                         locationPoint.speedMps.toDouble()
                     } else {
-                        (filterResult as? PointFilterResult.Accepted)?.speedKmh?.div(3.6) ?: 0.0
+                        speedKmh / 3.6
                     }
 
                     // Determine best altitude: barometer > GPS
@@ -251,13 +307,18 @@ class TrackingService : Service() {
                     pointChannel.trySend(pointEntity)
 
                     val currentStats = rideCalculator.stats
+                    val isSpeedExceeded = speedAlertEnabled && speedKmh >= speedAlertThresholdKmh
+
                     trackingRepository.updateState(
                         TrackingSessionState.Tracking(
                             rideId = activeRideId,
                             pauseState = pauseState,
                             isGpsLost = false,
                             stats = currentStats,
-                            accuracyMeters = locationPoint.accuracyMeters
+                            accuracyMeters = locationPoint.accuracyMeters,
+                            isSpeedAlert = isSpeedExceeded,
+                            latitude = locationPoint.latitude,
+                            longitude = locationPoint.longitude
                         )
                     )
 
@@ -319,7 +380,12 @@ class TrackingService : Service() {
                 delay(1_000L)
                 val now = clock.currentTimeMillis()
                 val lastPoint = lastLocationPointTime
-                val isTimedOut = lastPoint > 0L && (now - lastPoint >= TrackingConstants.GPS_SIGNAL_LOST_TIMEOUT_SECONDS * 1000L)
+                val timeoutSec = if (activeTrackingMode == TrackingMode.BATTERY_SAVER) {
+                    TrackingConstants.BATTERY_SAVER_SIGNAL_LOST_TIMEOUT_SECONDS
+                } else {
+                    TrackingConstants.GPS_SIGNAL_LOST_TIMEOUT_SECONDS
+                }
+                val isTimedOut = lastPoint > 0L && (now - lastPoint >= timeoutSec * 1000L)
                 val isUnavailable = !isHardwareGpsAvailable.get()
 
                 if ((isTimedOut || isUnavailable) && !isGpsLost.get() && rideCalculator.stats.acceptedPointCount > 0) {
@@ -333,7 +399,9 @@ class TrackingService : Service() {
                             pauseState = pauseState,
                             isGpsLost = true,
                             stats = stats,
-                            accuracyMeters = lastObservedAccuracy
+                            accuracyMeters = lastObservedAccuracy,
+                            latitude = lastKnownLatitude,
+                            longitude = lastKnownLongitude
                         )
                     )
 
@@ -363,7 +431,9 @@ class TrackingService : Service() {
                 pauseState = pauseState,
                 isGpsLost = isGpsLost.get(),
                 stats = stats,
-                accuracyMeters = lastObservedAccuracy
+                accuracyMeters = lastObservedAccuracy,
+                latitude = lastKnownLatitude,
+                longitude = lastKnownLongitude
             )
         )
         updateNotificationImmediate(
@@ -389,7 +459,9 @@ class TrackingService : Service() {
                 pauseState = pauseState,
                 isGpsLost = isGpsLost.get(),
                 stats = stats,
-                accuracyMeters = lastObservedAccuracy
+                accuracyMeters = lastObservedAccuracy,
+                latitude = lastKnownLatitude,
+                longitude = lastKnownLongitude
             )
         )
         updateNotificationImmediate(
@@ -417,6 +489,8 @@ class TrackingService : Service() {
             barometerJob?.cancel()
             locationSource.stopLocationUpdates()
             barometerSource.stopListening()
+            lastKnownLatitude = null
+            lastKnownLongitude = null
 
             // 2. Stop periodic tasks
             checkpointJob?.cancel()
@@ -558,7 +632,8 @@ class TrackingService : Service() {
             pauseState = pauseState,
             isGpsLost = isGpsLost,
             accuracyMeters = accuracyMeters,
-            isWaitingGps = isWaitingGps
+            isWaitingGps = isWaitingGps,
+            isMetric = isMetricUnits
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
@@ -601,10 +676,41 @@ class TrackingService : Service() {
             pauseState = pauseState,
             isGpsLost = isGpsLost,
             accuracyMeters = accuracyMeters,
-            isWaitingGps = isWaitingGps
+            isWaitingGps = isWaitingGps,
+            isMetric = isMetricUnits
         )
         val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         manager.notify(TrackingConstants.NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Triggers non-blocking haptic and/or subtle audio alert when speed threshold is crossed.
+     */
+    private fun triggerSpeedAlertFeedback(style: SpeedAlertStyle) {
+        if (style == SpeedAlertStyle.VISUAL_AND_HAPTIC || style == SpeedAlertStyle.ALL) {
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                    vm?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator?.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(250)
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (style == SpeedAlertStyle.ALL) {
+            try {
+                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 180)
+            } catch (_: Exception) {}
+        }
     }
 
     /**

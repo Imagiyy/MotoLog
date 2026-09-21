@@ -5,9 +5,12 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+import kotlinx.serialization.Serializable
+
 /**
  * Ride status indicating the lifecycle state of a ride.
  */
+@Serializable
 enum class RideStatus {
     /** Currently recording */
     ACTIVE,
@@ -20,6 +23,7 @@ enum class RideStatus {
 /**
  * Represents a single ride session.
  */
+@Serializable
 @Entity(
     tableName = "rides",
     foreignKeys = [
@@ -77,5 +81,11 @@ data class RideEntity(
     val elevationSource: String = "",
 
     /** Current ride lifecycle status */
-    val status: RideStatus = RideStatus.ACTIVE
+    val status: RideStatus = RideStatus.ACTIVE,
+
+    /** Whether this ride was imported from an external GPX file */
+    val isImported: Boolean = false,
+
+    /** Whether an imported ride contributes to the assigned bike's cumulative odometer */
+    val countsTowardOdometer: Boolean = false
 )

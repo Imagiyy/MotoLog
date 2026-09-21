@@ -155,4 +155,45 @@ class DatabaseMigrationTest {
         assertEquals(0.0, defaultRide.elevationLossMeters, 0.001)
         assertEquals("", defaultRide.elevationSource)
     }
+
+    @Test
+    fun `migration from version 3 to 4 executes non-destructive schema upgrades`() {
+        val executedSql = mutableListOf<String>()
+
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL") {
+                val sql = args[0] as String
+                executedSql.add(sql)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_3_4.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(3, MotoLogDatabase.MIGRATION_3_4.startVersion)
+        assertEquals(4, MotoLogDatabase.MIGRATION_3_4.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Adds isImported and countsTowardOdometer columns with safe defaults (0 / false)
+        assertTrue(
+            "Must add isImported with default 0",
+            executedSql.any { it.contains("ALTER TABLE `rides` ADD COLUMN `isImported` INTEGER NOT NULL DEFAULT 0") }
+        )
+        assertTrue(
+            "Must add countsTowardOdometer with default 0",
+            executedSql.any { it.contains("ALTER TABLE `rides` ADD COLUMN `countsTowardOdometer` INTEGER NOT NULL DEFAULT 0") }
+        )
+
+        // 4. Verify RideEntity defaults
+        val defaultRide = RideEntity(id = 1L)
+        assertFalse("isImported should default to false", defaultRide.isImported)
+        assertFalse("countsTowardOdometer should default to false", defaultRide.countsTowardOdometer)
+    }
 }

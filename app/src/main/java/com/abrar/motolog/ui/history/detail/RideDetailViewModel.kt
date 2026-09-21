@@ -28,6 +28,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
+import com.abrar.motolog.data.io.CsvExporter
+import com.abrar.motolog.data.io.GpxExporter
+import com.abrar.motolog.data.settings.SettingsRepository
+import com.abrar.motolog.domain.engine.UnitConverter
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.stateIn
+import java.io.File
+import java.io.FileOutputStream
+
 /**
  * ViewModel for the Ride Detail screen.
  *
@@ -40,7 +54,8 @@ class RideDetailViewModel @Inject constructor(
     private val rideDao: RideDao,
     private val bikeDao: BikeDao,
     savedStateHandle: SavedStateHandle,
-    private val mapProvider: MapProvider
+    private val mapProvider: MapProvider,
+    private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
     constructor(
@@ -53,13 +68,18 @@ class RideDetailViewModel @Inject constructor(
         rideDao,
         bikeDao,
         savedStateHandle,
-        MapLibreMapProvider(OpenFreeMapStyleProvider())
+        MapLibreMapProvider(OpenFreeMapStyleProvider()),
+        null
     )
 
     val mapStyleProvider: MapStyleProvider
         get() = mapProvider.styleProvider
 
     internal var defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+    val useMetricUnits: StateFlow<Boolean> = settingsRepository?.useMetricUnits
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
+        ?: MutableStateFlow(true).asStateFlow()
 
     private val rideId: Long = runCatching {
         savedStateHandle.toRoute<RideDetailRoute>().rideId
@@ -108,8 +128,11 @@ class RideDetailViewModel @Inject constructor(
                         isGap = point.isGap
                     )
                 }
+                val isMetric = settingsRepository?.useMetricUnits?.firstOrNull() ?: true
+                val splitDistanceMeters = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
+
                 Triple(
-                    SplitCalculator.computeSplits(points),
+                    SplitCalculator.computeSplits(points, splitDistanceMeters = splitDistanceMeters),
                     RouteMapPreparer.prepare(entities),
                     Pair(
                         GraphDataPreparer.prepareSpeedGraph(entities, ride?.startTime ?: 0L),
@@ -203,6 +226,103 @@ class RideDetailViewModel @Inject constructor(
                     isChangeBikeDialogOpen = false
                 )
             }
+        }
+    }
+
+    fun exportRideGpx(context: Context, uri: Uri) {
+        val currentRide = _uiState.value.ride ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val points = rideRepository.getPointsForRide(currentRide.id)
+                val entities = points.map { pt ->
+                    RidePointEntity(
+                        rideId = currentRide.id,
+                        timestamp = pt.timestampEpochMs,
+                        latitude = pt.latitude,
+                        longitude = pt.longitude,
+                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                        accuracyMeters = pt.accuracyMeters,
+                        altitudeMeters = pt.altitudeMeters ?: 0.0,
+                        isPaused = pt.isPaused,
+                        isGap = pt.isGap
+                    )
+                }
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    GpxExporter.exportRide(currentRide, entities, stream)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun exportRideCsv(context: Context, uri: Uri) {
+        val currentRide = _uiState.value.ride ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val points = rideRepository.getPointsForRide(currentRide.id)
+                val entities = points.map { pt ->
+                    RidePointEntity(
+                        rideId = currentRide.id,
+                        timestamp = pt.timestampEpochMs,
+                        latitude = pt.latitude,
+                        longitude = pt.longitude,
+                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                        accuracyMeters = pt.accuracyMeters,
+                        altitudeMeters = pt.altitudeMeters ?: 0.0,
+                        isPaused = pt.isPaused,
+                        isGap = pt.isGap
+                    )
+                }
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    CsvExporter.exportRidePoints(entities, stream)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun shareRideGpx(context: Context) {
+        val currentRide = _uiState.value.ride ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val points = rideRepository.getPointsForRide(currentRide.id)
+                val entities = points.map { pt ->
+                    RidePointEntity(
+                        rideId = currentRide.id,
+                        timestamp = pt.timestampEpochMs,
+                        latitude = pt.latitude,
+                        longitude = pt.longitude,
+                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                        accuracyMeters = pt.accuracyMeters,
+                        altitudeMeters = pt.altitudeMeters ?: 0.0,
+                        isPaused = pt.isPaused,
+                        isGap = pt.isGap
+                    )
+                }
+
+                val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+                val exportFile = File(exportDir, "ride_${currentRide.id}.gpx")
+
+                FileOutputStream(exportFile).use { stream ->
+                    GpxExporter.exportRide(currentRide, entities, stream)
+                }
+
+                val contentUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    exportFile
+                )
+
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/gpx+xml"
+                    putExtra(Intent.EXTRA_STREAM, contentUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+
+                val chooser = Intent.createChooser(shareIntent, "Share GPX Track").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(chooser)
+            } catch (_: Exception) {}
         }
     }
 }

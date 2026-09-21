@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Scoped cache directory for exported GPX and CSV files to share -->
+    <cache-path name="shared_exports" path="exports/" />
+</paths>

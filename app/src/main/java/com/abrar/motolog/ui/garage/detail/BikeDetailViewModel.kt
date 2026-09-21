@@ -26,6 +26,7 @@ class BikeDetailViewModel @Inject constructor(
     private val garageRepository: GarageRepository,
     private val bikeDao: BikeDao,
     private val rideDao: RideDao,
+    private val settingsRepository: com.abrar.motolog.data.settings.SettingsRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -75,8 +76,11 @@ class BikeDetailViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 bikeDataFlow,
+                settingsRepository.useMetricUnits,
+                settingsRepository.fuelUnit,
+                settingsRepository.currencySymbol,
                 _dialogState
-            ) { data, dialogState ->
+            ) { data, useMetricUnits, fuelUnit, currencySymbol, dialogState ->
                 val bike = data.bike
                 val rideCount = if (bike != null) bikeDao.getRideCountForBike(bikeId) else 0
                 val totalDistanceMeters = if (bike != null) rideDao.getTotalDistanceMetersForBikeOnce(bikeId) ?: 0.0 else 0.0
@@ -91,6 +95,9 @@ class BikeDetailViewModel @Inject constructor(
                     fuelLogs = data.fuelLogs,
                     fuelStats = data.fuelStats,
                     selectedTab = dialogState.selectedTab,
+                    useMetricUnits = useMetricUnits,
+                    fuelUnit = fuelUnit,
+                    currencySymbol = currencySymbol,
                     isSetOdometerDialogOpen = dialogState.isSetOdometerDialogOpen,
                     isEditBikeDialogOpen = dialogState.isEditBikeDialogOpen,
                     isAddMaintenanceDialogOpen = dialogState.isAddMaintenanceDialogOpen,

@@ -148,6 +148,35 @@ object TrackingConstants {
     const val DOWNSAMPLE_MAX_POINTS: Int = 2000
 
     // ============================================================
+    // Battery Saver Tracking Mode
+    // ============================================================
+
+    /** Desired update interval in battery saver mode (milliseconds). */
+    const val BATTERY_SAVER_UPDATE_INTERVAL_MS: Long = 3_000L
+
+    /** Fastest acceptable interval in battery saver mode (milliseconds). */
+    const val BATTERY_SAVER_FASTEST_INTERVAL_MS: Long = 3_000L
+
+    /** Duration (seconds) without location before signal lost in battery saver mode. */
+    const val BATTERY_SAVER_SIGNAL_LOST_TIMEOUT_SECONDS: Int = 15
+
+    /** Maximum interval (milliseconds) between points before gap in battery saver mode. */
+    const val BATTERY_SAVER_GAP_THRESHOLD_MS: Long = 15_000L
+
+    // ============================================================
+    // Speed Alert
+    // ============================================================
+
+    /** Default speed alert threshold in km/h. */
+    const val SPEED_ALERT_DEFAULT_THRESHOLD_KMH: Double = 100.0
+
+    /** Drop in speed (km/h) below threshold required to re-arm the speed alert. */
+    const val SPEED_ALERT_HYSTERESIS_KMH: Double = 5.0
+
+    /** Minimum duration (seconds) between speed alert triggers to prevent annoyance. */
+    const val SPEED_ALERT_COOLDOWN_SECONDS: Long = 15L
+
+    // ============================================================
     // Speed Color Scale
     // ============================================================
 

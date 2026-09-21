@@ -17,6 +17,8 @@ captures/
 # Keystore
 *.jks
 *.keystore
+keystore.properties
+*.properties.private
 
 # Local configuration
 local.properties

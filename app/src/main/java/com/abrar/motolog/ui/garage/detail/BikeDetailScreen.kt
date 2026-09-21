@@ -49,6 +49,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,20 +70,19 @@ import com.abrar.motolog.domain.model.MaintenanceEvaluation
 import com.abrar.motolog.domain.model.MaintenancePreset
 import com.abrar.motolog.domain.model.MaintenanceStatus
 import com.abrar.motolog.ui.util.FormatUtils
+import com.abrar.motolog.domain.engine.UnitConverter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BikeDetailScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier,
     viewModel: BikeDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val bike = uiState.bike
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
@@ -93,7 +93,10 @@ fun BikeDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
                     }
                 },
                 actions = {
@@ -102,63 +105,78 @@ fun BikeDetailScreen(
                             Icon(Icons.Default.Edit, contentDescription = "Edit Motorcycle")
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         }
     ) { innerPadding ->
-        if (uiState.isLoading || bike == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // Top Odometer & Overview card
-                OdometerHeaderCard(
-                    currentOdometerKm = uiState.currentOdometerKm,
-                    makeModel = bike.makeModel,
-                    ridesCount = uiState.recordedRidesCount,
-                    ridesDistanceKm = uiState.recordedRidesDistanceKm,
-                    onAdjustOdometer = { viewModel.openSetOdometerDialog() },
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                // Tabs: Maintenance vs Fuel
-                TabRow(selectedTabIndex = uiState.selectedTab) {
-                    Tab(
-                        selected = uiState.selectedTab == 0,
-                        onClick = { viewModel.selectTab(0) },
-                        text = { Text("Maintenance (${uiState.maintenanceEvaluations.size})") }
-                    )
-                    Tab(
-                        selected = uiState.selectedTab == 1,
-                        onClick = { viewModel.selectTab(1) },
-                        text = { Text("Fuel Log (${uiState.fuelLogs.size})") }
-                    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
+                bike == null -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Motorcycle not found",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                else -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Top Odometer & Overview card
+                        OdometerHeaderCard(
+                            currentOdometerKm = uiState.currentOdometerKm,
+                            makeModel = bike.makeModel,
+                            ridesCount = uiState.recordedRidesCount,
+                            ridesDistanceKm = uiState.recordedRidesDistanceKm,
+                            useMetricUnits = uiState.useMetricUnits,
+                            onAdjustOdometer = { viewModel.openSetOdometerDialog() },
+                            modifier = Modifier.padding(16.dp)
+                        )
 
-                when (uiState.selectedTab) {
-                    0 -> MaintenanceTabContent(
-                        evaluations = uiState.maintenanceEvaluations,
-                        onAddItem = { viewModel.openAddMaintenanceDialog() },
-                        onMarkDone = { viewModel.requestMarkDone(it.item) },
-                        onEdit = { viewModel.openEditMaintenanceDialog(it.item) },
-                        onDelete = { viewModel.requestDeleteMaintenanceItem(it.item) }
-                    )
-                    1 -> FuelTabContent(
-                        uiState = uiState,
-                        onAddLog = { viewModel.openAddFuelDialog() },
-                        onEditLog = { viewModel.openEditFuelDialog(it) },
-                        onDeleteLog = { viewModel.requestDeleteFuelLog(it) }
-                    )
+                        // Tabs: Maintenance vs Fuel
+                        TabRow(selectedTabIndex = uiState.selectedTab) {
+                            Tab(
+                                selected = uiState.selectedTab == 0,
+                                onClick = { viewModel.selectTab(0) },
+                                text = { Text("Maintenance (${uiState.maintenanceEvaluations.size})") }
+                            )
+                            Tab(
+                                selected = uiState.selectedTab == 1,
+                                onClick = { viewModel.selectTab(1) },
+                                text = { Text("Fuel Log (${uiState.fuelLogs.size})") }
+                            )
+                        }
+
+                        when (uiState.selectedTab) {
+                            0 -> MaintenanceTabContent(
+                                evaluations = uiState.maintenanceEvaluations,
+                                useMetricUnits = uiState.useMetricUnits,
+                                onAddItem = { viewModel.openAddMaintenanceDialog() },
+                                onMarkDone = { viewModel.requestMarkDone(it.item) },
+                                onEdit = { viewModel.openEditMaintenanceDialog(it.item) },
+                                onDelete = { viewModel.requestDeleteMaintenanceItem(it.item) }
+                            )
+                            1 -> FuelTabContent(
+                                uiState = uiState,
+                                onAddLog = { viewModel.openAddFuelDialog() },
+                                onEditLog = { viewModel.openEditFuelDialog(it) },
+                                onDeleteLog = { viewModel.requestDeleteFuelLog(it) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -168,6 +186,7 @@ fun BikeDetailScreen(
     if (uiState.isSetOdometerDialogOpen && bike != null) {
         SetOdometerDialog(
             currentOdoKm = uiState.currentOdometerKm,
+            useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissSetOdometerDialog() },
             onConfirm = { viewModel.setOdometer(it) }
         )
@@ -185,6 +204,7 @@ fun BikeDetailScreen(
     if (uiState.isAddMaintenanceDialogOpen) {
         AddEditMaintenanceDialog(
             item = null,
+            useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissAddMaintenanceDialog() },
             onConfirm = { name, intervalKm, intervalDays ->
                 viewModel.addMaintenanceItem(name, intervalKm, intervalDays)
@@ -195,6 +215,7 @@ fun BikeDetailScreen(
     uiState.itemToEdit?.let { item ->
         AddEditMaintenanceDialog(
             item = item,
+            useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissEditMaintenanceDialog() },
             onConfirm = { name, intervalKm, intervalDays ->
                 viewModel.updateMaintenanceItem(item.copy(name = name, intervalKm = intervalKm, intervalDays = intervalDays))
@@ -224,6 +245,7 @@ fun BikeDetailScreen(
         MarkDoneDialog(
             item = item,
             currentOdometerKm = uiState.currentOdometerKm,
+            useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissMarkDoneDialog() },
             onConfirm = { odo -> viewModel.confirmMarkDone(item.id, odo) }
         )
@@ -233,6 +255,8 @@ fun BikeDetailScreen(
         AddEditFuelLogDialog(
             log = null,
             defaultOdometerKm = uiState.currentOdometerKm,
+            useMetricUnits = uiState.useMetricUnits,
+            currencySymbol = uiState.currencySymbol,
             onDismiss = { viewModel.dismissAddFuelDialog() },
             onConfirm = { odo, litres, cost, full, notes, timestamp ->
                 viewModel.addFuelLog(odo, litres, cost, full, notes, timestamp)
@@ -244,6 +268,8 @@ fun BikeDetailScreen(
         AddEditFuelLogDialog(
             log = log,
             defaultOdometerKm = log.odometerKm,
+            useMetricUnits = uiState.useMetricUnits,
+            currencySymbol = uiState.currencySymbol,
             onDismiss = { viewModel.dismissEditFuelDialog() },
             onConfirm = { odo, litres, cost, full, notes, timestamp ->
                 viewModel.updateFuelLog(
@@ -285,6 +311,7 @@ private fun OdometerHeaderCard(
     makeModel: String,
     ridesCount: Int,
     ridesDistanceKm: Double,
+    useMetricUnits: Boolean,
     onAdjustOdometer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -305,8 +332,10 @@ private fun OdometerHeaderCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val userOdo = UnitConverter.kmToUserDistance(currentOdometerKm, useMetricUnits)
+                    val unitStr = UnitConverter.distanceUnit(useMetricUnits)
                     Text(
-                        text = String.format(Locale.US, "%,.1f km", currentOdometerKm),
+                        text = String.format(Locale.US, "%,.1f %s", userOdo, unitStr),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -330,8 +359,10 @@ private fun OdometerHeaderCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val userRidesDist = UnitConverter.kmToUserDistance(ridesDistanceKm, useMetricUnits)
+                val unitStr = UnitConverter.distanceUnit(useMetricUnits)
                 Text(
-                    text = "$ridesCount rides (${String.format(Locale.US, "%.1f", ridesDistanceKm)} km in app)",
+                    text = "$ridesCount rides (${String.format(Locale.US, "%.1f", userRidesDist)} $unitStr in app)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -347,6 +378,7 @@ private fun OdometerHeaderCard(
 @Composable
 private fun MaintenanceTabContent(
     evaluations: List<MaintenanceEvaluation>,
+    useMetricUnits: Boolean,
     onAddItem: () -> Unit,
     onMarkDone: (MaintenanceEvaluation) -> Unit,
     onEdit: (MaintenanceEvaluation) -> Unit,
@@ -389,6 +421,7 @@ private fun MaintenanceTabContent(
             items(evaluations, key = { it.item.id }) { eval ->
                 MaintenanceItemCard(
                     eval = eval,
+                    useMetricUnits = useMetricUnits,
                     onMarkDone = { onMarkDone(eval) },
                     onEdit = { onEdit(eval) },
                     onDelete = { onDelete(eval) }
@@ -401,6 +434,7 @@ private fun MaintenanceTabContent(
 @Composable
 private fun MaintenanceItemCard(
     eval: MaintenanceEvaluation,
+    useMetricUnits: Boolean,
     onMarkDone: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -431,7 +465,7 @@ private fun MaintenanceItemCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = formatInterval(eval.item.intervalKm, eval.item.intervalDays),
+                        text = formatInterval(eval.item.intervalKm, eval.item.intervalDays, useMetricUnits),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -461,8 +495,10 @@ private fun MaintenanceItemCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            val lastDoneUserOdo = UnitConverter.kmToUserDistance(eval.item.lastDoneOdometerKm, useMetricUnits)
+            val distUnit = UnitConverter.distanceUnit(useMetricUnits)
             Text(
-                text = "Last done: ${String.format(Locale.US, "%,.1f km", eval.item.lastDoneOdometerKm)} (${FormatUtils.formatDate(eval.item.lastDoneDateEpochMs)})",
+                text = "Last done: ${String.format(Locale.US, "%,.1f %s", lastDoneUserOdo, distUnit)} (${FormatUtils.formatDate(eval.item.lastDoneDateEpochMs)})",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -494,10 +530,11 @@ private fun MaintenanceItemCard(
     }
 }
 
-private fun formatInterval(intervalKm: Double?, intervalDays: Int?): String {
+private fun formatInterval(intervalKm: Double?, intervalDays: Int?, useMetricUnits: Boolean): String {
+    val intervalText = intervalKm?.let { UnitConverter.formatInterval(it, useMetricUnits) }
     return when {
-        intervalKm != null && intervalDays != null -> "Every ${String.format(Locale.US, "%,.0f km", intervalKm)} or $intervalDays days"
-        intervalKm != null -> "Every ${String.format(Locale.US, "%,.0f km", intervalKm)}"
+        intervalText != null && intervalDays != null -> "Every $intervalText or $intervalDays days"
+        intervalText != null -> "Every $intervalText"
         intervalDays != null -> "Every $intervalDays days"
         else -> "Custom schedule"
     }
@@ -521,7 +558,10 @@ private fun FuelTabContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            FuelSummaryCard(stats = uiState.fuelStats)
+            FuelSummaryCard(
+                stats = uiState.fuelStats,
+                fuelUnit = uiState.fuelUnit
+            )
         }
 
         item {
@@ -548,7 +588,7 @@ private fun FuelTabContent(
                 EmptySectionView(
                     icon = Icons.Default.LocalGasStation,
                     title = "No fuel records",
-                    subtitle = "Log consecutive full-tank fills to compute accurate fuel mileage (km/l)."
+                    subtitle = "Log consecutive full-tank fills to compute accurate fuel mileage (${uiState.fuelUnit.unitLabel})."
                 )
             }
         } else {
@@ -560,6 +600,9 @@ private fun FuelTabContent(
                 FuelLogCard(
                     log = log,
                     intervalKml = intervalResult?.mileageKml,
+                    useMetricUnits = uiState.useMetricUnits,
+                    fuelUnit = uiState.fuelUnit,
+                    currencySymbol = uiState.currencySymbol,
                     onEdit = { onEditLog(log) },
                     onDelete = { onDeleteLog(log) }
                 )
@@ -569,7 +612,10 @@ private fun FuelTabContent(
 }
 
 @Composable
-private fun FuelSummaryCard(stats: com.abrar.motolog.domain.model.FuelMileageStats) {
+private fun FuelSummaryCard(
+    stats: com.abrar.motolog.domain.model.FuelMileageStats,
+    fuelUnit: com.abrar.motolog.domain.model.FuelUnit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -590,16 +636,18 @@ private fun FuelSummaryCard(stats: com.abrar.motolog.domain.model.FuelMileageSta
             ) {
                 Column {
                     Text("AVERAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val avg = stats.averageMileageKml
                     Text(
-                        text = if (stats.averageMileageKml != null) String.format(Locale.US, "%.1f km/l", stats.averageMileageKml) else "—",
+                        text = if (avg != null) UnitConverter.formatFuelEconomy(avg, fuelUnit) else "—",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
                 Column {
                     Text("LATEST", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val latest = stats.latestMileageKml
                     Text(
-                        text = if (stats.latestMileageKml != null) String.format(Locale.US, "%.1f km/l", stats.latestMileageKml) else "—",
+                        text = if (latest != null) UnitConverter.formatFuelEconomy(latest, fuelUnit) else "—",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -617,7 +665,7 @@ private fun FuelSummaryCard(stats: com.abrar.motolog.domain.model.FuelMileageSta
             if (stats.measuredIntervalsCount == 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Requires at least 2 full-tank fill-ups to compute consumption.",
+                    text = "Requires at least 2 full-tank fill-ups to compute consumption (${fuelUnit.unitLabel}).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -630,6 +678,9 @@ private fun FuelSummaryCard(stats: com.abrar.motolog.domain.model.FuelMileageSta
 private fun FuelLogCard(
     log: FuelLogEntity,
     intervalKml: Double?,
+    useMetricUnits: Boolean,
+    fuelUnit: com.abrar.motolog.domain.model.FuelUnit,
+    currencySymbol: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -646,8 +697,10 @@ private fun FuelLogCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
+                    val userOdo = UnitConverter.kmToUserDistance(log.odometerKm, useMetricUnits)
+                    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
                     Text(
-                        text = String.format(Locale.US, "%,.1f km", log.odometerKm),
+                        text = String.format(Locale.US, "%,.1f %s", userOdo, distUnit),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -665,7 +718,7 @@ private fun FuelLogCard(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = String.format(Locale.US, "%.1f km/l", intervalKml),
+                                text = UnitConverter.formatFuelEconomy(intervalKml, fuelUnit),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
@@ -697,7 +750,7 @@ private fun FuelLogCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${String.format(Locale.US, "%.2f", log.litres)} L  •  Cost: ${String.format(Locale.US, "%.2f", log.totalCost)}",
+                    text = "${String.format(Locale.US, "%.2f", log.litres)} L  •  Cost: $currencySymbol${String.format(Locale.US, "%.2f", log.totalCost)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -757,10 +810,12 @@ private fun EmptySectionView(
 @Composable
 private fun SetOdometerDialog(
     currentOdoKm: Double,
+    useMetricUnits: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
-    var textValue by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", currentOdoKm)) }
+    val displayOdo = UnitConverter.kmToUserDistance(currentOdoKm, useMetricUnits)
+    var textValue by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", displayOdo)) }
     val newOdo = textValue.toDoubleOrNull()
     val isValid = newOdo != null && newOdo >= 0.0
 
@@ -773,10 +828,11 @@ private fun SetOdometerDialog(
                     text = "Enter the current physical dashboard odometer reading of your motorcycle. MotoLog will adjust its calibration offset accordingly.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                val distUnit = UnitConverter.distanceUnit(useMetricUnits)
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
-                    label = { Text("Target Odometer (km)") },
+                    label = { Text("Target Odometer ($distUnit)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -785,7 +841,12 @@ private fun SetOdometerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { if (isValid) onConfirm(newOdo!!) },
+                onClick = {
+                    if (isValid) {
+                        val odoKm = UnitConverter.userDistanceToKm(newOdo!!, useMetricUnits)
+                        onConfirm(odoKm)
+                    }
+                },
                 enabled = isValid
             ) {
                 Text("Set Odometer")
@@ -843,14 +904,25 @@ private fun EditBikeDialog(
 @Composable
 private fun AddEditMaintenanceDialog(
     item: MaintenanceItemEntity?,
+    useMetricUnits: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (name: String, intervalKm: Double?, intervalDays: Int?) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf(item?.name.orEmpty()) }
-    var kmText by rememberSaveable { mutableStateOf(item?.intervalKm?.let { String.format(Locale.US, "%.0f", it) }.orEmpty()) }
+    var distText by rememberSaveable {
+        mutableStateOf(item?.intervalKm?.let {
+            val disp = UnitConverter.getIntervalForDisplay(it, useMetricUnits)
+            if (kotlin.math.abs(disp - kotlin.math.round(disp)) < 0.01) {
+                disp.toLong().toString()
+            } else {
+                String.format(Locale.US, "%.1f", disp)
+            }
+        }.orEmpty())
+    }
     var daysText by rememberSaveable { mutableStateOf(item?.intervalDays?.toString().orEmpty()) }
 
-    val isValid = name.isNotBlank() && (kmText.toDoubleOrNull() != null || daysText.toIntOrNull() != null)
+    val isValid = name.isNotBlank() && (distText.toDoubleOrNull() != null || daysText.toIntOrNull() != null)
+    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -865,7 +937,14 @@ private fun AddEditMaintenanceDialog(
                                 selected = name == preset.name,
                                 onClick = {
                                     name = preset.name
-                                    kmText = preset.defaultIntervalKm?.let { String.format(Locale.US, "%.0f", it) }.orEmpty()
+                                    distText = preset.defaultIntervalKm?.let {
+                                        val disp = UnitConverter.getIntervalForDisplay(it, useMetricUnits)
+                                        if (kotlin.math.abs(disp - kotlin.math.round(disp)) < 0.01) {
+                                            disp.toLong().toString()
+                                        } else {
+                                            String.format(Locale.US, "%.1f", disp)
+                                        }
+                                    }.orEmpty()
                                     daysText = preset.defaultIntervalDays?.toString().orEmpty()
                                 },
                                 label = { Text(preset.name, style = MaterialTheme.typography.bodySmall) }
@@ -882,9 +961,9 @@ private fun AddEditMaintenanceDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = kmText,
-                    onValueChange = { kmText = it },
-                    label = { Text("Interval (Kilometres, optional)") },
+                    value = distText,
+                    onValueChange = { distText = it },
+                    label = { Text("Interval ($distUnit, optional)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -903,7 +982,8 @@ private fun AddEditMaintenanceDialog(
             TextButton(
                 onClick = {
                     if (isValid) {
-                        onConfirm(name, kmText.toDoubleOrNull(), daysText.toIntOrNull())
+                        val intervalKm = distText.toDoubleOrNull()?.let { UnitConverter.userDistanceToKm(it, useMetricUnits) }
+                        onConfirm(name, intervalKm, daysText.toIntOrNull())
                     }
                 },
                 enabled = isValid
@@ -921,12 +1001,15 @@ private fun AddEditMaintenanceDialog(
 private fun MarkDoneDialog(
     item: MaintenanceItemEntity,
     currentOdometerKm: Double,
+    useMetricUnits: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
-    var odoText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", currentOdometerKm)) }
+    val displayOdo = UnitConverter.kmToUserDistance(currentOdometerKm, useMetricUnits)
+    var odoText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", displayOdo)) }
     val odo = odoText.toDoubleOrNull()
     val isValid = odo != null && odo >= 0.0
+    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -937,7 +1020,7 @@ private fun MarkDoneDialog(
                 OutlinedTextField(
                     value = odoText,
                     onValueChange = { odoText = it },
-                    label = { Text("Odometer Reading (km)") },
+                    label = { Text("Odometer Reading ($distUnit)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -945,7 +1028,15 @@ private fun MarkDoneDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (isValid) onConfirm(odo!!) }, enabled = isValid) {
+            TextButton(
+                onClick = {
+                    if (isValid) {
+                        val odoKm = UnitConverter.userDistanceToKm(odo!!, useMetricUnits)
+                        onConfirm(odoKm)
+                    }
+                },
+                enabled = isValid
+            ) {
                 Text("Confirm")
             }
         },
@@ -959,14 +1050,19 @@ private fun MarkDoneDialog(
 private fun AddEditFuelLogDialog(
     log: FuelLogEntity?,
     defaultOdometerKm: Double,
+    useMetricUnits: Boolean,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestamp: Long) -> Unit
 ) {
-    var odoText by rememberSaveable { mutableStateOf(log?.odometerKm?.let { String.format(Locale.US, "%.1f", it) } ?: String.format(Locale.US, "%.1f", defaultOdometerKm)) }
+    val initialOdo = log?.odometerKm ?: defaultOdometerKm
+    val displayOdo = UnitConverter.kmToUserDistance(initialOdo, useMetricUnits)
+    var odoText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", displayOdo)) }
     var litresText by rememberSaveable { mutableStateOf(log?.litres?.toString().orEmpty()) }
     var costText by rememberSaveable { mutableStateOf(log?.totalCost?.toString().orEmpty()) }
     var isFullTank by rememberSaveable { mutableStateOf(log?.isFullTank ?: true) }
     var notes by rememberSaveable { mutableStateOf(log?.notes.orEmpty()) }
+    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
 
     val odo = odoText.toDoubleOrNull()
     val litres = litresText.toDoubleOrNull()
@@ -981,7 +1077,7 @@ private fun AddEditFuelLogDialog(
                 OutlinedTextField(
                     value = odoText,
                     onValueChange = { odoText = it },
-                    label = { Text("Odometer (km)") },
+                    label = { Text("Odometer ($distUnit)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -997,7 +1093,7 @@ private fun AddEditFuelLogDialog(
                 OutlinedTextField(
                     value = costText,
                     onValueChange = { costText = it },
-                    label = { Text("Total Cost") },
+                    label = { Text("Total Cost ($currencySymbol)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1023,8 +1119,9 @@ private fun AddEditFuelLogDialog(
             TextButton(
                 onClick = {
                     if (isValid) {
+                        val odoKm = UnitConverter.userDistanceToKm(odo!!, useMetricUnits)
                         onConfirm(
-                            odo!!,
+                            odoKm,
                             litres!!,
                             cost!!,
                             isFullTank,

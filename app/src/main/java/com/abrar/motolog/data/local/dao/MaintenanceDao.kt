@@ -38,4 +38,10 @@ interface MaintenanceDao {
 
     @Query("UPDATE maintenance_items SET lastNotifiedDueEpochMs = :notifiedEpochMs WHERE id = :id")
     suspend fun updateLastNotified(id: Long, notifiedEpochMs: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<MaintenanceItemEntity>)
+
+    @Query("DELETE FROM maintenance_items")
+    suspend fun deleteAllMaintenance()
 }

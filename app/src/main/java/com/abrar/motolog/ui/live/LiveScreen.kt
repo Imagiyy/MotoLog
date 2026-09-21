@@ -40,6 +40,29 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
 import com.abrar.motolog.domain.model.PauseState
+import com.abrar.motolog.ui.live.retro.JewelColor
+import com.abrar.motolog.ui.live.retro.RetroCockpitDashboard
+import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
+import com.abrar.motolog.ui.live.retro.RetroInstrumentCard
+import com.abrar.motolog.ui.live.retro.RetroJewelLamp
+import com.abrar.motolog.ui.live.retro.RetroLiveMap
+import com.abrar.motolog.ui.live.retro.RetroOdometerDrum
+import com.abrar.motolog.ui.live.retro.RetroSpeedometerDial
+import com.abrar.motolog.ui.theme.JewelAmber
+import com.abrar.motolog.ui.theme.JewelGreen
+import com.abrar.motolog.ui.theme.JewelRed
+import com.abrar.motolog.ui.theme.RetroAmber
+import com.abrar.motolog.ui.theme.RetroBackground
+import com.abrar.motolog.ui.theme.RetroBrass
+import com.abrar.motolog.ui.theme.RetroIvory
+import com.abrar.motolog.ui.theme.RetroSurface
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -78,7 +101,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.abrar.motolog.ui.theme.ThemeMode
+import com.abrar.motolog.ui.theme.CockpitThemePalette
+import com.abrar.motolog.ui.theme.getCockpitThemePalette
 import com.abrar.motolog.ui.theme.GpsWaiting
 import com.abrar.motolog.ui.theme.SpeedGreen
 import kotlinx.coroutines.launch
@@ -96,6 +123,9 @@ fun LiveScreen(
     val isDisclaimerAccepted by viewModel.isDisclaimerAccepted.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val batteryGuidanceSeen by viewModel.batteryGuidanceSeen.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val isSystemDark = isSystemInDarkTheme()
+    val palette = remember(themeMode, isSystemDark) { getCockpitThemePalette(themeMode, isSystemDark) }
 
     // Keep screen on during active tracking if setting is enabled
     val isTrackingActive = uiState is LiveUiState.WaitingForGps || uiState is LiveUiState.Tracking
@@ -175,43 +205,84 @@ fun LiveScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Top Bar: Status and Keep Screen On Toggle & Settings
-        LiveTopBar(
-            uiState = uiState,
-            keepScreenOn = keepScreenOn,
-            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-            onNavigateToSettings = onNavigateToSettings
-        )
+    val useMetricUnits by viewModel.useMetricUnits.collectAsStateWithLifecycle()
+    var currentViewMode by remember { mutableStateOf(LiveViewMode.COCKPIT) }
 
-        // Middle Section: Live Speedometer & Metrics
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            LiveSpeedometer(uiState = uiState)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 3 Glanceable Metric Displays for Distance, Moving Time, and Avg Speed
-            MetricsRow(uiState = uiState)
+    when (val state = uiState) {
+        is LiveUiState.Tracking -> {
+            if (currentViewMode == LiveViewMode.MAP && viewModel.mapStyleProvider != null) {
+                RetroLiveMap(
+                    latitude = state.latitude,
+                    longitude = state.longitude,
+                    routeCoordinates = state.routeCoordinates,
+                    stats = state.stats,
+                    speedKmh = state.speedKmh,
+                    isMetric = useMetricUnits,
+                    pauseState = state.pauseState,
+                    isGpsLost = state.isGpsLost,
+                    isSpeedAlert = state.isSpeedAlert,
+                    mapStyleProvider = viewModel.mapStyleProvider,
+                    onPauseClick = { viewModel.pauseTracking() },
+                    onResumeClick = { viewModel.resumeTracking() },
+                    onStopProgressChange = { viewModel.stopTracking() },
+                    onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
+                    palette = palette,
+                    modifier = modifier.fillMaxSize()
+                )
+            } else {
+                RetroCockpitDashboard(
+                    stats = state.stats,
+                    speedKmh = state.speedKmh,
+                    accuracyMeters = state.accuracyMeters,
+                    isMetric = useMetricUnits,
+                    pauseState = state.pauseState,
+                    isGpsLost = state.isGpsLost,
+                    isSpeedAlert = state.isSpeedAlert,
+                    bikeName = state.bikeName,
+                    onPauseClick = { viewModel.pauseTracking() },
+                    onResumeClick = { viewModel.resumeTracking() },
+                    onStopConfirmed = { viewModel.stopTracking() },
+                    onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                    palette = palette,
+                    modifier = modifier.fillMaxSize()
+                )
+            }
         }
 
-        // Bottom Section: Glove-friendly action controls
-        LiveBottomControls(
-            uiState = uiState,
-            onStartClick = { initiateStart() },
-            onPauseClick = { viewModel.pauseTracking() },
-            onResumeClick = { viewModel.resumeTracking() },
-            onStopConfirmed = { viewModel.stopTracking() },
-            onResetClick = { viewModel.resetToIdle() }
-        )
+        is LiveUiState.WaitingForGps -> {
+            RetroWaitingForGpsView(
+                currentAccuracyMeters = state.currentAccuracyMeters,
+                useMetricUnits = useMetricUnits,
+                keepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                onNavigateToSettings = onNavigateToSettings,
+                onStopConfirmed = { viewModel.stopTracking() },
+                palette = palette,
+                modifier = modifier.fillMaxSize()
+            )
+        }
+
+        is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
+            RetroIdleCockpitView(
+                useMetricUnits = useMetricUnits,
+                keepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                onNavigateToSettings = onNavigateToSettings,
+                onStartClick = { initiateStart() },
+                palette = palette,
+                modifier = modifier.fillMaxSize()
+            )
+        }
+
+        is LiveUiState.Stopped -> {
+            RetroStoppedCockpitView(
+                stats = state.stats,
+                useMetricUnits = useMetricUnits,
+                onResetClick = { viewModel.resetToIdle() },
+                palette = palette,
+                modifier = modifier.fillMaxSize()
+            )
+        }
     }
 
     // Safety Disclaimer Dialog
@@ -344,7 +415,8 @@ fun LiveScreen(
                 Text(
                     "MotoLog needs Precise (Fine) Location access to track your motorcycle speed, " +
                     "distance, and route accurately.\n\n" +
-                    "Tracking only runs while you ride and stops immediately when you tap Stop."
+                    "Tracking only runs between Start and Stop. Your location data is stored strictly " +
+                    "on your device and is never uploaded to any server or shared."
                 )
             },
             confirmButton = {
@@ -564,7 +636,8 @@ private fun LiveTopBar(
 
 @Composable
 private fun LiveSpeedometer(
-    uiState: LiveUiState
+    uiState: LiveUiState,
+    useMetricUnits: Boolean = true
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -587,7 +660,12 @@ private fun LiveSpeedometer(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 val accuracyText = if (uiState.currentAccuracyMeters != null) {
-                    "Current accuracy: ±${uiState.currentAccuracyMeters.roundToInt()} m (Target: ≤ 25 m)"
+                    val acc = if (useMetricUnits) {
+                        "±${uiState.currentAccuracyMeters.roundToInt()} m (Target: ≤ 25 m)"
+                    } else {
+                        "±${(uiState.currentAccuracyMeters * 3.28084).roundToInt()} ft (Target: ≤ 82 ft)"
+                    }
+                    "Current accuracy: $acc"
                 } else {
                     "Searching for satellites..."
                 }
@@ -600,22 +678,30 @@ private fun LiveSpeedometer(
 
             is LiveUiState.Tracking -> {
                 val speedColor = when {
+                    uiState.isSpeedAlert -> Color(0xFFFF5252) // Speed alert pulsing red
                     uiState.isGpsLost -> MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
                     uiState.pauseState == PauseState.AUTO_PAUSED -> Color(0xFFFFB300)
                     uiState.isPaused -> Color(0xFFFF9800)
                     else -> MaterialTheme.colorScheme.primary
                 }
+
+                val unitLabel = com.abrar.motolog.domain.engine.UnitConverter.speedUnit(useMetricUnits).uppercase()
                 val speedSubtitle = when {
-                    uiState.pauseState == PauseState.AUTO_PAUSED -> "KM/H (AUTO-PAUSED)"
-                    uiState.isPaused -> "KM/H (PAUSED)"
-                    else -> "KM/H"
+                    uiState.isSpeedAlert -> "$unitLabel (SPEED ALERT EXCEEDED)"
+                    uiState.pauseState == PauseState.AUTO_PAUSED -> "$unitLabel (AUTO-PAUSED)"
+                    uiState.isPaused -> "$unitLabel (PAUSED)"
+                    else -> unitLabel
                 }
 
+                val userSpeed = com.abrar.motolog.domain.engine.UnitConverter.kmhToUserSpeed(uiState.speedKmh, useMetricUnits)
+
                 Text(
-                    text = "${uiState.speedKmh.roundToInt()}",
+                    text = "${userSpeed.roundToInt()}",
                     fontSize = 110.sp,
                     fontWeight = FontWeight.Black,
                     lineHeight = 110.sp,
+                    maxLines = 1,
+                    softWrap = false,
                     color = speedColor,
                     letterSpacing = (-2).sp
                 )
@@ -623,7 +709,7 @@ private fun LiveSpeedometer(
                     text = speedSubtitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (uiState.isSpeedAlert) Color(0xFFFF5252) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -648,46 +734,15 @@ private fun LiveSpeedometer(
                                 text = "GPS signal lost • Searching for satellites...",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
-                    }
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.GpsFixed,
-                            contentDescription = "GPS locked",
-                            tint = SpeedGreen,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "±${uiState.accuracyMeters.roundToInt()}m accuracy",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
 
             is LiveUiState.Stopped -> {
-                Text(
-                    text = "0",
-                    fontSize = 110.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 110.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    letterSpacing = (-2).sp
-                )
-                Text(
-                    text = "KM/H",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            }
-
-            is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
+                val unitLabel = com.abrar.motolog.domain.engine.UnitConverter.speedUnit(useMetricUnits).uppercase()
                 Text(
                     text = "0",
                     fontSize = 110.sp,
@@ -697,7 +752,25 @@ private fun LiveSpeedometer(
                     letterSpacing = (-2).sp
                 )
                 Text(
-                    text = "KM/H",
+                    text = "$unitLabel (STOPPED)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
+                val unitLabel = com.abrar.motolog.domain.engine.UnitConverter.speedUnit(useMetricUnits).uppercase()
+                Text(
+                    text = "0",
+                    fontSize = 110.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 110.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = (-2).sp
+                )
+                Text(
+                    text = unitLabel,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -708,7 +781,10 @@ private fun LiveSpeedometer(
 }
 
 @Composable
-private fun MetricsRow(uiState: LiveUiState) {
+private fun MetricsRow(
+    uiState: LiveUiState,
+    useMetricUnits: Boolean = true
+) {
     val stats = when (uiState) {
         is LiveUiState.Tracking -> uiState.stats
         is LiveUiState.Stopped -> uiState.stats
@@ -718,7 +794,7 @@ private fun MetricsRow(uiState: LiveUiState) {
     var showOverallMetrics by remember { mutableStateOf(false) }
 
     val distanceText = if (stats != null) {
-        String.format(java.util.Locale.US, "%.1f", stats.totalDistanceMeters / 1000.0)
+        com.abrar.motolog.domain.engine.UnitConverter.formatDistance(stats.totalDistanceMeters, useMetricUnits, decimals = 1)
     } else {
         "0.0"
     }
@@ -747,7 +823,9 @@ private fun MetricsRow(uiState: LiveUiState) {
         stats?.avgMovingSpeedKmh ?: 0.0
     }
 
-    val avgSpeedText = String.format(java.util.Locale.US, "%.1f", avgSpeedValue)
+    val avgSpeedText = com.abrar.motolog.domain.engine.UnitConverter.formatSpeed(avgSpeedValue, useMetricUnits, decimals = 1)
+    val distUnit = com.abrar.motolog.domain.engine.UnitConverter.distanceUnit(useMetricUnits)
+    val spdUnit = com.abrar.motolog.domain.engine.UnitConverter.speedUnit(useMetricUnits)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -756,7 +834,7 @@ private fun MetricsRow(uiState: LiveUiState) {
         MetricCard(
             label = "DISTANCE",
             value = distanceText,
-            unit = "km",
+            unit = distUnit,
             modifier = Modifier.weight(1f)
         )
         MetricCard(
@@ -771,7 +849,7 @@ private fun MetricsRow(uiState: LiveUiState) {
             label = "AVG SPEED",
             badge = if (showOverallMetrics) "OVERALL" else "MOVING",
             value = avgSpeedText,
-            unit = "km/h",
+            unit = spdUnit,
             onClick = { showOverallMetrics = !showOverallMetrics },
             modifier = Modifier.weight(1f)
         )
@@ -1105,6 +1183,446 @@ private fun HoldToStopButton(
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp
             )
+        }
+    }
+}
+
+enum class LiveViewMode {
+    COCKPIT,
+    MAP
+}
+
+@Composable
+private fun RetroIdleCockpitView(
+    useMetricUnits: Boolean,
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onStartClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = if (palette.isLight) {
+                        listOf(palette.background, Color(0xFFDDE2E5), palette.background)
+                    } else {
+                        listOf(palette.background, Color(0xFF0A0908), palette.background)
+                    }
+                )
+            )
+            .padding(14.dp)
+    ) {
+        val screenMaxWidth = maxWidth
+        val screenMaxHeight = maxHeight
+        val isLandscape = screenMaxWidth > screenMaxHeight
+        if (isLandscape) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val dialSize = (screenMaxHeight * 0.72f).coerceAtMost(screenMaxWidth * 0.45f)
+                    RetroSpeedometerDial(
+                        currentSpeed = 0.0,
+                        isMetric = useMetricUnits,
+                        isSpeedAlert = false,
+                        palette = palette,
+                        modifier = Modifier.size(dialSize)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    RetroOdometerDrum(
+                        distanceValue = 0.0,
+                        unitLabel = if (useMetricUnits) "km" else "mi",
+                        palette = palette
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(palette.surface)
+                            .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "READY TO RIDE",
+                            color = palette.secondaryAccent,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                    Button(
+                        onClick = onStartClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.primaryAccent
+                        )
+                    ) {
+                        Text(
+                            text = "START RIDE",
+                            color = if (palette.isLight) Color.White else Color.Black,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                IdleTopBar(
+                    keepScreenOn = keepScreenOn,
+                    onToggleKeepScreenOn = onToggleKeepScreenOn,
+                    onNavigateToSettings = onNavigateToSettings,
+                    palette = palette
+                )
+                val dialSize = (screenMaxHeight * 0.45f).coerceAtMost(screenMaxWidth * 0.88f)
+                RetroSpeedometerDial(
+                    currentSpeed = 0.0,
+                    isMetric = useMetricUnits,
+                    isSpeedAlert = false,
+                    palette = palette,
+                    modifier = Modifier.size(dialSize)
+                )
+                RetroOdometerDrum(
+                    distanceValue = 0.0,
+                    unitLabel = if (useMetricUnits) "km" else "mi",
+                    palette = palette
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(palette.surface)
+                        .border(1.2.dp, palette.surfaceBorder.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "READY TO RIDE",
+                        color = palette.secondaryAccent,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+                Button(
+                    onClick = onStartClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = palette.primaryAccent
+                    )
+                ) {
+                    Text(
+                        text = "START RIDE",
+                        color = if (palette.isLight) Color.White else Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RetroWaitingForGpsView(
+    currentAccuracyMeters: Float?,
+    useMetricUnits: Boolean,
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    modifier: Modifier = Modifier,
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = if (palette.isLight) {
+                        listOf(palette.background, Color(0xFFDDE2E5), palette.background)
+                    } else {
+                        listOf(palette.background, Color(0xFF0A0908), palette.background)
+                    }
+                )
+            )
+            .padding(14.dp)
+    ) {
+        val screenMaxWidth = maxWidth
+        val screenMaxHeight = maxHeight
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            IdleTopBar(
+                keepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                onNavigateToSettings = onNavigateToSettings,
+                palette = palette
+            )
+            val dialSize = (screenMaxHeight * 0.40f).coerceAtMost(screenMaxWidth * 0.85f)
+            RetroSpeedometerDial(
+                currentSpeed = 0.0,
+                isMetric = useMetricUnits,
+                isSpeedAlert = false,
+                palette = palette,
+                modifier = Modifier.size(dialSize)
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RetroJewelLamp(
+                    label = "GPS FIX",
+                    isActive = true,
+                    color = JewelColor.AMBER,
+                    size = 36.dp,
+                    shouldBlink = true
+                )
+                Text(
+                    text = "ACQUIRING SATELLITE FIX",
+                    color = palette.primaryAccent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.sp
+                )
+                val accuracyText = if (currentAccuracyMeters != null) {
+                    val acc = if (useMetricUnits) "±${currentAccuracyMeters.toInt()}m" else "±${(currentAccuracyMeters * 3.28084).toInt()}ft"
+                    val target = if (useMetricUnits) "≤25m" else "≤82ft"
+                    "Current: $acc (Target: $target)"
+                } else {
+                    "Searching satellites..."
+                }
+                Text(
+                    text = accuracyText,
+                    color = palette.dialText.copy(alpha = 0.75f),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            RetroHoldToStopButton(
+                onStopConfirmed = onStopConfirmed,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun RetroStoppedCockpitView(
+    stats: com.abrar.motolog.domain.model.RideStats,
+    useMetricUnits: Boolean,
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+) {
+    val totalDistKm = stats.totalDistanceMeters / 1000.0
+    val displayDistance = if (useMetricUnits) totalDistKm else totalDistKm * 0.621371
+    val distUnit = if (useMetricUnits) "km" else "mi"
+    val spdUnit = if (useMetricUnits) "km/h" else "mph"
+    val avgSpeedDisplay = if (useMetricUnits) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val maxSpeedDisplay = if (useMetricUnits) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
+
+    Box(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = if (palette.isLight) {
+                        listOf(palette.background, Color(0xFFDDE2E5), palette.background)
+                    } else {
+                        listOf(palette.background, Color(0xFF0A0908), palette.background)
+                    }
+                )
+            )
+            .padding(14.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(palette.surface)
+                    .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "RIDE COMPLETED",
+                    color = palette.primaryAccent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.5.sp
+                )
+            }
+            RetroOdometerDrum(
+                distanceValue = displayDistance,
+                unitLabel = "TRIP $distUnit",
+                palette = palette
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val totalSec = stats.movingTimeMs / 1000
+                val hrs = totalSec / 3600
+                val mins = (totalSec % 3600) / 60
+                val secs = totalSec % 60
+                val timeStr = if (hrs > 0) {
+                    String.format(java.util.Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
+                } else {
+                    String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+                }
+
+                RetroInstrumentCard(
+                    label = "Moving Time",
+                    value = timeStr,
+                    palette = palette,
+                    modifier = Modifier.weight(1f)
+                )
+                RetroInstrumentCard(
+                    label = "Moving Avg",
+                    value = String.format(java.util.Locale.US, "%.1f", avgSpeedDisplay),
+                    unit = spdUnit,
+                    palette = palette,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RetroInstrumentCard(
+                    label = "Max Speed",
+                    value = String.format(java.util.Locale.US, "%.1f", maxSpeedDisplay),
+                    unit = spdUnit,
+                    palette = palette,
+                    modifier = Modifier.weight(1f)
+                )
+                RetroInstrumentCard(
+                    label = "Fix Points",
+                    value = "${stats.acceptedPointCount}",
+                    subtitle = "Recorded GPS Hits",
+                    palette = palette,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Button(
+                onClick = onResetClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = palette.primaryAccent
+                )
+            ) {
+                Text(
+                    text = "START NEW RIDE",
+                    color = if (palette.isLight) Color.White else Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IdleTopBar(
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(palette.surface)
+                .border(1.2.dp, palette.surfaceBorder.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "MOTO LOG",
+                color = palette.secondaryAccent,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onToggleKeepScreenOn,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
+                    contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
+                    tint = if (keepScreenOn) palette.primaryAccent else palette.dialText.copy(alpha = 0.6f)
+                )
+            }
+            IconButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SettingsIcon,
+                    contentDescription = "Open Settings",
+                    tint = palette.secondaryAccent
+                )
+            }
         }
     }
 }

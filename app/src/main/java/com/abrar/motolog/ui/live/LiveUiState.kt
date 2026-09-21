@@ -30,7 +30,12 @@ sealed interface LiveUiState {
         val isPaused: Boolean = false,
         val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
         val isGpsLost: Boolean = false,
-        val stats: RideStats = RideStats()
+        val stats: RideStats = RideStats(),
+        val isSpeedAlert: Boolean = false,
+        val latitude: Double? = null,
+        val longitude: Double? = null,
+        val routeCoordinates: List<Pair<Double, Double>> = emptyList(),
+        val bikeName: String? = null
     ) : LiveUiState {
 
         constructor(
@@ -38,14 +43,24 @@ sealed interface LiveUiState {
             accuracyMeters: Float,
             pauseState: PauseState,
             isGpsLost: Boolean = false,
-            stats: RideStats = RideStats()
+            stats: RideStats = RideStats(),
+            isSpeedAlert: Boolean = false,
+            latitude: Double? = null,
+            longitude: Double? = null,
+            routeCoordinates: List<Pair<Double, Double>> = emptyList(),
+            bikeName: String? = null
         ) : this(
             speedKmh = speedKmh,
             accuracyMeters = accuracyMeters,
             isPaused = pauseState.isPaused,
             pauseState = pauseState,
             isGpsLost = isGpsLost,
-            stats = stats
+            stats = stats,
+            isSpeedAlert = isSpeedAlert,
+            latitude = latitude,
+            longitude = longitude,
+            routeCoordinates = routeCoordinates,
+            bikeName = bikeName
         )
     }
 

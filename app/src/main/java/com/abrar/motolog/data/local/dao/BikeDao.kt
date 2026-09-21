@@ -50,4 +50,13 @@ interface BikeDao {
 
     @Query("UPDATE bikes SET odometerOffsetKm = :offsetKm WHERE id = :bikeId")
     suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double)
+
+    @Query("SELECT * FROM bikes ORDER BY id ASC")
+    suspend fun getAllBikesOnce(): List<BikeEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(bikes: List<BikeEntity>)
+
+    @Query("DELETE FROM bikes")
+    suspend fun deleteAllBikes()
 }

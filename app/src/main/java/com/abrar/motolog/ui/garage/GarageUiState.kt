@@ -20,5 +20,6 @@ data class GarageUiState(
     val currentBikeId: Long? = null,
     val isAddBikeDialogOpen: Boolean = false,
     val bikeToArchiveOrDelete: BikeEntity? = null,
-    val bikeHasRides: Boolean = false
+    val bikeHasRides: Boolean = false,
+    val useMetricUnits: Boolean = true
 )

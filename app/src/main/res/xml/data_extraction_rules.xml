@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude database containing GPS location points to guarantee on-device privacy -->
+        <exclude domain="database" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Allow full local device transfer when migrating between phones via cable/Wi-Fi -->
+        <include domain="root" path="." />
+    </device-transfer>
+</data-extraction-rules>

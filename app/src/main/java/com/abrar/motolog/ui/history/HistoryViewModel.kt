@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.domain.repository.RideRepository
+import com.abrar.motolog.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,8 +22,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val rideRepository: RideRepository
+    private val rideRepository: RideRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
+
+    val useMetricUnits: StateFlow<Boolean> = settingsRepository.useMetricUnits
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
     private val _recentlyDeletedRide = MutableStateFlow<RideEntity?>(null)
     private var pendingDeleteJob: Job? = null
@@ -103,7 +110,6 @@ class HistoryViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         val rideToDelete = _recentlyDeletedRide.value
         if (rideToDelete != null) {
             viewModelScope.launch {

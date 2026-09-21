@@ -39,12 +39,19 @@ class FusedLocationSource @Inject constructor(
     override fun getLocationAvailability(): Flow<Boolean> = _isLocationAvailable
 
     @SuppressLint("MissingPermission")
-    override fun getLocationUpdates(): Flow<LocationPoint> = callbackFlow {
+    override fun getLocationUpdates(trackingMode: com.abrar.motolog.domain.model.TrackingMode): Flow<LocationPoint> = callbackFlow {
+        val (intervalMs, fastestMs) = when (trackingMode) {
+            com.abrar.motolog.domain.model.TrackingMode.HIGH_ACCURACY ->
+                TrackingConstants.LOCATION_UPDATE_INTERVAL_MS to TrackingConstants.LOCATION_FASTEST_INTERVAL_MS
+            com.abrar.motolog.domain.model.TrackingMode.BATTERY_SAVER ->
+                TrackingConstants.BATTERY_SAVER_UPDATE_INTERVAL_MS to TrackingConstants.BATTERY_SAVER_FASTEST_INTERVAL_MS
+        }
+
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            TrackingConstants.LOCATION_UPDATE_INTERVAL_MS
+            intervalMs
         ).apply {
-            setMinUpdateIntervalMillis(TrackingConstants.LOCATION_FASTEST_INTERVAL_MS)
+            setMinUpdateIntervalMillis(fastestMs)
             setWaitForAccurateLocation(false)
         }.build()
 

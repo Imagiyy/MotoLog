@@ -32,4 +32,10 @@ interface RidePointDao {
 
     @Query("DELETE FROM ride_points WHERE rideId = :rideId")
     suspend fun deletePointsForRide(rideId: Long)
+
+    @Query("SELECT * FROM ride_points ORDER BY rideId ASC, timestamp ASC")
+    suspend fun getAllPointsOnce(): List<RidePointEntity>
+
+    @Query("DELETE FROM ride_points")
+    suspend fun deleteAllPoints()
 }

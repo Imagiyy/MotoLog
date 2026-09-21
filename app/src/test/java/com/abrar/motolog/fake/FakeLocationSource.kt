@@ -11,7 +11,7 @@ class FakeLocationSource : LocationSource {
     var stopCalled: Boolean = false
         private set
 
-    override fun getLocationUpdates(): Flow<LocationPoint> = locationFlow
+    override fun getLocationUpdates(trackingMode: com.abrar.motolog.domain.model.TrackingMode): Flow<LocationPoint> = locationFlow
 
     override fun stopLocationUpdates() {
         stopCalled = true

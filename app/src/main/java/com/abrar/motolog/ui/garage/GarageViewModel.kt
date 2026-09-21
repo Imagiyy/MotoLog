@@ -25,7 +25,8 @@ class GarageViewModel @Inject constructor(
     private val garageRepository: GarageRepository,
     private val bikeDao: BikeDao,
     private val rideDao: RideDao,
-    private val maintenanceDao: MaintenanceDao
+    private val maintenanceDao: MaintenanceDao,
+    private val settingsRepository: com.abrar.motolog.data.settings.SettingsRepository
 ) : ViewModel() {
 
     private val _dialogState = MutableStateFlow(DialogState())
@@ -44,8 +45,9 @@ class GarageViewModel @Inject constructor(
             combine(
                 garageRepository.activeBikes,
                 garageRepository.currentBikeId,
+                settingsRepository.useMetricUnits,
                 _dialogState
-            ) { bikes, currentBikeId, dialogState ->
+            ) { bikes, currentBikeId, useMetricUnits, dialogState ->
                 val now = System.currentTimeMillis()
                 val bikeItems = bikes.map { bike ->
                     val totalDistanceMeters = rideDao.getTotalDistanceMetersForBikeOnce(bike.id) ?: 0.0
@@ -72,7 +74,8 @@ class GarageViewModel @Inject constructor(
                     currentBikeId = currentBikeId,
                     isAddBikeDialogOpen = dialogState.isAddBikeDialogOpen,
                     bikeToArchiveOrDelete = dialogState.bikeToArchiveOrDelete,
-                    bikeHasRides = dialogState.bikeHasRides
+                    bikeHasRides = dialogState.bikeHasRides,
+                    useMetricUnits = useMetricUnits
                 )
             }.collect {
                 _uiState.value = it

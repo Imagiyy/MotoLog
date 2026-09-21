@@ -5,9 +5,12 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+import kotlinx.serialization.Serializable
+
 /**
  * Represents a maintenance or service schedule item for a specific motorcycle.
  */
+@Serializable
 @Entity(
     tableName = "maintenance_items",
     foreignKeys = [

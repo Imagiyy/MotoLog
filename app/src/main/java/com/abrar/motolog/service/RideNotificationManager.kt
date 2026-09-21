@@ -58,7 +58,8 @@ class RideNotificationManager @Inject constructor(
         accuracyMeters: Float = 0f,
         isWaitingGps: Boolean = false,
         pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
-        isGpsLost: Boolean = false
+        isGpsLost: Boolean = false,
+        isMetric: Boolean = true
     ): Notification {
         // Content Intent: Open MainActivity
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -118,6 +119,7 @@ class RideNotificationManager @Inject constructor(
             stopAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
         val stopAction = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_close_clear_cancel,
             "Stop (In-App)",
@@ -142,6 +144,9 @@ class RideNotificationManager @Inject constructor(
             String.format(Locale.US, "%02d:%02d", mins, secs)
         }
 
+        val distStr = com.abrar.motolog.domain.engine.UnitConverter.formatDistanceWithUnit(stats.totalDistanceMeters, isMetric)
+        val speedStr = com.abrar.motolog.domain.engine.UnitConverter.formatSpeedWithUnit(stats.currentSpeedKmh, isMetric)
+
         val contentText = when {
             isWaitingGps -> {
                 val acc = if (accuracyMeters < Float.MAX_VALUE) "${accuracyMeters.toInt()}m" else "--"
@@ -151,21 +156,10 @@ class RideNotificationManager @Inject constructor(
                 "Searching for satellites... (Stats preserved)"
             }
             pauseState == PauseState.AUTO_PAUSED -> {
-                String.format(
-                    Locale.US,
-                    "Auto-paused • Dist: %.1f km  •  Time: %s",
-                    stats.totalDistanceMeters / 1000.0,
-                    timeStr
-                )
+                "Auto-paused • Dist: $distStr  •  Time: $timeStr"
             }
             else -> {
-                String.format(
-                    Locale.US,
-                    "Speed: %.0f km/h  •  Dist: %.1f km  •  Time: %s",
-                    stats.currentSpeedKmh,
-                    stats.totalDistanceMeters / 1000.0,
-                    timeStr
-                )
+                "Speed: $speedStr  •  Dist: $distStr  •  Time: $timeStr"
             }
         }
 

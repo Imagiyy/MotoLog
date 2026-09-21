@@ -1,5 +1,8 @@
 package com.abrar.motolog.ui.history.detail
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
@@ -55,6 +60,7 @@ import androidx.compose.material3.OutlinedButton
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import com.abrar.motolog.domain.engine.UnitConverter
 import com.abrar.motolog.domain.model.RideSplit
 import com.abrar.motolog.domain.model.GraphData
 import com.abrar.motolog.domain.model.GraphMarker
@@ -75,7 +81,15 @@ fun RideDetailScreen(
     viewModel: RideDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val useMetricUnits by viewModel.useMetricUnits.collectAsStateWithLifecycle()
     val ride = uiState.ride
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val gpxExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/gpx+xml")
+    ) { uri: Uri? ->
+        uri?.let { viewModel.exportRideGpx(context, it) }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -105,6 +119,18 @@ fun RideDetailScreen(
                 },
                 actions = {
                     if (ride != null) {
+                        IconButton(onClick = { viewModel.shareRideGpx(context) }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share GPX"
+                            )
+                        }
+                        IconButton(onClick = { gpxExportLauncher.launch("ride_${ride.id}.gpx") }) {
+                            Icon(
+                                imageVector = Icons.Default.FileDownload,
+                                contentDescription = "Export GPX"
+                            )
+                        }
                         IconButton(onClick = viewModel::openRenameDialog) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
@@ -158,6 +184,7 @@ fun RideDetailScreen(
                         mapStyleProvider = viewModel.mapStyleProvider,
                         isSplitsLoading = uiState.isSplitsLoading,
                         showOverallStats = uiState.showOverallStats,
+                        useMetricUnits = useMetricUnits,
                         onToggleStatsMode = viewModel::toggleStatsMode,
                         onChangeBike = viewModel::openChangeBikeDialog
                     )
@@ -198,6 +225,7 @@ private fun RideDetailContent(
     mapStyleProvider: com.abrar.motolog.domain.map.MapStyleProvider,
     isSplitsLoading: Boolean,
     showOverallStats: Boolean,
+    useMetricUnits: Boolean = true,
     onToggleStatsMode: () -> Unit,
     onChangeBike: () -> Unit
 ) {
@@ -347,13 +375,13 @@ private fun RideDetailContent(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = String.format(java.util.Locale.US, "%.2f", ride.distanceMeters / 1000.0),
+                        text = UnitConverter.formatDistance(ride.distanceMeters, useMetricUnits, decimals = 2),
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "KILOMETRES",
+                        text = if (useMetricUnits) "KILOMETRES" else "MILES",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -400,7 +428,7 @@ private fun RideDetailContent(
 
                     MetricStatCard(
                         title = if (showOverallStats) "OVERALL AVG" else "MOVING AVG",
-                        value = FormatUtils.formatSpeedMsToKmh(if (showOverallStats) ride.overallAvgSpeedMs else ride.avgMovingSpeedMs),
+                        value = UnitConverter.formatSpeedFromMsWithUnit(if (showOverallStats) ride.overallAvgSpeedMs else ride.avgMovingSpeedMs, useMetricUnits),
                         subtitle = if (showOverallStats) "Distance / Elapsed" else "Distance / Moving",
                         icon = Icons.Default.Speed,
                         modifier = Modifier.weight(1f)
@@ -417,7 +445,7 @@ private fun RideDetailContent(
             ) {
                 MetricStatCard(
                     title = "MAX SPEED",
-                    value = FormatUtils.formatSpeedMsToKmh(ride.maxSpeedMs),
+                    value = UnitConverter.formatSpeedFromMsWithUnit(ride.maxSpeedMs, useMetricUnits),
                     subtitle = "Peak recorded",
                     icon = Icons.AutoMirrored.Filled.TrendingUp,
                     modifier = Modifier.weight(1f)
@@ -433,16 +461,60 @@ private fun RideDetailContent(
             }
         }
 
-        // Optional Elevation Gain (if stored > 0)
-        if (ride.elevationGainMeters > 0.0) {
+        // Elevation Metrics (Gain, Loss, Sensor Source)
+        if (ride.elevationGainMeters > 0.0 || ride.elevationLossMeters > 0.0 || ride.elevationSource.isNotBlank()) {
             item {
-                MetricStatCard(
-                    title = "ELEVATION GAIN",
-                    value = String.format(java.util.Locale.US, "%.0f m", ride.elevationGainMeters),
-                    subtitle = "Cumulative climb",
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "ELEVATION",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (ride.elevationSource.isNotBlank()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = if (ride.elevationSource.equals("barometer", ignoreCase = true)) "Barometer" else "GPS Altitude",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        MetricStatCard(
+                            title = "GAIN",
+                            value = "+${UnitConverter.formatElevationWithUnit(ride.elevationGainMeters, useMetricUnits)}",
+                            subtitle = "Cumulative climb",
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricStatCard(
+                            title = "LOSS",
+                            value = "-${UnitConverter.formatElevationWithUnit(ride.elevationLossMeters, useMetricUnits)}",
+                            subtitle = "Cumulative descent",
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
 
@@ -455,7 +527,7 @@ private fun RideDetailContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "PER-KILOMETRE SPLITS",
+                    text = if (useMetricUnits) "PER-KILOMETRE SPLITS" else "PER-MILE SPLITS",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -516,7 +588,7 @@ private fun RideDetailContent(
                 }
 
                 items(splits) { split ->
-                    SplitRow(split = split)
+                    SplitRow(split = split, useMetricUnits = useMetricUnits)
                 }
             }
         }
@@ -673,11 +745,15 @@ private fun SplitsTableHeader() {
 }
 
 @Composable
-private fun SplitRow(split: RideSplit) {
+private fun SplitRow(
+    split: RideSplit,
+    useMetricUnits: Boolean = true
+) {
+    val unitSuffix = UnitConverter.distanceUnit(useMetricUnits)
     val splitTitle = if (split.isPartial) {
         "Split ${split.splitNumber} (final)"
     } else {
-        "${split.splitNumber} km"
+        "${split.splitNumber} $unitSuffix"
     }
 
     Row(
@@ -697,7 +773,7 @@ private fun SplitRow(split: RideSplit) {
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = String.format(java.util.Locale.US, "%.2f km", split.distanceMeters / 1000.0),
+            text = UnitConverter.formatDistanceWithUnit(split.distanceMeters, useMetricUnits, decimals = 2),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1.2f),
@@ -711,7 +787,7 @@ private fun SplitRow(split: RideSplit) {
             textAlign = TextAlign.Center
         )
         Text(
-            text = FormatUtils.formatSpeedKmh(split.avgSpeedKmh),
+            text = UnitConverter.formatSpeedWithUnit(split.avgSpeedKmh, useMetricUnits),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,

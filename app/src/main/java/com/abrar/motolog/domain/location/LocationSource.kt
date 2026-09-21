@@ -15,7 +15,7 @@ interface LocationSource {
      * Flow providing continuous GPS location fixes.
      * Starts receiving updates when collected and ceases updates when cancelled or stopped.
      */
-    fun getLocationUpdates(): Flow<LocationPoint>
+    fun getLocationUpdates(trackingMode: com.abrar.motolog.domain.model.TrackingMode = com.abrar.motolog.domain.model.TrackingMode.HIGH_ACCURACY): Flow<LocationPoint>
 
     /**
      * Flow providing GPS location availability status.

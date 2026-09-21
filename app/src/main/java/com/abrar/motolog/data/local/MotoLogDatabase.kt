@@ -31,7 +31,7 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
         MaintenanceItemEntity::class,
         FuelLogEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -92,6 +92,14 @@ abstract class MotoLogDatabase : RoomDatabase() {
                 // Add elevation tracking columns to rides
                 db.execSQL("ALTER TABLE `rides` ADD COLUMN `elevationLossMeters` REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE `rides` ADD COLUMN `elevationSource` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add import tracking and odometer attribution columns to rides
+                db.execSQL("ALTER TABLE `rides` ADD COLUMN `isImported` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `rides` ADD COLUMN `countsTowardOdometer` INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -5,11 +5,14 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+import kotlinx.serialization.Serializable
+
 /**
  * Represents a single GPS location point recorded during a ride.
  * Points are written continuously to the database in batches
  * during an active ride.
  */
+@Serializable
 @Entity(
     tableName = "ride_points",
     foreignKeys = [

@@ -53,11 +53,24 @@ interface RideDao {
     @Query("UPDATE rides SET bikeId = :bikeId WHERE id = :rideId")
     suspend fun updateRideBike(rideId: Long, bikeId: Long?)
 
-    /** Cumulative distance in meters for a bike from finished rides */
-    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED')")
+    /** Cumulative distance in meters for a bike from finished rides (respecting imported rides flag) */
+    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED') AND (isImported = 0 OR countsTowardOdometer = 1)")
     fun getTotalDistanceMetersForBike(bikeId: Long): Flow<Double?>
 
     /** Cumulative distance in meters for a bike (one-shot query) */
-    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED')")
+    @Query("SELECT SUM(distanceMeters) FROM rides WHERE bikeId = :bikeId AND status IN ('COMPLETED', 'RECOVERED') AND (isImported = 0 OR countsTowardOdometer = 1)")
     suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double?
+
+    /** Finds existing ride with matching start time window and similar distance for duplicate detection */
+    @Query("SELECT * FROM rides WHERE startTime BETWEEN :minStartTime AND :maxStartTime AND distanceMeters BETWEEN :minDistance AND :maxDistance LIMIT 1")
+    suspend fun findDuplicateRide(minStartTime: Long, maxStartTime: Long, minDistance: Double, maxDistance: Double): RideEntity?
+
+    @Query("SELECT * FROM rides ORDER BY startTime ASC")
+    suspend fun getAllRidesOnce(): List<RideEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(rides: List<RideEntity>)
+
+    @Query("DELETE FROM rides")
+    suspend fun deleteAllRides()
 }

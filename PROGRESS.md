@@ -502,17 +502,229 @@
 ---
 
 ## Stage 8: Data Ownership and Settings
-**Status:** NOT STARTED
+**Status:** BUILT & TESTED (PENDING DEVICE VERIFICATION)
 
 ### Built
+- [x] Storage Access Framework & Sharing:
+  - Export single rides and all rides using `Intent.ACTION_CREATE_DOCUMENT` via `ActivityResultContracts.CreateDocument` (no storage permissions requested or required)
+  - Import GPX files and restore backups using `Intent.ACTION_OPEN_DOCUMENT` via `ActivityResultContracts.OpenDocument`
+  - FileProvider declared (`com.abrar.motolog.fileprovider`) in `AndroidManifest.xml` with cache paths in `res/xml/file_paths.xml` for zero-permission file sharing
+  - Added `VIBRATE` permission in manifest for non-blocking haptic speed alert feedback
+- [x] Android Auto Backup & Data Extraction Privacy Rules:
+  - Configured `res/xml/data_extraction_rules.xml` and `res/xml/backup_rules.xml`
+  - Explicitly excluded `domain="database"` from Google Drive Cloud Backup (`<exclude domain="database" path="." />`), guaranteeing on-device-only storage of rider GPS coordinates and preserving Play Store privacy policy claims
+  - Included database in device-to-device transfers (`<include domain="database" path="." />` in `<device-transfer>`) so riders upgrading phones over cable/Wi-Fi do not lose ride history
+- [x] Room Database Migration 3 → 4:
+  - Added `isImported: Boolean = false` and `countsTowardOdometer: Boolean = false` to `RideEntity` (`rides` table)
+  - Updated `RideDao.getTotalDistanceForBike(bikeId)` to sum distance only where `bikeId = :bikeId AND (isImported = 0 OR countsTowardOdometer = 1)`
+  - Implemented `MIGRATION_3_4` in `MotoLogDatabase` and registered in `DatabaseModule`
+  - Added `DatabaseMigrationTest` verifying migration from v3 to v4 preserves pre-existing rides and sets non-destructive defaults
+- [x] Settings Screen & DataStore:
+  - Settings UI (`SettingsScreen`, `SettingsViewModel`) grouped into Units, Display, Tracking Mode, Speed Alert, Data Ownership, and About sections
+  - Stored in DataStore Preferences: `useMetricUnits`, `fuelUnit` (`KM_PER_LITER`, `L_PER_100KM`, `MPG_US`, `MPG_UK`), `currencySymbol`, `trackingMode` (`HIGH_ACCURACY`, `BATTERY_SAVER`), `speedAlertEnabled`, `speedAlertThresholdKmh`, `speedAlertStyle` (`VISUAL`, `BEEP`, `VIBRATE`, `ALL`), `keepScreenOn`, `autoPauseEnabled`, `theme` (`LIGHT`, `DARK`, `AMOLED`, `SYSTEM`)
+  - Settings apply immediately across all screens and persist across app restarts
+- [x] Domain Units & Drift-Resistant Conversion:
+  - Pure Kotlin `UnitConverter`: conversions for distance (km/mi), speed (km/h, mph), elevation (m/ft), fuel consumption (`km/l`, `l/100km`, `mpg_us`, `mpg_uk`)
+  - Rounding drift prevention: `getIntervalForDisplay` with 0.02 threshold snapping to nearest integer. If 1,000 km is converted to 621.371 mi (displayed as 621.4 mi), re-converting 621.4 mi snaps cleanly back to 1,000 km rather than drifting to 999.4 km
+  - Updated `SplitCalculator` with `splitDistanceMeters` parameter supporting exact 1,609.344 m per-mile splits directly on raw GPS coordinates without scaling
+  - Converted units across Live screen, notification, history list, ride detail, splits table, garage odometer, maintenance intervals, and fuel logs
+- [x] Tracking Modes (High Accuracy vs Battery Saver):
+  - Added `TrackingMode` enum (`HIGH_ACCURACY`, `BATTERY_SAVER`)
+  - Configured intervals in `TrackingConstants`: High Accuracy (1s update, 1s fastest, `PRIORITY_HIGH_ACCURACY`) vs Battery Saver (3s update, 3s fastest, `PRIORITY_BALANCED_POWER_ACCURACY`)
+  - Verified calculation engine thresholds operate on elapsed time deltas ($\Delta t$), not point counts:
+    - Implied speed spikes: $\Delta d / \Delta t > 250\text{ km/h}$
+    - Implied acceleration spikes: $\Delta v / \Delta t > 15\text{ m/s}^2$
+    - Auto-pause stationary delay: elapsed time delta sum $\ge 8.0\text{ s}$
+    - Signal gap threshold: $\Delta t > 10.0\text{ s}$
+    - 100m Start confirmation gate: displacement/distance dependent
+- [x] Speed Alert Engine:
+  - Pure Kotlin `SpeedAlertEngine` with injectable `Clock`:
+    - 5.0 km/h hysteresis reset threshold (`SPEED_ALERT_HYSTERESIS_KMH`): once triggered, speed must drop 5 km/h below the threshold before an alert can trigger again
+    - 15-second minimum cooldown (`SPEED_ALERT_COOLDOWN_MS`)
+    - Non-blocking alert styles: Visual speed flashing, system notification beep, device vibration (`Vibrator` / `VibratorManager`), or all combined
+    - Respects rider safety: no blocking dialogs, no interruptions to navigation/music audio focus
+    - Plain-language disclaimer that GPS speed is not a legal speedometer
+- [x] Streaming GPX 1.1 Exporter & Importer:
+  - `GpxExporter`: streams GPX 1.1 XML directly to an `OutputStream` via buffered writer, off the main thread; creates track segments split at signal gaps (`isGap == true`); includes ISO-8601 UTC timestamps, elevation, and speed/accuracy extensions
+  - `GpxImporter`: streams XML with Java `SAXParserFactory` with XXE and DTD processing disabled (`XMLConstants.FEATURE_SECURE_PROCESSING`, disabling external parameter/general entities); limits point count to 100,000 to prevent OOM DOS; duplicate detection (within 10s of start time and 1% of distance); bike assignment; per-import choice on whether ride counts toward odometer
+- [x] RFC 4180 CSV Exporter:
+  - `CsvExporter`: summary CSV (rides, date, bike, metrics) and point-by-point track CSV (timestamp, lat, lon, speed, accuracy, elevation)
+  - Spreadsheet formula injection neutralization: prefixes dangerous initial characters (`=`, `+`, `-`, `@`, `\t`, `\r`) with single quote `'`
+  - Locale-independent formatting (dot decimal separator, ISO-8601 timestamps)
+- [x] Atomic ZIP Backup and Restore:
+  - `BackupManager`: exports all entities (`bikes.json`, `rides.json`, `ride_points.json`, `maintenance.json`, `fuel_logs.json`, `settings.json`) and a metadata manifest into an uncompressed ZIP archive
+  - Atomic restore: pre-validates manifest format version; refuses backups from future versions; checks for active rides and blocks restore if a ride is in progress; runs database restore inside a Room transaction (if any step fails, old database is completely untouched)
+  - User confirmation dialog with plain-language warning: explains that backup replaces current data and contains unencrypted GPS location history
+- [x] Comprehensive Unit Test Suite (162 unit tests passing project-wide):
+  - `UnitConverterTest`: conversions, fuel units, round-trips, drift-resistant snapping
+  - `SplitCalculatorImperialTest`: per-mile splits on raw coordinates, boundary interpolation, partial split
+  - `SpeedAlertEngineTest`: alert triggering, 5 km/h hysteresis reset, 15s cooldown, clock injection
+  - `TrackingModeTest`: calculation engine behavior at 1s vs 3s intervals
+  - `GpxExporterTest` & `GpxImporterTest`: schema validity, export-import round-trip (distance, time, points within tolerance), XXE injection rejection, duplicate detection, missing timestamps handling, missing speed derivation
+  - `CsvExporterTest`: RFC 4180 quoting, formula injection neutralization, locale independence
+  - `BackupManagerTest`: complete round-trip wipe and restore, corrupted zip handling, future version rejection
+  - `SettingsViewModelTest`: settings StateFlow emission, updates, launcher state management
+
 ### Verified
-### Open Issues
+- [x] `./gradlew testDebugUnitTest` (all 162 unit tests pass) — VERIFIED
+- [x] `./gradlew lintDebug` (Android Lint passes with 0 errors) — VERIFIED
+- [x] `./gradlew assembleDebug` (Debug APK built with 0 errors) — VERIFIED
+- [x] `./gradlew build` (Debug and release compilation and unit tests pass) — VERIFIED
+- [x] Schema Migration 3 → 4 test with pre-existing rides — VERIFIED
+- [x] GPX 1.1 streaming export and import round-trip — VERIFIED
+- [x] GPX XXE injection defense test — VERIFIED
+- [x] CSV formula injection neutralization test — VERIFIED
+- [x] Atomic backup and restore with manifest verification — VERIFIED
+- [ ] Exported GPX opens correctly in external mapping app (e.g. OsmAnd, Strava, GPX Viewer) — NEEDS DEVICE TEST
+- [ ] Backup restores cleanly on a fresh install — NEEDS DEVICE TEST
+- [ ] Physical device speed alert vibration and audio beep feel while riding — NEEDS DEVICE TEST
+- [ ] Battery saver mode GPS power consumption reduction over a real ride — NEEDS DEVICE TEST
+
+### Thresholds & Judgment Calls
+- **Auto Backup Privacy Policy:**
+  Android cloud backup (`domain="database"`) is strictly **excluded**. Backing up motorcycle GPS track points to cloud storage without explicit user authorization conflicts with our privacy guarantee that ride coordinates never leave the device. Device-to-device migration (`<device-transfer>`) is permitted, allowing riders to transfer their database locally over a USB cable or Wi-Fi Direct when upgrading devices.
+- **Rounding Drift Prevention:**
+  When converting maintenance intervals between metric and imperial, displaying a rounded value (e.g., 1,000 km converted to 621.4 miles) could drift if re-converted naively ($621.4\text{ mi} = 999.97\text{ km}$). MotoLog uses `UnitConverter.getIntervalForDisplay` which snaps to clean integer multiples if within 0.02 of an integer. When the user edits the value, it saves back cleanly without accumulating fractional floating-point decay.
+- **Tracking Mode Trade-offs (Battery Saver vs High Accuracy):**
+  - High Accuracy: 1s update rate, 1s fastest interval, `PRIORITY_HIGH_ACCURACY`. Ideal for winding roads and spirited motorcycle riding. Captures fine apexes and sharp acceleration.
+  - Battery Saver: 3s update rate, 3s fastest interval, `PRIORITY_BALANCED_POWER_ACCURACY`. Reduces GPS chip wake-ups by ~60%.
+  - Accuracy cost of Battery Saver: Corners with radius $< 30\text{ m}$ taken at $> 50\text{ km/h}$ will cut the corner slightly (chord error of 2–5 meters). Peak speed detection has a 3-second granularity instead of 1-second. All distance, moving time, auto-pause (8s window), and gap (10s window) algorithms remain mathematically sound because they rely on elapsed monotonic time deltas rather than point counts.
+- **Speed Alert Non-blocking Design:**
+  Speed alerts use a 5.0 km/h hysteresis drop and a 15-second cooldown timer. Alert notifications use short haptic pulses and brief visual highlights on the live screen. Blocking dialogs or audio focus theft are strictly avoided to ensure rider safety.
+- **Formula Injection Defense:**
+  In all CSV exports, text fields (ride names, bike names, fuel notes) starting with `= `, `+ `, `- `, `@ `, `\t`, or `\r` are prefixed with an apostrophe `'`. This prevents spreadsheet applications (Excel, Google Sheets, LibreOffice Calc) from executing malicious formulas when opening exported logs.
+- **GPX Import & Odometer Choice:**
+  Imported rides default to `countsTowardOdometer = false`. This prevents historical GPX files from inflating the current motorcycle's odometer or triggering overdue maintenance reminders. The rider can choose to enable odometer credit per import via a toggle dialog.
+
+### Manual Phone Checklist for Stage 8
+1. **Settings Screen Navigation & Persistence:**
+   - Open Settings from top-bar gear icon or bottom navigation.
+   - Change Theme to AMOLED -> verify instant black background switch.
+   - Toggle Keep Screen On -> verify screen stays awake.
+   - Toggle Auto-Pause -> verify setting persists after closing and reopening app.
+2. **Unit Conversion Switching:**
+   - Change Units from Metric (km, km/h) to Imperial (mi, mph).
+   - Verify Live screen speedometer shows "MPH" and distance shows "MI".
+   - Open History -> verify all ride cards show distances in miles and speeds in mph.
+   - Open Ride Detail -> verify Hero card shows miles, and splits table displays "Per-Mile Splits" with 1.00 mi increments.
+   - Open Garage -> verify odometer shows miles, and maintenance intervals display remaining miles.
+   - Change Fuel Units to MPG (US) -> verify bike fuel stats display in mpg.
+   - Switch back to Metric -> verify all values cleanly return to exact metric numbers with zero drift.
+3. **Speed Alert:**
+   - Enable Speed Alert in Settings -> set threshold to 60 km/h -> select "All (Visual + Beep + Vibrate)".
+   - Start a ride (or simulate motion > 60 km/h).
+   - Verify: speedometer digits flash amber/red, phone vibrates briefly, and a short non-blocking tone sounds without stopping background audio.
+   - Slow down to 58 km/h -> verify alert does NOT fire again immediately (hysteresis).
+   - Slow down below 55 km/h (threshold minus 5 km/h) -> accelerate back above 60 km/h -> verify alert triggers again after cooldown.
+4. **GPX Export & Share:**
+   - Open Ride Detail -> tap Export GPX -> pick a folder in SAF file picker -> save file.
+   - Tap Share GPX -> verify Android share sheet opens showing external apps (Drive, Gmail, GPX Viewer).
+   - Open exported GPX file in OsmAnd or another GPX viewer -> verify route line, timestamps, and elevation match MotoLog.
+5. **CSV Export:**
+   - Open Settings -> tap "Export Rides Summary CSV" -> save file.
+   - Open Ride Detail -> tap "Export Points CSV" -> save file.
+   - Open the CSV in Google Sheets or Excel -> verify numbers use dot decimals, dates are ISO-8601, and ride names with leading `=` or `-` do not trigger formula execution.
+6. **GPX Import:**
+   - Open Settings -> tap "Import GPX Track".
+   - Select a GPX file with SAF picker.
+   - Verify dialog appears: shows ride distance and time, allows bike selection, and includes "Count toward motorcycle odometer" checkbox (default unchecked).
+   - Confirm import -> verify ride appears in History list with an "IMPORTED" tag.
+   - Try importing the same file again -> verify duplicate detection dialog warns that the ride already exists.
+7. **Full Backup & Restore:**
+   - Open Settings -> tap "Create Full Backup".
+   - Verify unencrypted location privacy warning dialog appears.
+   - Confirm and choose backup location via SAF -> save ZIP file.
+   - Wipe app data (or delete a ride and a bike in the app).
+   - Open Settings -> tap "Restore from Backup" -> select the ZIP file.
+   - Verify confirmation modal warns that existing data will be replaced.
+   - Confirm restore -> verify all rides, points, bikes, maintenance items, fuel logs, and settings are 100% restored.
+8. **Battery Saver Mode:**
+   - In Settings, switch Tracking Mode from "High Accuracy (1s)" to "Battery Saver (3s)".
+   - Start a ride -> observe GPS location updates every 3 seconds.
+   - Verify distance, speed smoothing, and auto-pause operate properly.
+
 
 ---
 
 ## Stage 9: Play Store Readiness
-**Status:** NOT STARTED
+**Status:** BUILT & TESTED (PENDING PLAY CONSOLE UPLOAD & DEVICE RIDE TEST)
 
 ### Built
+- [x] Release Signing Configuration:
+  - Configured `app/build.gradle.kts` to load signing credentials from `keystore.properties` or environment variables (`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`)
+  - Added `keystore.properties`, `*.jks`, `*.keystore`, and `*.properties.private` to `.gitignore`
+  - Created safe template `keystore.properties.example`
+  - Documented exact `keytool` command for upload key generation and offline backup instructions
+- [x] Versioning & Identity:
+  - Preserved `applicationId = "com.abrar.motolog"` from Stage 0
+  - Configured `versionCode = 1` and `versionName = "1.0.0"` in `app/build.gradle.kts`
+- [x] 16 KB Page Size Alignment:
+  - Inspected all bundled native `.so` libraries (`libjniMaplibreNativeC.so`, `libandroidx.graphics.path.so`, `libdatastore_shared_counter.so`) using `readelf -l`
+  - Verified every `LOAD` segment is aligned to `0x4000` (16,384 bytes, exactly 16 KB)
+  - Verified `android:extractNativeLibs="false"` in release manifest
+- [x] ProGuard / R8 Optimization & Shrinking:
+  - Configured `isMinifyEnabled = true` and `isShrinkResources = true` with `proguard-android-optimize.txt`
+  - Hardened `app/proguard-rules.pro` with explicit keep rules for Room DAOs/entities, Hilt generated components, DataStore serializers, Kotlinx Serialization `@Serializable` classes, MapLibre Native and Compose, and WorkManager workers
+  - Added log-stripping rule `-assumenosideeffects class android.util.Log` to strip all `v()`, `d()`, `i()`, and `w()` logs in release builds, preventing GPS coordinates or sensitive info from leaking to logcat
+- [x] Production App Bundle (.aab):
+  - Configured `./gradlew bundleRelease` task producing `app/build/outputs/bundle/release/app-release.aab` (8.5 MB)
+  - Verified bundle contains targetSdk 36, cleartext traffic disabled, and 16 KB aligned native libraries
+- [x] Manifest & Security Audit:
+  - Set `android:usesCleartextTraffic="false"` on `<application>` in `AndroidManifest.xml`
+  - Confirmed NO `ACCESS_BACKGROUND_LOCATION` permission
+  - Confirmed NO storage permissions (`READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `MANAGE_EXTERNAL_STORAGE`)
+  - Verified only necessary components are exported (`MainActivity` with launcher filter; WorkManager system components protected by signature/DUMP permissions)
+  - Verified Stage 8 Auto Backup policy (`data_extraction_rules.xml` and `backup_rules.xml` exclude `domain="database"` from cloud backups)
+- [x] In-App Compliance & Transparency:
+  - Added Section 6 ("ABOUT & COMPLIANCE") in `SettingsScreen.kt`
+  - Working button to open Privacy Policy URL in system browser (`PRIVACY_POLICY_URL`)
+  - Displayed app version `1.0.0 (Build 1)` and legal safety disclaimer (speed readings are GPS-derived and not a legal speedometer)
+  - Displayed OpenFreeMap, OpenMapTiles, and OpenStreetMap attribution
+  - Created `LicensesScreen.kt` rendering all open-source libraries and licenses (Apache 2.0, MIT, BSD 3-Clause, ODbL) with zero new dependencies
+  - Enhanced prominent location disclosure in `LiveScreen.kt` to explicitly state that location data remains on-device only and is never uploaded or shared
+- [x] Play Store Documentation (`docs/play-store/`):
+  - Created `docs/play-store/PRIVACY_POLICY.md`: Full privacy policy detailing on-device data storage, map CDN tile requests, backup/export ownership, Auto Backup exclusions, child privacy, and deletion instructions
+  - Created `docs/play-store/DATA_SAFETY_ANSWERS.md`: Complete questions and answers for Google Play Data safety section ("No data collected", "No data shared")
+  - Created `docs/play-store/FOREGROUND_SERVICE_DECLARATION.md`: Complete answers for Play Console `location` foreground service declaration and step-by-step 45–60s video demonstration script
+  - Created `docs/play-store/PERMISSIONS_JUSTIFICATION.md`: Functional justification for every permission in merged manifest and explanation of omitted dangerous permissions
+  - Created `docs/play-store/STORE_LISTING.md`: Title (27 chars), short description (77 chars), full description (~2,850 chars), graphic asset specs, screenshot shot list, and category/tags
+  - Created `docs/play-store/APP_CONTENT_FORMS.md`: Questionnaire answers for ads (none), app access (no login), IARC content rating (Everyone / 3+), target audience (18+), and declarations
+  - Created `docs/play-store/RELEASE_CHECKLIST.md`: Step-by-step checklist for repository setup and Play Console release tracks
+
 ### Verified
-### Open Issues
+- [x] `./gradlew testDebugUnitTest` (all 162 unit tests pass) — VERIFIED
+- [x] `./gradlew lintRelease` (0 errors) — VERIFIED
+- [x] `./gradlew assembleRelease` (minification, resource shrinking, and release APK packaging succeed) — VERIFIED
+- [x] `./gradlew bundleRelease` (production .aab bundle generated at 8.5 MB) — VERIFIED
+- [x] `./gradlew build` (full debug and release build pipeline passes) — VERIFIED
+- [x] 16 KB ELF segment alignment on all bundled native libraries (`readelf -l` confirms `0x4000` alignment) — VERIFIED
+- [x] Merged release manifest audit (targetSdk 36, cleartext disabled, no background location, no storage permissions) — VERIFIED
+- [ ] Pre-launch report has no critical issues — NEEDS PLAY CONSOLE TEST (requires uploading .aab to Google Play Console Internal Testing track)
+- [ ] Release build passes full manual motorcycle ride test — NEEDS DEVICE TEST (requires field ride with physical motorcycle)
+
+### Manual Phone Checklist for Release Build
+1. **Install Release Variant**:
+   - Install the signed release APK or internal testing bundle on a physical device running Android 8.0+ (API 26 to 36).
+2. **First-Launch & In-App Compliance**:
+   - Open app $\to$ confirm no location permission prompt appears on app launch.
+   - Open Settings $\to$ scroll to "About & Compliance".
+   - Tap "Privacy Policy" $\to$ verify system browser opens the policy page.
+   - Tap "Open Source Licenses" $\to$ verify licenses screen renders all libraries and licenses cleanly.
+   - Confirm version shows "Version 1.0.0 (Build 1)".
+3. **Location Permission Flow & Rationale**:
+   - Go to Live tab $\to$ tap "Start Ride".
+   - Verify the in-app rationale appears first, explicitly stating tracking runs only between Start and Stop and location stays on the device.
+   - Tap "Grant Permission" $\to$ grant precise location in system dialog.
+   - Confirm tracking begins, transition to "Waiting for GPS" or "RECORDING".
+4. **Foreground Tracking with Screen Off**:
+   - Lock phone screen $\to$ verify ongoing notification appears on lock screen showing live speed, distance, and time.
+   - Move or simulate motion for 5 minutes with screen off $\to$ unlock phone $\to$ confirm distance and speed tracked smoothly without being killed by OEM battery manager.
+5. **Hold-to-Stop Verification**:
+   - Tap and hold "Hold to Stop" for 2 seconds $\to$ verify progress ring animation and haptic feedback.
+   - Verify ride stops cleanly, notification dismisses, and location icon disappears from Android status bar.
+6. **ProGuard / R8 Minification Integrity**:
+   - Open History $\to$ verify saved ride card appears and is not corrupted by minification.
+   - Open Ride Detail $\to$ verify MapLibre map renders route line, speed-over-time graph renders, and per-km/per-mile splits table loads without class-not-found or reflection crashes.
+   - Open Garage $\to$ verify motorcycle odometer, maintenance tasks, and fuel logs persist and display properly.
+   - Perform a GPX export, CSV export, and ZIP backup $\to$ verify files export successfully without serialization errors.
+

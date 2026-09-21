@@ -32,4 +32,13 @@ interface FuelLogDao {
 
     @Query("SELECT * FROM fuel_logs WHERE bikeId = :bikeId ORDER BY odometerKm DESC, timestampEpochMs DESC LIMIT 1")
     suspend fun getLatestLogForBike(bikeId: Long): FuelLogEntity?
+
+    @Query("SELECT * FROM fuel_logs ORDER BY id ASC")
+    suspend fun getAllLogsOnce(): List<FuelLogEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(logs: List<FuelLogEntity>)
+
+    @Query("DELETE FROM fuel_logs")
+    suspend fun deleteAllFuelLogs()
 }

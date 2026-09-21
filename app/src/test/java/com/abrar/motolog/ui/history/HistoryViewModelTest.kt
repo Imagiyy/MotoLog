@@ -1,12 +1,15 @@
 package com.abrar.motolog.ui.history
 
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import app.cash.turbine.test
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.repository.FakeRideRepository
+import com.abrar.motolog.data.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -18,19 +21,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryViewModelTest {
 
+    @get:Rule
+    val tempFolder = TemporaryFolder()
+
     private val testDispatcher = StandardTestDispatcher()
+    private val testScope = TestScope(testDispatcher)
     private lateinit var fakeRepository: FakeRideRepository
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var viewModel: HistoryViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeRideRepository()
+        val testDataStore = PreferenceDataStoreFactory.create(
+            scope = testScope,
+            produceFile = { tempFolder.newFile("test_history_settings.preferences_pb") }
+        )
+        settingsRepository = SettingsRepository(testDataStore)
     }
 
     @After
@@ -45,7 +60,7 @@ class HistoryViewModelTest {
         val ride3 = RideEntity(id = 3, name = "Recovered ride", startTime = 3000L, status = RideStatus.RECOVERED)
 
         fakeRepository.seedRides(listOf(ride1, ride2, ride3))
-        viewModel = HistoryViewModel(fakeRepository)
+        viewModel = HistoryViewModel(fakeRepository, settingsRepository)
 
         advanceUntilIdle()
 
@@ -62,7 +77,7 @@ class HistoryViewModelTest {
         val ride2 = RideEntity(id = 2, name = "Evening ride", startTime = 2000L, status = RideStatus.COMPLETED)
 
         fakeRepository.seedRides(listOf(ride1, ride2))
-        viewModel = HistoryViewModel(fakeRepository)
+        viewModel = HistoryViewModel(fakeRepository, settingsRepository)
 
         advanceUntilIdle()
         assertEquals(2, viewModel.uiState.value.rides.size)
@@ -81,7 +96,7 @@ class HistoryViewModelTest {
         val ride1 = RideEntity(id = 1, name = "Morning ride", startTime = 1000L, status = RideStatus.COMPLETED)
 
         fakeRepository.seedRides(listOf(ride1))
-        viewModel = HistoryViewModel(fakeRepository)
+        viewModel = HistoryViewModel(fakeRepository, settingsRepository)
 
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.rides.size)
@@ -105,7 +120,7 @@ class HistoryViewModelTest {
         val ride1 = RideEntity(id = 1, name = "Morning ride", startTime = 1000L, status = RideStatus.COMPLETED)
 
         fakeRepository.seedRides(listOf(ride1))
-        viewModel = HistoryViewModel(fakeRepository)
+        viewModel = HistoryViewModel(fakeRepository, settingsRepository)
 
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.rides.size)

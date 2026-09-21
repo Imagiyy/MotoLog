@@ -167,6 +167,11 @@ private class FakeRideDao : RideDao {
 
     override suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double? =
         ridesMap.values.filter { it.bikeId == bikeId }.sumOf { it.distanceMeters }
+
+    override suspend fun findDuplicateRide(minStartTime: Long, maxStartTime: Long, minDistance: Double, maxDistance: Double): RideEntity? = null
+    override suspend fun getAllRidesOnce(): List<RideEntity> = ridesMap.values.toList()
+    override suspend fun insertAll(rides: List<RideEntity>) { rides.forEach { ridesMap[it.id] = it } }
+    override suspend fun deleteAllRides() { ridesMap.clear() }
 }
 
 private class FakeRidePointDao : RidePointDao {
@@ -193,5 +198,12 @@ private class FakeRidePointDao : RidePointDao {
 
     override suspend fun deletePointsForRide(rideId: Long) {
         pointsMap.remove(rideId)
+    }
+
+    override suspend fun getAllPointsOnce(): List<RidePointEntity> =
+        pointsMap.values.flatten()
+
+    override suspend fun deleteAllPoints() {
+        pointsMap.clear()
     }
 }

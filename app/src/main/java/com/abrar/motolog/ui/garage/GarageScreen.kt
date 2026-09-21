@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
@@ -43,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,28 +60,38 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.abrar.motolog.data.local.entity.BikeEntity
+import com.abrar.motolog.domain.engine.UnitConverter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GarageScreen(
     onNavigateToBikeDetail: (Long) -> Unit,
-    modifier: Modifier = Modifier,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: GarageViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Garage",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    Text("Garage", fontWeight = FontWeight.Bold)
+                },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Navigate back"
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         },
         floatingActionButton = {
@@ -99,12 +111,14 @@ fun GarageScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
                 uiState.bikes.isEmpty() -> {
                     EmptyGarageView(
                         onAddBike = { viewModel.openAddBikeDialog() },
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
                 else -> {
@@ -116,6 +130,7 @@ fun GarageScreen(
                         items(uiState.bikes, key = { it.bike.id }) { item ->
                             BikeCard(
                                 item = item,
+                                useMetricUnits = uiState.useMetricUnits,
                                 onClick = { onNavigateToBikeDetail(item.bike.id) },
                                 onSelectAsActive = { viewModel.selectCurrentBike(item.bike.id) },
                                 onDeleteOrArchive = { viewModel.requestArchiveOrDelete(item.bike) }
@@ -129,6 +144,7 @@ fun GarageScreen(
 
     if (uiState.isAddBikeDialogOpen) {
         AddBikeDialog(
+            useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissAddBikeDialog() },
             onConfirm = { name, makeModel, initialOdo ->
                 viewModel.addBike(name, makeModel, initialOdo)
@@ -149,6 +165,7 @@ fun GarageScreen(
 @Composable
 private fun BikeCard(
     item: BikeListItem,
+    useMetricUnits: Boolean,
     onClick: () -> Unit,
     onSelectAsActive: () -> Unit,
     onDeleteOrArchive: () -> Unit,
@@ -249,8 +266,10 @@ private fun BikeCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val userOdo = UnitConverter.kmToUserDistance(item.currentOdometerKm, useMetricUnits)
+                    val unitStr = UnitConverter.distanceUnit(useMetricUnits)
                     Text(
-                        text = String.format(Locale.US, "%,.1f km", item.currentOdometerKm),
+                        text = String.format(Locale.US, "%,.1f %s", userOdo, unitStr),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -373,6 +392,7 @@ private fun EmptyGarageView(
 
 @Composable
 private fun AddBikeDialog(
+    useMetricUnits: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (name: String, makeModel: String, initialOdometerKm: Double) -> Unit
 ) {
@@ -402,10 +422,11 @@ private fun AddBikeDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                val unitLabel = UnitConverter.distanceUnit(useMetricUnits)
                 OutlinedTextField(
                     value = initialOdoText,
                     onValueChange = { initialOdoText = it },
-                    label = { Text("Current Odometer Reading (km)") },
+                    label = { Text("Current Odometer Reading ($unitLabel)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -416,7 +437,8 @@ private fun AddBikeDialog(
             TextButton(
                 onClick = {
                     if (isNameValid && isOdoValid) {
-                        onConfirm(name, makeModel, initialOdo!!)
+                        val odoKm = UnitConverter.userDistanceToKm(initialOdo!!, useMetricUnits)
+                        onConfirm(name, makeModel, odoKm)
                     }
                 },
                 enabled = isNameValid && isOdoValid

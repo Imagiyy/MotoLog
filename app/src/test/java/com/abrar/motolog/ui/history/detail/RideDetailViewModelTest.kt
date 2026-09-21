@@ -216,6 +216,14 @@ class RideDetailViewModelTest {
             MutableStateFlow(rides.values.filter { it.bikeId == bikeId }.sumOf { it.distanceMeters })
         override suspend fun getTotalDistanceMetersForBikeOnce(bikeId: Long): Double? =
             rides.values.filter { it.bikeId == bikeId }.sumOf { it.distanceMeters }
+        override suspend fun findDuplicateRide(minStartTime: Long, maxStartTime: Long, minDistance: Double, maxDistance: Double): RideEntity? = null
+        override suspend fun getAllRidesOnce(): List<RideEntity> = rides.values.toList()
+        override suspend fun insertAll(ridesList: List<RideEntity>) {
+            ridesList.forEach { rides[it.id] = it }
+        }
+        override suspend fun deleteAllRides() {
+            rides.clear()
+        }
     }
 
     private class FakeBikeDao : BikeDao {
@@ -233,5 +241,12 @@ class RideDetailViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun getAllBikesOnce(): List<BikeEntity> = bikes.toList()
+        override suspend fun insertAll(bikesList: List<BikeEntity>) {
+            bikes.addAll(bikesList)
+        }
+        override suspend fun deleteAllBikes() {
+            bikes.clear()
+        }
     }
 }

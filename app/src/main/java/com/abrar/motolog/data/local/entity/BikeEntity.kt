@@ -3,10 +3,13 @@ package com.abrar.motolog.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+import kotlinx.serialization.Serializable
+
 /**
  * Represents a motorcycle/bike in the garage.
  * Each ride can optionally be associated with a bike.
  */
+@Serializable
 @Entity(tableName = "bikes")
 data class BikeEntity(
     @PrimaryKey(autoGenerate = true)

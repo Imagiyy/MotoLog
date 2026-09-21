@@ -33,7 +33,11 @@ object DatabaseModule {
             MotoLogDatabase::class.java,
             "motolog.db"
         )
-            .addMigrations(MotoLogDatabase.MIGRATION_1_2, MotoLogDatabase.MIGRATION_2_3)
+            .addMigrations(
+                MotoLogDatabase.MIGRATION_1_2,
+                MotoLogDatabase.MIGRATION_2_3,
+                MotoLogDatabase.MIGRATION_3_4
+            )
             .build()
     }
 
