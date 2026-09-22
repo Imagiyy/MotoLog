@@ -20,6 +20,7 @@ kotlinxCoroutinesTest = "1.10.1"
 turbine = "1.2.0"
 work = "2.10.0"
 maplibreCompose = "0.17.0"
+maplibreNativeFfi = "0.202609.2"
 
 [libraries]
 # AndroidX Core
@@ -69,6 +70,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 
 # Map
 maplibre-compose-material3 = { group = "org.maplibre.compose", name = "maplibre-compose-material3", version.ref = "maplibreCompose" }
+maplibre-native-ffi-runtime-opengl = { group = "org.maplibre.nativeffi", name = "maplibre-native-ffi-runtime-opengl-android", version.ref = "maplibreNativeFfi" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

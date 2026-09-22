@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,6 +34,8 @@ import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,17 +69,17 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Neon Cyber Palette Constants
-private val CyberBg = Color(0xFF07040E)
-private val CyberSurface = Color(0xFF100921)
-private val CyberSurfaceAlt = Color(0xFF180F33)
-private val CyberCyan = Color(0xFF00F5FF)
+// Cyberpunk Palette Constants
+private val CyberBg = Color(0xFF0A0518)
+private val CyberSurface = Color(0xFF130924)
+private val CyberSurfaceAlt = Color(0xFF1D0E35)
+private val CyberCyan = Color(0xFF00F0FF)
 private val CyberMagenta = Color(0xFFFF007F)
 private val CyberYellow = Color(0xFFFFE600)
-private val CyberGreen = Color(0xFF00FF88)
+private val CyberWhite = Color(0xFFF0F6FC)
+private val CyberGray = Color(0xFF6E568A)
 private val CyberPurple = Color(0xFF6B11FF)
 private val CyberTextMuted = Color(0xFF8B80AC)
-private val CyberWhite = Color(0xFFF9F7FF)
 
 /**
  * Neon Cyber / Tokyo Night Synthwave Holographic HUD Dashboard.
@@ -97,6 +101,11 @@ fun NeonCyberCockpitDashboard(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     modifier: Modifier = Modifier,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
+    keepScreenOn: Boolean = false,
+    onToggleKeepScreenOn: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.NEON_CYBER)
 ) {
     var showOverallStats by remember { mutableStateOf(false) }
@@ -131,59 +140,248 @@ fun NeonCyberCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Cyber Cockpit
-            Row(
+            // Immersive Full-Screen Landscape Cyber HUD with Slide-Down Numerical Drawer
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left Column: Hexagonal Vector HUD Dial
-                Column(
-                    modifier = Modifier
-                        .weight(1.15f)
-                        .fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Fullscreen Hexagonal HUD (No bottom clutter)
+                CyberHexTachometerDial(
+                    speed = displaySpeed,
+                    unit = speedUnit,
+                    distance = displayDistance,
+                    distanceUnit = distanceUnit,
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = CyberCyan,
+                    backgroundColor = CyberSurface,
+                    borderColor = CyberMagenta,
+                    label = "MATRIX TELEMETRY",
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = CyberSurface.copy(alpha = 0.96f),
+                    borderColor = CyberCyan,
+                    accentColor = CyberMagenta,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    CyberHeaderBar(
-                        bikeName = bikeName,
-                        isGpsLost = isGpsLost,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // Numerical Telemetry Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CyberTelemetryCard(
+                            label = if (showOverallStats) "CHRONO // TOTAL" else "CHRONO // MOVING",
+                            value = timeDisplay,
+                            subtitle = if (showOverallStats) "TOTAL" else "MOVING",
+                            accentColor = CyberCyan,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
 
-                    CyberHexTachometerDial(
-                        speed = displaySpeed,
-                        unit = speedUnit,
-                        distance = displayDistance,
-                        distanceUnit = distanceUnit,
-                        isSpeedAlert = isSpeedAlert,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    )
+                        CyberTelemetryCard(
+                            label = if (showOverallStats) "VELOCITY // TOTAL AVG" else "VELOCITY // MOVE AVG",
+                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            accentColor = CyberYellow,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
 
-                    CyberEqualizerBar(
-                        speed = displaySpeed,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        CyberTelemetryCard(
+                            label = "PEAK VELOCITY",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "TOP SPEED",
+                            accentColor = CyberMagenta,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        CyberTelemetryCard(
+                            label = "SAT-LOCK ACCURACY",
+                            value = if (isGpsLost) "LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
+                            accentColor = if (isGpsLost) CyberMagenta else CyberCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
+                                shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(52.dp)
+                            ) {
+                                Text(
+                                    text = "INITIALIZE RIDE",
+                                    color = Color(0xFF040208),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "NEO-CYBER",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = onSwitchToMap,
+                                shape = CutCornerShape(topStart = 6.dp, bottomEnd = 6.dp),
+                                color = CyberSurfaceAlt,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CyberCyan),
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Map,
+                                        contentDescription = "Cyber Map",
+                                        tint = CyberCyan,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "GRID",
+                                        color = CyberCyan,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                onClick = {
+                                    if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                },
+                                shape = CutCornerShape(topStart = 6.dp, bottomEnd = 6.dp),
+                                color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (pauseState.isPaused) CyberYellow else CyberCyan
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null,
+                                        tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
+                                        color = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            ThemedHoldToStopButton(
+                                onStopConfirmed = onStopConfirmed,
+                                label = "OVERRIDE SYSTEM",
+                                progressLabel = "DISENGAGING",
+                                borderColor = CyberMagenta,
+                                gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
+                                progressFillColor = CyberMagenta.copy(alpha = 0.6f),
+                                textColor = CyberWhite,
+                                cornerRadius = 6.dp,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                        }
+                    }
                 }
-
-                // Right Column: Telemetry Panels + Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1.05f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Top Bar: System ID + Map Button
+            }
+        } else {
+            // Portrait Cyber Cockpit Layout
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "CYBER // STANDBY"
+                    )
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CyberHudTag(text = "HUD_SYS // 2077")
+                        CyberHudTag(text = "NEO-HUD // ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}")
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -213,60 +411,99 @@ fun NeonCyberCockpitDashboard(
                             }
                         }
                     }
+                }
 
-                    // 2x2 Holographic Telemetry Cards
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Hexagonal Vector HUD Speed Dial
+                CyberHexTachometerDial(
+                    speed = displaySpeed,
+                    unit = speedUnit,
+                    distance = displayDistance,
+                    distanceUnit = distanceUnit,
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                )
+
+                // Neon Equalizer Spectrum
+                CyberEqualizerBar(
+                    speed = speedKmh,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 2x2 Cyber Telemetry Grid
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CyberTelemetryCard(
+                        label = if (showOverallStats) "CHRONO // TOTAL" else "CHRONO // MOVING",
+                        value = timeDisplay,
+                        subtitle = if (showOverallStats) "TOTAL" else "MOVING",
+                        accentColor = CyberCyan,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showOverallStats = !showOverallStats }
+                    )
+
+                    CyberTelemetryCard(
+                        label = if (showOverallStats) "VELOCITY // TOTAL AVG" else "VELOCITY // MOVE AVG",
+                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        accentColor = CyberYellow,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showOverallStats = !showOverallStats }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CyberTelemetryCard(
+                        label = "PEAK VELOCITY",
+                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "TOP SPEED",
+                        accentColor = CyberMagenta,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    CyberTelemetryCard(
+                        label = "SAT-LOCK ACCURACY",
+                        value = if (isGpsLost) "LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                        subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
+                        accentColor = if (isGpsLost) CyberMagenta else CyberCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Bottom Controls Row
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
                     ) {
-                        CyberTelemetryCard(
-                            label = if (showOverallStats) "CHRONO_TOTAL" else "CHRONO_WARP",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "ELAPSED" else "MOVING",
-                            accentColor = CyberCyan,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
-                        )
-
-                        CyberTelemetryCard(
-                            label = if (showOverallStats) "AVG_OVERALL" else "CYBER_PACE",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = if (showOverallStats) "ELAPSED" else "MOVING",
-                            accentColor = CyberGreen,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                        Text(
+                            text = "START RIDE",
+                            color = Color(0xFF040208),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
                         )
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        CyberTelemetryCard(
-                            label = "PEAK_VELOCITY",
-                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = "MAX RECORD",
-                            accentColor = CyberMagenta,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        CyberTelemetryCard(
-                            label = "GPS_LOCK_ACC",
-                            value = if (isGpsLost) "LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                            subtitle = if (isGpsLost) "CRITICAL GAP" else "SATELLITE SYNC",
-                            accentColor = if (isGpsLost) CyberMagenta else CyberYellow,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Cyber Controls Row (56dp min touch target)
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Pause / Matrix Button
                         Surface(
                             onClick = {
                                 if (pauseState.isPaused) onResumeClick() else onPauseClick()
@@ -274,7 +511,7 @@ fun NeonCyberCockpitDashboard(
                             shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
                             color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
                             border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
+                                1.dp,
                                 if (pauseState.isPaused) CyberYellow else CyberCyan
                             ),
                             modifier = Modifier
@@ -303,7 +540,6 @@ fun NeonCyberCockpitDashboard(
                             }
                         }
 
-                        // System Override Hold-to-Stop Button (56dp min)
                         ThemedHoldToStopButton(
                             onStopConfirmed = onStopConfirmed,
                             label = "OVERRIDE SYSTEM",
@@ -316,181 +552,6 @@ fun NeonCyberCockpitDashboard(
                             modifier = Modifier.weight(1.3f)
                         )
                     }
-                }
-            }
-        } else {
-            // Portrait Cyber Cockpit Layout
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header with System status and Map switcher
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CyberHudTag(text = "NEO-HUD // ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}")
-
-                    Surface(
-                        onClick = onSwitchToMap,
-                        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
-                        color = CyberSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, CyberCyan),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = "Cyber Map",
-                                tint = CyberCyan,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "CYBER GRID",
-                                color = CyberCyan,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-
-                // Hexagonal Vector Tachometer Dial
-                CyberHexTachometerDial(
-                    speed = displaySpeed,
-                    unit = speedUnit,
-                    distance = displayDistance,
-                    distanceUnit = distanceUnit,
-                    isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(250.dp)
-                )
-
-                // Equalizer Bar
-                CyberEqualizerBar(
-                    speed = displaySpeed,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Cyber Header Status
-                CyberHeaderBar(
-                    bikeName = bikeName,
-                    isGpsLost = isGpsLost,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // 2x2 Telemetry Cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CyberTelemetryCard(
-                        label = if (showOverallStats) "CHRONO_TOTAL" else "CHRONO_WARP",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "ELAPSED" else "MOVING",
-                        accentColor = CyberCyan,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
-                    )
-
-                    CyberTelemetryCard(
-                        label = if (showOverallStats) "AVG_OVERALL" else "CYBER_PACE",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = if (showOverallStats) "ELAPSED" else "MOVING",
-                        accentColor = CyberGreen,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CyberTelemetryCard(
-                        label = "PEAK_VELOCITY",
-                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = "MAX RECORD",
-                        accentColor = CyberMagenta,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    CyberTelemetryCard(
-                        label = "GPS_LOCK_ACC",
-                        value = if (isGpsLost) "LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                        subtitle = if (isGpsLost) "CRITICAL GAP" else "SATELLITE SYNC",
-                        accentColor = if (isGpsLost) CyberMagenta else CyberYellow,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Controls Row (56dp min buttons)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        onClick = {
-                            if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                        },
-                        shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
-                        color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            if (pauseState.isPaused) CyberYellow else CyberCyan
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 56.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = null,
-                                tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
-                                color = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-
-                    ThemedHoldToStopButton(
-                        onStopConfirmed = onStopConfirmed,
-                        label = "OVERRIDE SYSTEM",
-                        progressLabel = "DISENGAGING",
-                        borderColor = CyberMagenta,
-                        gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
-                        progressFillColor = CyberMagenta.copy(alpha = 0.6f),
-                        textColor = CyberWhite,
-                        cornerRadius = 8.dp,
-                        modifier = Modifier.weight(1.3f)
-                    )
                 }
             }
         }
@@ -511,16 +572,21 @@ private fun CyberHexTachometerDial(
     isSpeedAlert: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "cyberGlow")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
+    val pulseAlpha = if (isSpeedAlert) {
+        val infiniteTransition = rememberInfiniteTransition(label = "cyberGlow")
+        val alpha by infiniteTransition.animateFloat(
+            initialValue = 0.6f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 800),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        )
+        alpha
+    } else {
+        1.0f
+    }
 
     Box(
         modifier = modifier

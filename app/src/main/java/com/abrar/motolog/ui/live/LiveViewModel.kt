@@ -17,6 +17,7 @@ import javax.inject.Inject
 
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.domain.repository.GarageRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 
 import com.abrar.motolog.domain.map.MapStyleProvider
@@ -126,6 +127,12 @@ class LiveViewModel @Inject constructor(
                             val newPoint = Pair(sessionState.latitude, sessionState.longitude)
                             if (coords.isEmpty() || coords.last() != newPoint) {
                                 coords.add(newPoint)
+                                if (coords.size > 2000) {
+                                    val thinned = coords.filterIndexed { index, _ -> index % 2 == 0 || index == coords.size - 1 }.toMutableList()
+                                    _routePoints.value = thinned
+                                } else {
+                                    _routePoints.value = coords
+                                }
                             }
                         }
                         LiveUiState.Tracking(
@@ -138,7 +145,7 @@ class LiveViewModel @Inject constructor(
                             isSpeedAlert = sessionState.isSpeedAlert,
                             latitude = sessionState.latitude,
                             longitude = sessionState.longitude,
-                            routeCoordinates = coords,
+                            routeCoordinates = _routePoints.value,
                             bikeName = currentActiveBikeName
                         )
                     }
@@ -152,35 +159,18 @@ class LiveViewModel @Inject constructor(
             }
         }
 
-        // Observe route points updates from DB
-        viewModelScope.launch {
-            _routePoints.collect { points ->
-                val current = _uiState.value
-                if (current is LiveUiState.Tracking) {
-                    val coords = points.toMutableList()
-                    if (current.latitude != null && current.longitude != null) {
-                        val newPoint = Pair(current.latitude, current.longitude)
-                        if (coords.isEmpty() || coords.last() != newPoint) {
-                            coords.add(newPoint)
-                        }
-                    }
-                    _uiState.value = current.copy(routeCoordinates = coords)
-                }
-            }
-        }
-
         // Check for unfinished ride on startup (crash/force-kill recovery)
         checkActiveRideRecovery()
     }
 
     private fun startObservingRidePointsIfNeeded(rideId: Long) {
-        if (currentTrackingRideId == rideId && activeRidePointsJob != null) return
+        if (currentTrackingRideId == rideId) return
         currentTrackingRideId = rideId
         activeRidePointsJob?.cancel()
-        activeRidePointsJob = viewModelScope.launch {
-            ridePointDao?.getPointsForRide(rideId)?.collect { entities ->
-                _routePoints.value = entities.map { Pair(it.latitude, it.longitude) }
-            }
+        activeRidePointsJob = viewModelScope.launch(Dispatchers.IO) {
+            val entities = ridePointDao?.getPointsForRideOnce(rideId) ?: emptyList()
+            val initial = entities.map { Pair(it.latitude, it.longitude) }
+            _routePoints.value = initial
         }
     }
 

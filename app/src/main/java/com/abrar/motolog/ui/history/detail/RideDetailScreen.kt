@@ -62,8 +62,6 @@ import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.domain.engine.UnitConverter
 import com.abrar.motolog.domain.model.RideSplit
-import com.abrar.motolog.domain.model.GraphData
-import com.abrar.motolog.domain.model.GraphMarker
 import com.abrar.motolog.domain.model.RouteMapData
 import com.abrar.motolog.domain.util.RideNameGenerator
 import com.abrar.motolog.ui.util.FormatUtils
@@ -178,8 +176,6 @@ fun RideDetailScreen(
                         assignedBike = uiState.assignedBike,
                         splits = uiState.splits,
                         routeMap = uiState.routeMap,
-                        speedGraph = uiState.speedGraph,
-                        elevationGraph = uiState.elevationGraph,
                         isVisualsLoading = uiState.isVisualsLoading,
                         mapStyleProvider = viewModel.mapStyleProvider,
                         isSplitsLoading = uiState.isSplitsLoading,
@@ -219,8 +215,6 @@ private fun RideDetailContent(
     assignedBike: BikeEntity?,
     splits: List<RideSplit>,
     routeMap: RouteMapData?,
-    speedGraph: GraphData?,
-    elevationGraph: GraphData?,
     isVisualsLoading: Boolean,
     mapStyleProvider: com.abrar.motolog.domain.map.MapStyleProvider,
     isSplitsLoading: Boolean,
@@ -251,27 +245,6 @@ private fun RideDetailContent(
                     isDarkTheme = isSystemInDarkTheme(),
                     modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(14.dp))
                 )
-            }
-        }
-
-        speedGraph?.let { graph ->
-            item {
-                Text("SPEED OVER TIME", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                LineGraph(
-                    data = graph,
-                    markers = listOf(
-                        GraphMarker(ride.maxSpeedMs.toFloat() * 3.6f, "Max", Color(0xFFFF6B6B).value.toInt()),
-                        GraphMarker(ride.avgMovingSpeedMs.toFloat() * 3.6f, "Average", Color(0xFFFFC857).value.toInt())
-                    ),
-                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                )
-            }
-        }
-
-        elevationGraph?.let { graph ->
-            item {
-                Text("ELEVATION PROFILE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                LineGraph(data = graph, lineColor = Color(0xFF39D98A), fillColor = Color(0xFF39D98A))
             }
         }
 

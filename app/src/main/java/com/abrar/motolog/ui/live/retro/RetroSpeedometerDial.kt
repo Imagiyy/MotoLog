@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -71,10 +72,22 @@ fun RetroSpeedometerDial(
         label = "speedo_needle"
     )
 
+    val baseTextPaint = remember {
+        Paint().apply {
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.MONOSPACE,
+                android.graphics.Typeface.BOLD
+            )
+        }
+    }
+
     Box(
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
+        // Static Gauge Face: Bezel, background face, calibration ticks and numerals
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val outerRadius = size.minDimension / 2f
@@ -96,8 +109,17 @@ fun RetroSpeedometerDial(
                 redlineStart = redlineStart,
                 startAngle = startAngle,
                 sweepAngle = sweepAngle,
-                palette = palette
+                palette = palette,
+                cachedPaint = baseTextPaint
             )
+        }
+
+        // Dynamic Needle & Speedometer Readout: Re-renders only when needle/speed changes
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val outerRadius = size.minDimension / 2f
+            if (outerRadius <= 0f) return@Canvas
+            val dialRadius = outerRadius * 0.84f
 
             // 4. Digital Speed Window at bottom center of dial
             drawDigitalWindow(
@@ -106,7 +128,8 @@ fun RetroSpeedometerDial(
                 speed = currentSpeed,
                 unitLabel = unitLabel,
                 isSpeedAlert = isSpeedAlert,
-                palette = palette
+                palette = palette,
+                cachedPaint = baseTextPaint
             )
 
             // 5. Sweeping Needle
@@ -223,33 +246,12 @@ private fun DrawScope.drawSpeedometerCalibration(
     redlineStart: Float,
     startAngle: Float,
     sweepAngle: Float,
-    palette: CockpitThemePalette
+    palette: CockpitThemePalette,
+    cachedPaint: Paint
 ) {
     val step = if (maxSpeed > 150f) 10f else 5f
     val majorStep = if (maxSpeed > 150f) 20f else 10f
     val totalSteps = (maxSpeed / step).toInt()
-
-    val textPaint = Paint().apply {
-        isAntiAlias = true
-        color = palette.dialText.toArgb()
-        textSize = dialRadius * 0.12f
-        textAlign = Paint.Align.CENTER
-        typeface = android.graphics.Typeface.create(
-            android.graphics.Typeface.MONOSPACE,
-            android.graphics.Typeface.BOLD
-        )
-    }
-
-    val redlineTextPaint = Paint().apply {
-        isAntiAlias = true
-        color = JewelRed.toArgb()
-        textSize = dialRadius * 0.12f
-        textAlign = Paint.Align.CENTER
-        typeface = android.graphics.Typeface.create(
-            android.graphics.Typeface.MONOSPACE,
-            android.graphics.Typeface.BOLD
-        )
-    }
 
     val tickRadiusOuter = dialRadius * 0.94f
     val tickRadiusMajorInner = dialRadius * 0.81f
@@ -282,14 +284,16 @@ private fun DrawScope.drawSpeedometerCalibration(
         // Draw numbers for major ticks
         if (isMajor) {
             val numX = center.x + textRadius * cos(angleRad)
-            val numY = center.y + textRadius * sin(angleRad) + (textPaint.textSize / 3f)
+            val numY = center.y + textRadius * sin(angleRad) + (dialRadius * 0.04f)
 
             drawIntoCanvas { canvas ->
+                cachedPaint.color = if (isRedline) JewelRed.toArgb() else palette.dialText.toArgb()
+                cachedPaint.textSize = dialRadius * 0.12f
                 canvas.nativeCanvas.drawText(
                     speedValue.toInt().toString(),
                     numX,
                     numY,
-                    if (isRedline) redlineTextPaint else textPaint
+                    cachedPaint
                 )
             }
         }
@@ -302,7 +306,8 @@ private fun DrawScope.drawDigitalWindow(
     speed: Double,
     unitLabel: String,
     isSpeedAlert: Boolean,
-    palette: CockpitThemePalette
+    palette: CockpitThemePalette,
+    cachedPaint: Paint
 ) {
     val windowW = dialRadius * 0.72f
     val windowH = dialRadius * 0.34f
@@ -329,40 +334,23 @@ private fun DrawScope.drawDigitalWindow(
 
     // Text for speed & unit
     val speedInt = speed.toInt().coerceAtLeast(0)
-    val textPaint = Paint().apply {
-        isAntiAlias = true
-        color = if (isSpeedAlert) JewelRed.toArgb() else palette.primaryAccent.toArgb()
-        textSize = windowH * 0.65f
-        textAlign = Paint.Align.CENTER
-        typeface = android.graphics.Typeface.create(
-            android.graphics.Typeface.MONOSPACE,
-            android.graphics.Typeface.BOLD
-        )
-    }
-
-    val unitPaint = Paint().apply {
-        isAntiAlias = true
-        color = palette.secondaryAccent.toArgb()
-        textSize = windowH * 0.24f
-        textAlign = Paint.Align.CENTER
-        typeface = android.graphics.Typeface.create(
-            android.graphics.Typeface.MONOSPACE,
-            android.graphics.Typeface.BOLD
-        )
-    }
 
     drawIntoCanvas { canvas ->
+        cachedPaint.color = if (isSpeedAlert) JewelRed.toArgb() else palette.primaryAccent.toArgb()
+        cachedPaint.textSize = windowH * 0.65f
         canvas.nativeCanvas.drawText(
             speedInt.toString(),
             center.x,
             windowTop + windowH * 0.62f,
-            textPaint
+            cachedPaint
         )
+        cachedPaint.color = palette.secondaryAccent.toArgb()
+        cachedPaint.textSize = windowH * 0.24f
         canvas.nativeCanvas.drawText(
             unitLabel,
             center.x,
             windowTop + windowH * 0.90f,
-            unitPaint
+            cachedPaint
         )
     }
 }

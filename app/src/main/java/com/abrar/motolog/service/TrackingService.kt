@@ -107,6 +107,7 @@ class TrackingService : Service() {
     private var speedAlertThresholdKmh = TrackingConstants.SPEED_ALERT_DEFAULT_THRESHOLD_KMH
     private var speedAlertStyle = SpeedAlertStyle.ALL
     private var activeTrackingMode = TrackingMode.HIGH_ACCURACY
+    private var toneGenerator: ToneGenerator? = null
 
     companion object {
         const val ACTION_START = "com.abrar.motolog.action.START"
@@ -707,8 +708,10 @@ class TrackingService : Service() {
 
         if (style == SpeedAlertStyle.ALL) {
             try {
-                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
-                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 180)
+                if (toneGenerator == null) {
+                    toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
+                }
+                toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP2, 180)
             } catch (_: Exception) {}
         }
     }
@@ -747,6 +750,10 @@ class TrackingService : Service() {
         barometerJob?.cancel()
         barometerSource.stopListening()
         locationSource.stopLocationUpdates()
+        try {
+            toneGenerator?.release()
+            toneGenerator = null
+        } catch (_: Exception) {}
         serviceScope.cancel()
     }
 }

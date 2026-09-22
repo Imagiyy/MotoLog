@@ -49,16 +49,21 @@ fun RetroJewelLamp(
     size: Dp = 32.dp,
     shouldBlink: Boolean = false
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "jewel_blink")
-    val blinkAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (shouldBlink && isActive) 0.15f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "jewel_alpha"
-    )
+    val blinkAlpha = if (shouldBlink && isActive) {
+        val infiniteTransition = rememberInfiniteTransition(label = "jewel_blink")
+        val alpha by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.15f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 500),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "jewel_alpha"
+        )
+        alpha
+    } else {
+        1f
+    }
 
     Column(
         modifier = modifier,

@@ -22,16 +22,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +98,11 @@ fun CafeRacerCockpitDashboard(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     modifier: Modifier = Modifier,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
+    keepScreenOn: Boolean = false,
+    onToggleKeepScreenOn: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.CAFE_RACER)
 ) {
     var showOverallStats by remember { mutableStateOf(false) }
@@ -127,23 +136,30 @@ fun CafeRacerCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Cafe Racer Cockpit
-            Row(
+            // Immersive Full-Screen Landscape Chronometer with Slide-Down Numerical Drawer
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left Column: Smiths Analog Chronometer Gauge + Roller Drum
+                // Centered Hero Chronometer & Roller Drum
                 Column(
-                    modifier = Modifier
-                        .weight(1.15f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    val dialSize = (screenHeight * 0.72f).coerceAtMost(screenWidth * 0.45f)
+                    val dialSize = (screenHeight * 0.78f).coerceAtMost(screenWidth * 0.52f)
                     CafeSmithsChronometerDial(
                         currentSpeed = displaySpeed,
                         isMetric = isMetric,
@@ -151,7 +167,7 @@ fun CafeRacerCockpitDashboard(
                         modifier = Modifier.size(dialSize)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     RetroOdometerDrum(
                         distanceValue = displayDistance,
@@ -160,14 +176,217 @@ fun CafeRacerCockpitDashboard(
                     )
                 }
 
-                // Right Column: Ace Cafe Instrument Cluster + Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1.25f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = CafeBrass,
+                    backgroundColor = CafeSurface,
+                    borderColor = CafeBritishGreen,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = CafeSurface.copy(alpha = 0.96f),
+                    borderColor = CafeBrass,
+                    accentColor = CafeIvory,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Top Plaque & Map Button
+                    // Numerical Telemetry Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RetroInstrumentCard(
+                            label = if (showOverallStats) "Elapsed Time" else "Moving Time",
+                            value = timeDisplay,
+                            subtitle = if (showOverallStats) "Overall" else "Moving",
+                            palette = palette,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
+
+                        RetroInstrumentCard(
+                            label = if (showOverallStats) "Overall Avg" else "Moving Avg",
+                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = if (showOverallStats) "Overall" else "Moving",
+                            palette = palette,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
+
+                        RetroInstrumentCard(
+                            label = "Peak Speed",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "Ace Top Mark",
+                            palette = palette,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RetroInstrumentCard(
+                            label = "GPS Fix",
+                            value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            subtitle = if (isGpsLost) "Signal Lost" else "Satellite Fix",
+                            palette = palette,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(52.dp)
+                            ) {
+                                Text(
+                                    text = "IGNITION // START RIDE",
+                                    color = CafeIvory,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Serif,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "CAFE RACER",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = onSwitchToMap,
+                                shape = RoundedCornerShape(8.dp),
+                                color = CafeSurface,
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Map,
+                                        contentDescription = "Pocket Map",
+                                        tint = CafeBrass,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "MAP",
+                                        color = CafeIvory,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Serif
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                onClick = {
+                                    if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.5.dp,
+                                    if (pauseState.isPaused) CafeBrass else CafeBilletInner
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null,
+                                        tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (pauseState.isPaused) "RESUME" else "PAUSE",
+                                        color = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Serif
+                                    )
+                                }
+                            }
+
+                            ThemedHoldToStopButton(
+                                onStopConfirmed = onStopConfirmed,
+                                label = "MAGNETO CUT",
+                                progressLabel = "CUTTING",
+                                borderColor = CafeBrass,
+                                gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
+                                progressFillColor = CafeCrimson.copy(alpha = 0.6f),
+                                textColor = CafeIvory,
+                                cornerRadius = 8.dp,
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .height(52.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // Portrait Cafe Racer Cockpit Layout
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Top Plaque & Map Button, or ThemedIdleTopBar
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "CAFE RACER // STANDBY"
+                    )
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -201,163 +420,6 @@ fun CafeRacerCockpitDashboard(
                                     fontFamily = FontFamily.Serif
                                 )
                             }
-                        }
-                    }
-
-                    // Pilot Warning Lamps Bar
-                    CafePilotLampBar(
-                        isGpsLost = isGpsLost,
-                        pauseState = pauseState,
-                        isSpeedAlert = isSpeedAlert,
-                        accuracyMeters = accuracyMeters,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 2x2 Instrument Cards
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        RetroInstrumentCard(
-                            label = if (showOverallStats) "Elapsed Time" else "Moving Time",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "Overall (tap)" else "Moving (tap)",
-                            palette = palette,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
-                        )
-
-                        RetroInstrumentCard(
-                            label = if (showOverallStats) "Overall Avg" else "Moving Avg",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = if (showOverallStats) "Overall (tap)" else "Moving (tap)",
-                            palette = palette,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        RetroInstrumentCard(
-                            label = "Peak Speed",
-                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = "Ace Top Mark",
-                            palette = palette,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        RetroInstrumentCard(
-                            label = "GPS Fix",
-                            value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                            subtitle = if (isGpsLost) "Signal Lost" else "Satellite Fix",
-                            palette = palette,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Cafe Racer Controls Row (56dp min)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = {
-                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) CafeBrass else CafeBilletInner
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
-                                    color = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Serif
-                                )
-                            }
-                        }
-
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "MAGNETO CUT",
-                            progressLabel = "CUTTING",
-                            borderColor = CafeBrass,
-                            gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
-                            progressFillColor = CafeCrimson.copy(alpha = 0.6f),
-                            textColor = CafeIvory,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
-                    }
-                }
-            }
-        } else {
-            // Portrait Cafe Racer Cockpit Layout
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Top Plaque & Map Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CafePlaque(bikeName = bikeName ?: "TON-UP SPECIAL")
-
-                    Surface(
-                        onClick = onSwitchToMap,
-                        shape = RoundedCornerShape(8.dp),
-                        color = CafeSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = "Pocket Map",
-                                tint = CafeBrass,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "ROAD MAP",
-                                color = CafeIvory,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif
-                            )
                         }
                     }
                 }
@@ -438,57 +500,78 @@ fun CafeRacerCockpitDashboard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Bottom Controls Row (56dp min buttons)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        onClick = {
-                            if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                        },
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
                         shape = RoundedCornerShape(8.dp),
-                        color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            if (pauseState.isPaused) CafeBrass else CafeBilletInner
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
                         modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 56.dp)
+                            .fillMaxWidth()
+                            .height(60.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = null,
-                                tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
-                                color = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif
-                            )
-                        }
+                        Text(
+                            text = "IGNITION // START RIDE",
+                            color = CafeIvory,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Serif,
+                            letterSpacing = 2.sp
+                        )
                     }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) CafeBrass else CafeBilletInner
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 56.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
+                                    color = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Serif
+                                )
+                            }
+                        }
 
-                    ThemedHoldToStopButton(
-                        onStopConfirmed = onStopConfirmed,
-                        label = "MAGNETO CUT",
-                        progressLabel = "CUTTING",
-                        borderColor = CafeBrass,
-                        gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
-                        progressFillColor = CafeCrimson.copy(alpha = 0.6f),
-                        textColor = CafeIvory,
-                        cornerRadius = 8.dp,
-                        modifier = Modifier.weight(1.3f)
-                    )
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "MAGNETO CUT",
+                            progressLabel = "CUTTING",
+                            borderColor = CafeBrass,
+                            gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
+                            progressFillColor = CafeCrimson.copy(alpha = 0.6f),
+                            textColor = CafeIvory,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier.weight(1.3f)
+                        )
+                    }
                 }
             }
         }

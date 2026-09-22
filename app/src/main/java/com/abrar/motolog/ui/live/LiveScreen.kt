@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
 import com.abrar.motolog.domain.model.PauseState
+import com.abrar.motolog.domain.model.RideStats
 import com.abrar.motolog.ui.live.retro.JewelColor
 import com.abrar.motolog.ui.live.retro.RetroCockpitDashboard
 import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
@@ -343,15 +344,124 @@ fun LiveScreen(
         }
 
         is LiveUiState.Idle, is LiveUiState.RecoveryPrompt -> {
-            RetroIdleCockpitView(
-                useMetricUnits = useMetricUnits,
-                keepScreenOn = keepScreenOn,
-                onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                onNavigateToSettings = onNavigateToSettings,
-                onStartClick = { initiateStart() },
-                palette = palette,
-                modifier = modifier.fillMaxSize()
-            )
+            val emptyStats = RideStats()
+            when (themeMode) {
+                ThemeMode.TRACK_DAY -> {
+                    TrackDayCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.NEON_CYBER -> {
+                    NeonCyberCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.DESERT_RALLY -> {
+                    DesertRallyCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.CAFE_RACER -> {
+                    CafeRacerCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                else -> {
+                    RetroCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+            }
         }
 
         is LiveUiState.Stopped -> {

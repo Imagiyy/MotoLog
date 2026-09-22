@@ -23,6 +23,10 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     // Release Signing Configuration
@@ -136,6 +140,7 @@ dependencies {
 
     // Map
     implementation(libs.maplibre.compose.material3)
+    runtimeOnly(libs.maplibre.native.ffi.runtime.opengl)
 
     // Testing
     testImplementation(libs.junit)

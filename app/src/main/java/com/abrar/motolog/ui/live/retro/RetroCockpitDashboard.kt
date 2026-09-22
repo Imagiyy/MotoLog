@@ -55,6 +55,11 @@ import com.abrar.motolog.ui.theme.ThemeMode
 import com.abrar.motolog.ui.theme.getCockpitThemePalette
 import java.util.Locale
 
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.input.pointer.pointerInput
+
 /**
  * Responsive Retro Biker Cockpit Dashboard.
  * Automatically adapts layout to screen size and orientation (Portrait and Landscape handlebar mounts).
@@ -75,6 +80,11 @@ fun RetroCockpitDashboard(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     modifier: Modifier = Modifier,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
+    keepScreenOn: Boolean = false,
+    onToggleKeepScreenOn: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
 ) {
     var showOverallStats by remember { mutableStateOf(false) }
@@ -112,23 +122,30 @@ fun RetroCockpitDashboard(
         val isLandscape = screenMaxWidth > screenMaxHeight
 
         if (isLandscape) {
-            // Landscape Handlebar Mount Layout
-            Row(
+            // Fullscreen Landscape Speedometer with Slide-Down Numerical Telemetry Drawer
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left Column: Big Analog Speedometer Dial + Odometer Drum
+                // Centered Hero Speedometer Dial & Mechanical Odometer
                 Column(
-                    modifier = Modifier
-                        .weight(1.1f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    val dialSize = (screenMaxHeight * 0.72f).coerceAtMost(screenMaxWidth * 0.45f)
+                    val dialSize = (screenMaxHeight * 0.78f).coerceAtMost(screenMaxWidth * 0.55f)
                     RetroSpeedometerDial(
                         currentSpeed = displaySpeed,
                         isMetric = isMetric,
@@ -137,7 +154,7 @@ fun RetroCockpitDashboard(
                         modifier = Modifier.size(dialSize)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     RetroOdometerDrum(
                         distanceValue = displayDistance,
@@ -146,23 +163,26 @@ fun RetroCockpitDashboard(
                     )
                 }
 
-                // Right Column: Instrument Cluster + Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1.3f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Top Bar: Bike Plaque + Jewels + Map Switcher
-                    DashboardTopBar(
-                        bikeName = bikeName,
-                        pauseState = pauseState,
-                        isGpsLost = isGpsLost,
-                        onSwitchToMap = onSwitchToMap,
-                        palette = palette
-                    )
+                // Subtle Top Pull Tab Indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = palette.primaryAccent,
+                    backgroundColor = palette.surface,
+                    borderColor = RetroBrass,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
 
-                    // 2x2 Grid of Gauges
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = palette.surface.copy(alpha = 0.96f),
+                    borderColor = RetroBrass,
+                    accentColor = palette.primaryAccent,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                ) {
+                    // Numerical Telemetry Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -170,7 +190,7 @@ fun RetroCockpitDashboard(
                         RetroInstrumentCard(
                             label = if (showOverallStats) "Elapsed Time" else "Moving Time",
                             value = timeDisplay,
-                            subtitle = if (showOverallStats) "Overall (tap to swap)" else "Moving (tap to swap)",
+                            subtitle = if (showOverallStats) "Overall" else "Moving",
                             palette = palette,
                             modifier = Modifier.weight(1f),
                             onClick = { showOverallStats = !showOverallStats }
@@ -180,17 +200,12 @@ fun RetroCockpitDashboard(
                             label = if (showOverallStats) "Overall Avg" else "Moving Avg",
                             value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
                             unit = speedUnit,
-                            subtitle = if (showOverallStats) "Overall (tap to swap)" else "Moving (tap to swap)",
+                            subtitle = if (showOverallStats) "Overall" else "Moving",
                             palette = palette,
                             modifier = Modifier.weight(1f),
                             onClick = { showOverallStats = !showOverallStats }
                         )
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
                         RetroInstrumentCard(
                             label = "Max Speed",
                             value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
@@ -203,21 +218,98 @@ fun RetroCockpitDashboard(
                         val accText = if (isMetric) "±${accuracyMeters.toInt()}m" else "±${(accuracyMeters * 3.28084).toInt()}ft"
                         RetroInstrumentCard(
                             label = "GPS Fix",
-                            value = accText,
+                            value = if (isGpsLost) "--" else accText,
                             subtitle = if (isGpsLost) "Signal Lost" else "Target ≤25m",
                             palette = palette,
                             modifier = Modifier.weight(1f)
                         )
                     }
 
-                    // Glove-friendly Bottom Control Row (56dp min)
-                    CockpitControlsRow(
-                        isPaused = pauseState.isPaused,
-                        onPauseClick = onPauseClick,
-                        onResumeClick = onResumeClick,
-                        onStopConfirmed = onStopConfirmed,
-                        palette = palette
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RetroBrass),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(52.dp)
+                            ) {
+                                Text(
+                                    text = "START RIDE",
+                                    color = palette.background,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "RETRO CLASSIC",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = onSwitchToMap,
+                                shape = RoundedCornerShape(8.dp),
+                                color = palette.surface,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, RetroBrass),
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Map,
+                                        contentDescription = "Map",
+                                        tint = palette.primaryAccent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "MAP",
+                                        color = palette.dialText,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            CockpitControlsRow(
+                                isPaused = pauseState.isPaused,
+                                onPauseClick = onPauseClick,
+                                onResumeClick = onResumeClick,
+                                onStopConfirmed = onStopConfirmed,
+                                palette = palette
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -230,14 +322,24 @@ fun RetroCockpitDashboard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 1. Top Bar: Bike Plaque + Jewels + Map Switcher
-                DashboardTopBar(
-                    bikeName = bikeName,
-                    pauseState = pauseState,
-                    isGpsLost = isGpsLost,
-                    onSwitchToMap = onSwitchToMap,
-                    palette = palette
-                )
+                // 1. Top Bar: Bike Plaque + Jewels + Map Switcher, or ThemedIdleTopBar
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "RETRO CLASSIC // STANDBY"
+                    )
+                } else {
+                    DashboardTopBar(
+                        bikeName = bikeName,
+                        pauseState = pauseState,
+                        isGpsLost = isGpsLost,
+                        onSwitchToMap = onSwitchToMap,
+                        palette = palette
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -314,14 +416,34 @@ fun RetroCockpitDashboard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 5. Glove-friendly 56dp+ Bottom Controls
-                CockpitControlsRow(
-                    isPaused = pauseState.isPaused,
-                    onPauseClick = onPauseClick,
-                    onResumeClick = onResumeClick,
-                    onStopConfirmed = onStopConfirmed,
-                    palette = palette
-                )
+                // 5. Bottom Controls: Start button if idle, or Pause/Resume/Stop if riding
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RetroBrass),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                    ) {
+                        Text(
+                            text = "START RIDE",
+                            color = palette.background,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+                } else {
+                    CockpitControlsRow(
+                        isPaused = pauseState.isPaused,
+                        onPauseClick = onPauseClick,
+                        onResumeClick = onResumeClick,
+                        onStopConfirmed = onStopConfirmed,
+                        palette = palette
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
             }

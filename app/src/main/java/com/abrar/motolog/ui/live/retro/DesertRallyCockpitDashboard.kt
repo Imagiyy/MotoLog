@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +53,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -62,21 +69,24 @@ import com.abrar.motolog.ui.theme.ThemeMode
 import com.abrar.motolog.ui.theme.getCockpitThemePalette
 import java.util.Locale
 
-// Desert Rally Dakar Palette Constants
+// Desert Rally Palette Constants
 private val RallyBg = Color(0xFF141210)
-private val RallyTowerDark = Color(0xFF1B1916)
-private val RallyCardBg = Color(0xFF23201C)
+private val RallySurface = Color(0xFF1C1916)
+private val RallyCardBg = Color(0xFF26211C)
 private val RallyDakarOrange = Color(0xFFFF6600)
-private val RallySandGold = Color(0xFFD4A373)
+private val RallySandGold = Color(0xFFE5A65E)
 private val RallyHighVisYellow = Color(0xFFFFD600)
-private val RallyWhite = Color(0xFFFFFFFF)
-private val RallyTextMuted = Color(0xFFA0988E)
+private val RallyCompassCyan = Color(0xFF00E5FF)
+private val RallyWhite = Color(0xFFF7F5F0)
+private val RallyMuted = Color(0xFF8C8275)
+private val RallyTowerDark = Color(0xFF1B1916)
 private val RallyBorder = Color(0xFF38332C)
+private val RallyTextMuted = Color(0xFFA0988E)
 
 /**
- * Dakar Rally Raid Navigation Tower Dashboard.
- * Inspired by professional rally race navigation towers (KTM 450 Rally / Dakar ICO Tripmaster).
- * Features dual-stack navigation (Upper: Roadbook Trip Ticker & CAP Heading, Lower: Glare-proof Speedometer),
+ * Desert Rally Navigation Tower & Roadbook Cockpit Dashboard.
+ * Inspired by Dakar Rally roadbook towers (KTM 450 Rally, Yamaha WR450F Rally).
+ * Features a dual-trip master, electronic CAP compass heading ribbon, waypoint counters,
  * high-contrast desert sun glare protection, and heavy-duty rally controls.
  */
 @Composable
@@ -94,6 +104,11 @@ fun DesertRallyCockpitDashboard(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     modifier: Modifier = Modifier,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
+    keepScreenOn: Boolean = false,
+    onToggleKeepScreenOn: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.DESERT_RALLY)
 ) {
     var showOverallStats by remember { mutableStateOf(false) }
@@ -127,65 +142,263 @@ fun DesertRallyCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Dakar Rally Cockpit
-            Row(
+            // Immersive Full-Screen Landscape Navigation Tower with Slide-Down Numerical Drawer
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left Column: Dakar Navigation Tower Stack
+                // Fullscreen Navigation Tower (No bottom clutter)
                 Column(
-                    modifier = Modifier
-                        .weight(1.15f)
-                        .fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Upper Stack: Roadbook Trip Master & CAP
                     RallyRoadbookTripMaster(
                         distance = displayDistance,
                         distanceUnit = distanceUnit,
                         accuracyMeters = accuracyMeters,
                         isGpsLost = isGpsLost,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
                     )
 
-                    // Lower Stack: Glare-proof Speedometer
                     RallySpeedDisplay(
                         speed = displaySpeed,
                         unit = speedUnit,
                         isSpeedAlert = isSpeedAlert,
                         modifier = Modifier
-                            .weight(1f)
                             .fillMaxWidth()
-                    )
-
-                    // Rally Header Status
-                    RallyStatusBar(
-                        bikeName = bikeName,
-                        pauseState = pauseState,
-                        isGpsLost = isGpsLost,
-                        waypointCount = stats.acceptedPointCount,
-                        modifier = Modifier.fillMaxWidth()
+                            .weight(1f)
                     )
                 }
 
-                // Right Column: Stage Telemetry Cards + Heavy Rally Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1.05f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = RallyDakarOrange,
+                    backgroundColor = RallyCardBg,
+                    borderColor = RallySandGold,
+                    label = "ROADBOOK TELEMETRY",
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = RallyCardBg.copy(alpha = 0.96f),
+                    borderColor = RallyDakarOrange,
+                    accentColor = RallySandGold,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Top Bar: Stage ID + Roadbook Map Button
+                    // Numerical Telemetry Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RallyTelemetryCard(
+                            label = if (showOverallStats) "STAGE ELAPSED" else "SPECIAL STAGE TIME",
+                            value = timeDisplay,
+                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            accentColor = RallySandGold,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
+
+                        RallyTelemetryCard(
+                            label = if (showOverallStats) "TOTAL AVG PACE" else "MOVING AVG PACE",
+                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            accentColor = RallyHighVisYellow,
+                            modifier = Modifier.weight(1f),
+                            onClick = { showOverallStats = !showOverallStats }
+                        )
+
+                        RallyTelemetryCard(
+                            label = "STAGE TOP VELOCITY",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "MAX RECORD",
+                            accentColor = RallyDakarOrange,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RallyTelemetryCard(
+                            label = "SAT-LOCK ACCURACY",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            subtitle = if (isGpsLost) "SIGNAL LOST" else "GPS SYNC",
+                            accentColor = if (isGpsLost) RallyDakarOrange else RallyCompassCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(52.dp)
+                            ) {
+                                Text(
+                                    text = "DEPART STAGE // START",
+                                    color = RallyWhite,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "DAKAR RALLY",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = onSwitchToMap,
+                                shape = RoundedCornerShape(6.dp),
+                                color = RallyCardBg,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, RallyDakarOrange),
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Map,
+                                        contentDescription = "Roadbook Map",
+                                        tint = RallyDakarOrange,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "MAP",
+                                        color = RallyWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                onClick = {
+                                    if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null,
+                                        tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (pauseState.isPaused) "RESUME" else "BIVOUAC",
+                                        color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            ThemedHoldToStopButton(
+                                onStopConfirmed = onStopConfirmed,
+                                label = "STAGE FINISH",
+                                progressLabel = "FINISHING",
+                                borderColor = RallyDakarOrange,
+                                gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
+                                progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
+                                textColor = RallyWhite,
+                                cornerRadius = 6.dp,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // Portrait Dakar Rally Cockpit Layout
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "DAKAR // STANDBY"
+                    )
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RallyTag(text = "DAKAR RALLY RAID // SPECIAL STAGE")
+                        RallyTag(text = "DAKAR RALLY // ${bikeName?.uppercase(Locale.US) ?: "KTM 450 RALLY"}")
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -215,60 +428,109 @@ fun DesertRallyCockpitDashboard(
                             }
                         }
                     }
+                }
 
-                    // 2x2 Telemetry Grid
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Upper Navigation Tower: Roadbook Trip Master
+                RallyRoadbookTripMaster(
+                    distance = displayDistance,
+                    distanceUnit = distanceUnit,
+                    accuracyMeters = accuracyMeters,
+                    isGpsLost = isGpsLost,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Lower Navigation Tower: Speedometer
+                RallySpeedDisplay(
+                    speed = displaySpeed,
+                    unit = speedUnit,
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(230.dp)
+                )
+
+                // Rally Status Bar
+                RallyStatusBar(
+                    bikeName = bikeName,
+                    pauseState = pauseState,
+                    isGpsLost = isGpsLost,
+                    waypointCount = stats.acceptedPointCount,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 2x2 Telemetry Cards
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RallyTelemetryCard(
+                        label = if (showOverallStats) "STAGE ELAPSED" else "SPECIAL STAGE TIME",
+                        value = timeDisplay,
+                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        accentColor = RallySandGold,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showOverallStats = !showOverallStats }
+                    )
+
+                    RallyTelemetryCard(
+                        label = if (showOverallStats) "TOTAL AVG PACE" else "MOVING AVG PACE",
+                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        accentColor = RallyHighVisYellow,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showOverallStats = !showOverallStats }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RallyTelemetryCard(
+                        label = "STAGE TOP VELOCITY",
+                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "MAX RECORD",
+                        accentColor = RallyDakarOrange,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    RallyTelemetryCard(
+                        label = "SAT-LOCK ACCURACY",
+                        value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                        subtitle = if (isGpsLost) "SIGNAL LOST" else "GPS SYNC",
+                        accentColor = if (isGpsLost) RallyDakarOrange else RallyCompassCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Bottom Controls Row
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
                     ) {
-                        RallyTelemetryCard(
-                            label = if (showOverallStats) "STAGE TOTAL TIME" else "STAGE MOVING TIME",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
-                            accentColor = RallyHighVisYellow,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
-                        )
-
-                        RallyTelemetryCard(
-                            label = if (showOverallStats) "STAGE OVERALL AVG" else "STAGE MOVING AVG",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
-                            accentColor = RallyDakarOrange,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                        Text(
+                            text = "START RIDE",
+                            color = RallyWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
                         )
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        RallyTelemetryCard(
-                            label = "STAGE V-MAX",
-                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = "PEAK RECORD",
-                            accentColor = RallyWhite,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        RallyTelemetryCard(
-                            label = "STOPPED TIME",
-                            value = CockpitUtils.formatDurationMs(stats.stoppedTimeMs),
-                            subtitle = "BIVOUAC PAUSE",
-                            accentColor = RallySandGold,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Heavy Rally Controls Row (56dp min)
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Pause / Bivouac Toggle
                         Surface(
                             onClick = {
                                 if (pauseState.isPaused) onResumeClick() else onPauseClick()
@@ -305,7 +567,6 @@ fun DesertRallyCockpitDashboard(
                             }
                         }
 
-                        // Dakar Stage Finish Hold-to-Stop (56dp min)
                         ThemedHoldToStopButton(
                             onStopConfirmed = onStopConfirmed,
                             label = "STAGE FINISH",
@@ -318,184 +579,6 @@ fun DesertRallyCockpitDashboard(
                             modifier = Modifier.weight(1.3f)
                         )
                     }
-                }
-            }
-        } else {
-            // Portrait Dakar Rally Cockpit Layout
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header with Rally tag and Map button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RallyTag(text = "DAKAR RALLY // ${bikeName?.uppercase(Locale.US) ?: "KTM 450 RALLY"}")
-
-                    Surface(
-                        onClick = onSwitchToMap,
-                        shape = RoundedCornerShape(6.dp),
-                        color = RallyCardBg,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, RallyDakarOrange),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = "Roadbook Map",
-                                tint = RallyDakarOrange,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "ROADBOOK MAP",
-                                color = RallyWhite,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-
-                // Upper Navigation Tower: Roadbook Trip Master
-                RallyRoadbookTripMaster(
-                    distance = displayDistance,
-                    distanceUnit = distanceUnit,
-                    accuracyMeters = accuracyMeters,
-                    isGpsLost = isGpsLost,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Lower Navigation Tower: Speedometer
-                RallySpeedDisplay(
-                    speed = displaySpeed,
-                    unit = speedUnit,
-                    isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(210.dp)
-                )
-
-                // Rally Status Bar
-                RallyStatusBar(
-                    bikeName = bikeName,
-                    pauseState = pauseState,
-                    isGpsLost = isGpsLost,
-                    waypointCount = stats.acceptedPointCount,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // 2x2 Telemetry Cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RallyTelemetryCard(
-                        label = if (showOverallStats) "STAGE TOTAL TIME" else "STAGE MOVING TIME",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
-                        accentColor = RallyHighVisYellow,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
-                    )
-
-                    RallyTelemetryCard(
-                        label = if (showOverallStats) "STAGE OVERALL AVG" else "STAGE MOVING AVG",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
-                        accentColor = RallyDakarOrange,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RallyTelemetryCard(
-                        label = "STAGE V-MAX",
-                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = "PEAK RECORD",
-                        accentColor = RallyWhite,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    RallyTelemetryCard(
-                        label = "STOPPED TIME",
-                        value = CockpitUtils.formatDurationMs(stats.stoppedTimeMs),
-                        subtitle = "BIVOUAC PAUSE",
-                        accentColor = RallySandGold,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Controls Row (56dp min buttons)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        onClick = {
-                            if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 56.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = null,
-                                tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (pauseState.isPaused) "RESUME STAGE" else "BIVOUAC PAUSE",
-                                color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-
-                    ThemedHoldToStopButton(
-                        onStopConfirmed = onStopConfirmed,
-                        label = "STAGE FINISH",
-                        progressLabel = "FINISHING",
-                        borderColor = RallyDakarOrange,
-                        gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
-                        progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
-                        textColor = RallyWhite,
-                        cornerRadius = 8.dp,
-                        modifier = Modifier.weight(1.3f)
-                    )
                 }
             }
         }

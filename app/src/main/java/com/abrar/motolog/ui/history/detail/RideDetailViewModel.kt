@@ -9,7 +9,6 @@ import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.map.MapLibreMapProvider
 import com.abrar.motolog.data.map.OpenFreeMapStyleProvider
-import com.abrar.motolog.domain.engine.GraphDataPreparer
 import com.abrar.motolog.domain.engine.RouteMapPreparer
 import com.abrar.motolog.domain.engine.SplitCalculator
 import com.abrar.motolog.domain.repository.RideRepository
@@ -131,13 +130,9 @@ class RideDetailViewModel @Inject constructor(
                 val isMetric = settingsRepository?.useMetricUnits?.firstOrNull() ?: true
                 val splitDistanceMeters = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
 
-                Triple(
+                Pair(
                     SplitCalculator.computeSplits(points, splitDistanceMeters = splitDistanceMeters),
-                    RouteMapPreparer.prepare(entities),
-                    Pair(
-                        GraphDataPreparer.prepareSpeedGraph(entities, ride?.startTime ?: 0L),
-                        GraphDataPreparer.prepareElevationGraph(entities, ride?.startTime ?: 0L)
-                    )
+                    RouteMapPreparer.prepare(entities)
                 )
             }
 
@@ -147,8 +142,8 @@ class RideDetailViewModel @Inject constructor(
                     isVisualsLoading = false,
                     splits = visuals.first,
                     routeMap = visuals.second,
-                    speedGraph = visuals.third.first,
-                    elevationGraph = visuals.third.second
+                    speedGraph = null,
+                    elevationGraph = null
                 )
             }
         }

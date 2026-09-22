@@ -24,19 +24,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import com.abrar.motolog.data.map.MapSupport
+import com.abrar.motolog.domain.map.MapStyleProvider
+import com.abrar.motolog.domain.model.RouteMapData
+import kotlinx.coroutines.CancellationException
 import org.maplibre.compose.camera.CameraAnimation
+import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.layers.CircleLayer
 import org.maplibre.compose.layers.LineLayer
-import org.maplibre.compose.map.MaplibreMap
+import org.maplibre.compose.map.AndroidRenderMode
 import org.maplibre.compose.map.MapEvent
+import org.maplibre.compose.map.MapUiOptions
+import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.rememberMapState
+import org.maplibre.compose.map.renderMode
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.spatialk.geojson.BoundingBox
-import com.abrar.motolog.domain.map.MapStyleProvider
-import com.abrar.motolog.domain.model.RouteMapData
+import org.maplibre.spatialk.geojson.Position
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -46,41 +53,116 @@ fun RouteMap(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var mapUnavailable by remember { mutableStateOf(false) }
-    val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme)
-    val mapState = rememberMapState(baseStyle = BaseStyle.Uri(styleUrl)) {
-        route.segments.forEachIndexed { index, segment ->
-            val source = rememberGeoJsonSource(GeoJsonData.JsonString(segmentJson(segment.points)))
-            LineLayer(
-                id = "route-$index",
-                source = source,
-                color = const(bucketColors[index.coerceIn(0, 4)]),
-                width = const(4.dp)
+    val isNativeSupported = remember { MapSupport.isNativeSupported }
+    if (!isNativeSupported) {
+        Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) {
+                Text(
+                    text = "Map rendering unavailable on this architecture",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            RouteMapOverlay(
+                minSpeedKmh = route.minSpeedKmh,
+                maxSpeedKmh = route.maxSpeedKmh,
+                attribution = mapStyleProvider.getAttribution(),
+                mapUnavailable = true
             )
         }
-        route.start?.let {
-            val source = rememberGeoJsonSource(GeoJsonData.JsonString(pointJson(it.latitude, it.longitude)))
-            CircleLayer(id = "route-start", source = source, color = const(Color(0xFF39D98A)), radius = const(7.dp))
+        return
+    }
+
+    var mapUnavailable by remember { mutableStateOf(false) }
+    val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme)
+
+    val firstPoint = route.start ?: route.segments.firstOrNull()?.points?.firstOrNull()
+    val initialCameraPosition = remember(firstPoint) {
+        if (firstPoint != null) {
+            CameraPosition(
+                bearing = 0.0,
+                target = Position(firstPoint.longitude, firstPoint.latitude),
+                tilt = 0.0,
+                zoom = 13.0
+            )
+        } else {
+            CameraPosition()
         }
-        route.end?.let {
-            val source = rememberGeoJsonSource(GeoJsonData.JsonString(pointJson(it.latitude, it.longitude)))
-            CircleLayer(id = "route-end", source = source, color = const(Color(0xFFFF6B6B)), radius = const(7.dp))
+    }
+
+    val bucketGeoJsons = remember(route) {
+        (0..4).map { b ->
+            val segs = route.segments.filter { it.speedBucket == b }.map { it.points }
+            bucketMultiLineJson(segs)
         }
+    }
+    val startGeoJson = remember(route.start) {
+        route.start?.let { pointJson(it.latitude, it.longitude) } ?: EMPTY_GEOJSON
+    }
+    val endGeoJson = remember(route.end) {
+        route.end?.let { pointJson(it.latitude, it.longitude) } ?: EMPTY_GEOJSON
+    }
+
+    val mapState = rememberMapState(
+        baseStyle = BaseStyle.Uri(styleUrl),
+        initialCameraPosition = initialCameraPosition
+    ) {
+        val s0 = rememberGeoJsonSource(GeoJsonData.JsonString(bucketGeoJsons[0]))
+        LineLayer(id = "route-b0", source = s0, color = const(bucketColors[0]), width = const(4.dp))
+
+        val s1 = rememberGeoJsonSource(GeoJsonData.JsonString(bucketGeoJsons[1]))
+        LineLayer(id = "route-b1", source = s1, color = const(bucketColors[1]), width = const(4.dp))
+
+        val s2 = rememberGeoJsonSource(GeoJsonData.JsonString(bucketGeoJsons[2]))
+        LineLayer(id = "route-b2", source = s2, color = const(bucketColors[2]), width = const(4.dp))
+
+        val s3 = rememberGeoJsonSource(GeoJsonData.JsonString(bucketGeoJsons[3]))
+        LineLayer(id = "route-b3", source = s3, color = const(bucketColors[3]), width = const(4.dp))
+
+        val s4 = rememberGeoJsonSource(GeoJsonData.JsonString(bucketGeoJsons[4]))
+        LineLayer(id = "route-b4", source = s4, color = const(bucketColors[4]), width = const(4.dp))
+
+        val sStart = rememberGeoJsonSource(GeoJsonData.JsonString(startGeoJson))
+        CircleLayer(id = "route-start", source = sStart, color = const(Color(0xFF39D98A)), radius = const(7.dp))
+
+        val sEnd = rememberGeoJsonSource(GeoJsonData.JsonString(endGeoJson))
+        CircleLayer(id = "route-end", source = sEnd, color = const(Color(0xFFFF6B6B)), radius = const(7.dp))
     }
 
     LaunchedEffect(route) {
         val points = route.segments.flatMap { it.points }
         if (points.isNotEmpty()) {
-            mapState.animateCameraToBounds(
-                boundingBox = BoundingBox(
-                    points.minOf { it.longitude },
-                    points.minOf { it.latitude },
-                    points.maxOf { it.longitude },
-                    points.maxOf { it.latitude }
-                ),
-                padding = PaddingValues(48.dp),
-                animation = CameraAnimation.Ease(duration = 700.milliseconds)
-            )
+            try {
+                val minLon = points.minOf { it.longitude }
+                val minLat = points.minOf { it.latitude }
+                val maxLon = points.maxOf { it.longitude }
+                val maxLat = points.maxOf { it.latitude }
+                val delta = 0.002
+                val adjMinLon = if (minLon == maxLon) minLon - delta else minLon
+                val adjMaxLon = if (minLon == maxLon) maxLon + delta else maxLon
+                val adjMinLat = if (minLat == maxLat) minLat - delta else minLat
+                val adjMaxLat = if (minLat == maxLat) maxLat + delta else maxLat
+
+                mapState.animateCameraToBounds(
+                    boundingBox = BoundingBox(
+                        west = adjMinLon,
+                        south = adjMinLat,
+                        east = adjMaxLon,
+                        north = adjMaxLat
+                    ),
+                    padding = PaddingValues(48.dp),
+                    animation = CameraAnimation.Ease(duration = 700.milliseconds)
+                )
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                // Non-fatal exception if viewport is still measuring
+            }
         }
     }
 
@@ -94,8 +176,18 @@ fun RouteMap(
         }
     }
 
+    val uiOptions = remember {
+        MapUiOptions {
+            renderMode = AndroidRenderMode.Texture
+        }
+    }
+
     Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
-        MaplibreMap(state = mapState, modifier = Modifier.fillMaxSize())
+        MaplibreMap(
+            state = mapState,
+            uiOptions = uiOptions,
+            modifier = Modifier.fillMaxSize()
+        )
         RouteMapOverlay(
             minSpeedKmh = route.minSpeedKmh,
             maxSpeedKmh = route.maxSpeedKmh,
@@ -176,8 +268,17 @@ private val bucketColors = listOf(
     Color(0xFFFF5C5C)
 )
 
-private fun segmentJson(points: List<com.abrar.motolog.domain.model.RouteMapPoint>): String =
-    "{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"type\":\"LineString\",\"coordinates\":[${points.joinToString { "[${it.longitude},${it.latitude}]" }}]}}"
+private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+
+private fun bucketMultiLineJson(segments: List<List<com.abrar.motolog.domain.model.RouteMapPoint>>): String {
+    if (segments.isEmpty()) return EMPTY_GEOJSON
+    val validSegments = segments.filter { it.size >= 2 }
+    if (validSegments.isEmpty()) return EMPTY_GEOJSON
+    val coords = validSegments.joinToString(",") { pts ->
+        "[" + pts.joinToString(",") { "[${it.longitude},${it.latitude}]" } + "]"
+    }
+    return "{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"type\":\"MultiLineString\",\"coordinates\":[$coords]}}"
+}
 
 private fun pointJson(latitude: Double, longitude: Double): String =
     "{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"type\":\"Point\",\"coordinates\":[${longitude},${latitude}]}}"
