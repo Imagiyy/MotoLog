@@ -95,6 +95,12 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.DARK)
 
+    val voiceAnnouncementsEnabled: StateFlow<Boolean> = settingsRepository.voiceAnnouncementsEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
+    val thermalEcoMode: StateFlow<Boolean> = settingsRepository.thermalEcoMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
     val activeBikes: StateFlow<List<BikeEntity>> = bikeDao.getActiveBikes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
 
@@ -151,6 +157,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
+    fun setVoiceAnnouncementsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setVoiceAnnouncementsEnabled(enabled) }
+    }
+
+    fun setThermalEcoMode(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setThermalEcoMode(enabled) }
     }
 
     // ============================================================

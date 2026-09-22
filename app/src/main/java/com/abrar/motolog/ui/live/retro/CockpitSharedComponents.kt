@@ -37,6 +37,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.Brush
+import com.abrar.motolog.ui.theme.JewelGreen
+import com.abrar.motolog.ui.theme.JewelRed
+import com.abrar.motolog.ui.theme.ThemeMode
+import com.abrar.motolog.ui.theme.getCockpitThemePalette
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import com.abrar.motolog.ui.theme.CockpitThemePalette
 
@@ -221,5 +228,76 @@ fun ThemedIdleTopBar(
                 )
             }
         }
+    }
+}
+
+/**
+ * Unified active controls row for motorcycle dashboards.
+ * Features a glove-friendly Pause/Resume toggle button and a 2-second Hold-to-Stop button.
+ */
+@Composable
+fun ThemedCockpitControlsRow(
+    isPaused: Boolean,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    palette: CockpitThemePalette,
+    modifier: Modifier = Modifier,
+    pauseLabel: String = "PAUSE",
+    resumeLabel: String = "RESUME",
+    stopLabel: String = "HOLD TO STOP",
+    cornerRadius: Dp = 8.dp
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(58.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Pause / Resume Button (56dp min height)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(
+                    if (isPaused) {
+                        Brush.verticalGradient(listOf(JewelGreen, Color(0xFF184E25)))
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(
+                                palette.secondaryAccent.copy(alpha = 0.7f),
+                                palette.surface
+                            )
+                        )
+                    }
+                )
+                .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(cornerRadius))
+                .clickable {
+                    if (isPaused) onResumeClick() else onPauseClick()
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (isPaused) resumeLabel else pauseLabel,
+                color = palette.dialText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
+            )
+        }
+
+        // Hold-to-Stop Button (56dp min height, 2-second hold gesture)
+        ThemedHoldToStopButton(
+            onStopConfirmed = onStopConfirmed,
+            label = stopLabel,
+            borderColor = palette.primaryAccent.copy(alpha = 0.8f),
+            cornerRadius = cornerRadius,
+            modifier = Modifier
+                .weight(1.2f)
+                .fillMaxHeight()
+        )
     }
 }

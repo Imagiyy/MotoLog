@@ -23,7 +23,10 @@ import kotlinx.serialization.Serializable
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("rideId")]
+    indices = [
+        Index("rideId"),
+        Index(value = ["rideId", "timestamp"])
+    ]
 )
 data class RidePointEntity(
     @PrimaryKey(autoGenerate = true)

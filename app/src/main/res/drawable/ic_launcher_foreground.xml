@@ -1,13 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- 270° Tachometer / Speedometer Outer Track Arc -->
+    <!-- Arc starting at bottom-left (34, 74) curving up through (54, 26) to bottom-right (74, 74) -->
     <path
-        android:fillColor="#FFB703"
-        android:pathData="M54,30 C40.7,30 30,40.7 30,54 C30,67.3 40.7,78 54,78 C67.3,78 78,67.3 78,54 C78,40.7 67.3,30 54,30 Z M54,72 C44.1,72 36,63.9 36,54 C36,44.1 44.1,36 54,36 C63.9,36 72,44.1 72,54 C72,63.9 63.9,72 54,72 Z" />
+        android:pathData="M34,74 A28,28 0 1,1 74,74"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#242B38" />
+
+    <!-- Active Velocity Neon Cyan Arc -->
     <path
-        android:fillColor="#00E5FF"
-        android:pathData="M54,42 L58,54 L54,58 L50,54 Z" />
+        android:pathData="M34,74 A28,28 0 0,1 66,28"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#00E5FF" />
+
+    <!-- Redline Sector (Top Right) -->
+    <path
+        android:pathData="M66,28 A28,28 0 0,1 74,44"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#FF3B30" />
+
+    <!-- Precision Calibration Major Ticks -->
+    <!-- Tick 0 (bottom-left) -->
+    <path
+        android:pathData="M36,72 L40,68"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeColor="#00E5FF" />
+
+    <!-- Tick Mid-left -->
+    <path
+        android:pathData="M27,54 L33,54"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeColor="#00E5FF" />
+
+    <!-- Tick Top -->
+    <path
+        android:pathData="M54,27 L54,33"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeColor="#00E5FF" />
+
+    <!-- Tick Redline (Top right) -->
+    <path
+        android:pathData="M73,35 L68,39"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeColor="#FF3B30" />
+
+    <!-- Dynamic Tachometer Needle Angled at High Speed (from center (54,54) towards (70, 32)) -->
+    <path
+        android:pathData="M52,55 L71,33 L55,52 Z"
+        android:strokeWidth="1"
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="54"
+                android:endX="71"
+                android:endY="33"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFA000" />
+                <item android:offset="1.0" android:color="#FFD54F" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Needle Counterweight Tip -->
+    <path
+        android:pathData="M54,54 L44,64"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeColor="#FF8F00" />
+
+    <!-- Center Pivot Hub Outer Cap -->
+    <path
+        android:pathData="M54,49 A5,5 0 1,0 54,59 A5,5 0 1,0 54,49 Z"
+        android:fillColor="#1E232A"
+        android:strokeWidth="1.5"
+        android:strokeColor="#4A5568" />
+
+    <!-- Center Jewel Pin Dot -->
+    <path
+        android:pathData="M54,52.5 A1.5,1.5 0 1,0 54,55.5 A1.5,1.5 0 1,0 54,52.5 Z"
+        android:fillColor="#00E5FF" />
+
+    <!-- Speed Ticker Chevron Accent at Bottom -->
+    <path
+        android:pathData="M49,81 L54,84 L59,81"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeColor="#00E5FF" />
 </vector>

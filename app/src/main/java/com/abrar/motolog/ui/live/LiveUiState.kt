@@ -1,21 +1,25 @@
 package com.abrar.motolog.ui.live
 
+import androidx.compose.runtime.Immutable
 import com.abrar.motolog.domain.model.PauseState
 import com.abrar.motolog.domain.model.RideStats
 
 /**
  * UI State for the Live tracking screen.
  */
+@Immutable
 sealed interface LiveUiState {
     /**
      * Initial state before tracking has started.
      */
+    @Immutable
     data object Idle : LiveUiState
 
     /**
      * Start was pressed and location updates are active, but waiting for
      * a usable GPS fix (accuracy <= 25 m per TrackingConstants.MIN_GPS_ACCURACY_METERS).
      */
+    @Immutable
     data class WaitingForGps(
         val currentAccuracyMeters: Float? = null
     ) : LiveUiState
@@ -24,6 +28,7 @@ sealed interface LiveUiState {
      * Active tracking with a usable GPS fix.
      * Displays live speed in km/h and accumulated ride statistics.
      */
+    @Immutable
     data class Tracking(
         val speedKmh: Double,
         val accuracyMeters: Float,
@@ -67,6 +72,7 @@ sealed interface LiveUiState {
     /**
      * Unfinished ride from crash/force-kill detected on app startup.
      */
+    @Immutable
     data class RecoveryPrompt(
         val activeRide: com.abrar.motolog.data.local.entity.RideEntity
     ) : LiveUiState
@@ -75,6 +81,7 @@ sealed interface LiveUiState {
      * Tracking stopped after confirming 2-second Hold-to-Stop.
      * Location updates are completely ceased.
      */
+    @Immutable
     data class Stopped(
         val stats: RideStats = RideStats()
     ) : LiveUiState

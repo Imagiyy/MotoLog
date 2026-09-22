@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -108,6 +109,8 @@ fun SettingsScreen(
     val autoPauseEnabled by viewModel.autoPauseEnabled.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val voiceAnnouncementsEnabled by viewModel.voiceAnnouncementsEnabled.collectAsStateWithLifecycle()
+    val thermalEcoMode by viewModel.thermalEcoMode.collectAsStateWithLifecycle()
     val activeBikes by viewModel.activeBikes.collectAsStateWithLifecycle()
 
     val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
@@ -542,6 +545,51 @@ fun SettingsScreen(
                 }
             }
 
+            // Helmet Voice Announcements Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Helmet Voice Announcements",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Speaks speed warnings, auto-pause/resume, and ride milestones over Bluetooth intercoms (Sena, Cardo).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = voiceAnnouncementsEnabled,
+                        onCheckedChange = { viewModel.setVoiceAnnouncementsEnabled(it) }
+                    )
+                }
+            }
+
             // ============================================================
             // 4. DISPLAY & THEME
             // ============================================================
@@ -588,6 +636,51 @@ fun SettingsScreen(
                     Switch(
                         checked = keepScreenOn,
                         onCheckedChange = { viewModel.setKeepScreenOn(it) }
+                    )
+                }
+            }
+
+            // Thermal & Battery Saver Mode Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BatteryChargingFull,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Thermal & Battery Saver Mode",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Minimizes GPU redraws and optimizes battery cooling for phones mounted in direct handlebar sunlight.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = thermalEcoMode,
+                        onCheckedChange = { viewModel.setThermalEcoMode(it) }
                     )
                 }
             }

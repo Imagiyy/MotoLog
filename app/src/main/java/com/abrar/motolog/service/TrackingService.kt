@@ -70,6 +70,7 @@ class TrackingService : Service() {
     @Inject lateinit var clock: Clock
     @Inject lateinit var maintenanceNotificationManager: MaintenanceNotificationManager
     @Inject lateinit var barometerSource: BarometerSource
+    @Inject lateinit var voiceAnnouncer: HelmetVoiceAnnouncer
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -170,6 +171,11 @@ class TrackingService : Service() {
             launch {
                 settingsRepository.speedAlertStyle.collect { style ->
                     speedAlertStyle = style
+                }
+            }
+            launch {
+                settingsRepository.voiceAnnouncementsEnabled.collect { enabled ->
+                    voiceAnnouncer.setEnabled(enabled)
                 }
             }
         }
@@ -308,6 +314,9 @@ class TrackingService : Service() {
                     pointChannel.trySend(pointEntity)
 
                     val currentStats = rideCalculator.stats
+                    if (currentStats.acceptedPointCount == 1) {
+                        voiceAnnouncer.announceRideStarted()
+                    }
                     val isSpeedExceeded = speedAlertEnabled && speedKmh >= speedAlertThresholdKmh
 
                     trackingRepository.updateState(
@@ -424,6 +433,7 @@ class TrackingService : Service() {
     private fun handlePause() {
         if (!isTracking.get()) return
         val pauseState = rideCalculator.manualPause()
+        voiceAnnouncer.announcePaused()
 
         val stats = rideCalculator.stats
         trackingRepository.updateState(
@@ -452,6 +462,7 @@ class TrackingService : Service() {
     private fun handleResume() {
         if (!isTracking.get()) return
         val pauseState = rideCalculator.manualResume(clock.currentTimeMillis())
+        voiceAnnouncer.announceResumed()
 
         val stats = rideCalculator.stats
         trackingRepository.updateState(
@@ -547,6 +558,12 @@ class TrackingService : Service() {
             } catch (e: Exception) {
                 // Non-critical, ignore
             }
+
+            voiceAnnouncer.announceRideCompleted(
+                distanceKm = finalStats.totalDistanceMeters / 1000.0,
+                avgSpeedKmh = finalStats.avgMovingSpeedKmh,
+                isMetric = isMetricUnits
+            )
 
             // 7. Tear down foreground service and dismiss notification
             withContext(Dispatchers.Main) {
@@ -707,6 +724,7 @@ class TrackingService : Service() {
         }
 
         if (style == SpeedAlertStyle.ALL) {
+            voiceAnnouncer.announceSpeedWarning()
             try {
                 if (toneGenerator == null) {
                     toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
@@ -750,6 +768,7 @@ class TrackingService : Service() {
         barometerJob?.cancel()
         barometerSource.stopListening()
         locationSource.stopLocationUpdates()
+        voiceAnnouncer.shutdown()
         try {
             toneGenerator?.release()
             toneGenerator = null

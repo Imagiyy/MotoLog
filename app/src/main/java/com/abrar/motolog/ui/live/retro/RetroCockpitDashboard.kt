@@ -301,7 +301,7 @@ fun RetroCockpitDashboard(
                                 }
                             }
 
-                            CockpitControlsRow(
+                            ThemedCockpitControlsRow(
                                 isPaused = pauseState.isPaused,
                                 onPauseClick = onPauseClick,
                                 onResumeClick = onResumeClick,
@@ -436,7 +436,7 @@ fun RetroCockpitDashboard(
                         )
                     }
                 } else {
-                    CockpitControlsRow(
+                    ThemedCockpitControlsRow(
                         isPaused = pauseState.isPaused,
                         onPauseClick = onPauseClick,
                         onResumeClick = onResumeClick,
@@ -556,65 +556,6 @@ private fun VintageBikePlaque(
             fontFamily = FontFamily.Monospace,
             letterSpacing = 1.2.sp,
             maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun CockpitControlsRow(
-    isPaused: Boolean,
-    onPauseClick: () -> Unit,
-    onResumeClick: () -> Unit,
-    onStopConfirmed: () -> Unit,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(58.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Pause / Resume Button (56dp min height)
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    if (isPaused) {
-                        Brush.verticalGradient(listOf(JewelGreen, Color(0xFF184E25)))
-                    } else {
-                        Brush.verticalGradient(
-                            listOf(
-                                palette.secondaryAccent.copy(alpha = 0.7f),
-                                palette.surface
-                            )
-                        )
-                    }
-                )
-                .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(8.dp))
-                .clickable {
-                    if (isPaused) onResumeClick() else onPauseClick()
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (isPaused) "RESUME" else "PAUSE",
-                color = palette.dialText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                letterSpacing = 1.sp
-            )
-        }
-
-        // Hold-to-Stop Button (56dp min height, 2-second hold gesture)
-        RetroHoldToStopButton(
-            onStopConfirmed = onStopConfirmed,
-            modifier = Modifier
-                .weight(1.2f)
-                .fillMaxHeight()
         )
     }
 }

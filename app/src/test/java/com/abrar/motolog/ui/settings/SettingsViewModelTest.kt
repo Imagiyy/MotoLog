@@ -174,6 +174,23 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun setVoiceAnnouncementsAndThermalEcoMode_updatesValues() = runTest(testDispatcher) {
+        viewModel.voiceAnnouncementsEnabled.launchIn(backgroundScope)
+        viewModel.thermalEcoMode.launchIn(backgroundScope)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.voiceAnnouncementsEnabled.value)
+        assertFalse(viewModel.thermalEcoMode.value)
+
+        viewModel.setVoiceAnnouncementsEnabled(true)
+        viewModel.setThermalEcoMode(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.voiceAnnouncementsEnabled.value)
+        assertTrue(viewModel.thermalEcoMode.value)
+    }
+
+    @Test
     fun activeBikes_emitsFromDao() = runTest(testDispatcher) {
         val bike1 = BikeEntity(id = 1L, name = "Honda Rebel 500")
         fakeBikeDao.insert(bike1)

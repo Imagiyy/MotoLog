@@ -196,4 +196,36 @@ class DatabaseMigrationTest {
         assertFalse("isImported should default to false", defaultRide.isImported)
         assertFalse("countsTowardOdometer should default to false", defaultRide.countsTowardOdometer)
     }
+
+    @Test
+    fun `migration from version 4 to 5 creates composite index on ride_points`() {
+        val executedSql = mutableListOf<String>()
+
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL") {
+                val sql = args[0] as String
+                executedSql.add(sql)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_4_5.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(4, MotoLogDatabase.MIGRATION_4_5.startVersion)
+        assertEquals(5, MotoLogDatabase.MIGRATION_4_5.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Creates composite index
+        assertTrue(
+            "Must create composite index on ride_points(rideId, timestamp)",
+            executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_ride_points_rideId_timestamp` ON `ride_points` (`rideId`, `timestamp`)") }
+        )
+    }
 }

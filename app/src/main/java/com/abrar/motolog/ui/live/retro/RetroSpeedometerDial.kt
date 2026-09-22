@@ -6,8 +6,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -87,32 +89,38 @@ fun RetroSpeedometerDial(
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
-        // Static Gauge Face: Bezel, background face, calibration ticks and numerals
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val outerRadius = size.minDimension / 2f
-            if (outerRadius <= 0f) return@Canvas
+        // Static Gauge Face: Cached bezel, background face, calibration ticks and numerals
+        Spacer(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    onDrawBehind {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val outerRadius = size.minDimension / 2f
+                        if (outerRadius <= 0f) return@onDrawBehind
 
-            // 1. Outer Cast Iron & Chrome Multi-tier Bezel
-            drawOuterBezel(center, outerRadius, palette)
+                        // 1. Outer Cast Iron & Chrome Multi-tier Bezel
+                        drawOuterBezel(center, outerRadius, palette)
 
-            val dialRadius = outerRadius * 0.84f
+                        val dialRadius = outerRadius * 0.84f
 
-            // 2. Dial Face Background & Texture
-            drawDialFace(center, dialRadius, isSpeedAlert, palette)
+                        // 2. Dial Face Background & Texture
+                        drawDialFace(center, dialRadius, isSpeedAlert, palette)
 
-            // 3. Calibration Ticks and Vintage Numerals
-            drawSpeedometerCalibration(
-                center = center,
-                dialRadius = dialRadius,
-                maxSpeed = maxGaugeSpeed,
-                redlineStart = redlineStart,
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                palette = palette,
-                cachedPaint = baseTextPaint
-            )
-        }
+                        // 3. Calibration Ticks and Vintage Numerals
+                        drawSpeedometerCalibration(
+                            center = center,
+                            dialRadius = dialRadius,
+                            maxSpeed = maxGaugeSpeed,
+                            redlineStart = redlineStart,
+                            startAngle = startAngle,
+                            sweepAngle = sweepAngle,
+                            palette = palette,
+                            cachedPaint = baseTextPaint
+                        )
+                    }
+                }
+        )
 
         // Dynamic Needle & Speedometer Readout: Re-renders only when needle/speed changes
         Canvas(modifier = Modifier.fillMaxSize()) {

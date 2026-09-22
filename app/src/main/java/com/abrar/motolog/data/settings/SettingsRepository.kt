@@ -41,6 +41,8 @@ class SettingsRepository @Inject constructor(
         val SPEED_ALERT_ENABLED = booleanPreferencesKey("speed_alert_enabled")
         val SPEED_ALERT_THRESHOLD_KMH = doublePreferencesKey("speed_alert_threshold_kmh")
         val SPEED_ALERT_STYLE = stringPreferencesKey("speed_alert_style")
+        val VOICE_ANNOUNCEMENTS_ENABLED = booleanPreferencesKey("voice_announcements_enabled")
+        val THERMAL_ECO_MODE = booleanPreferencesKey("thermal_eco_mode")
         val DISCLAIMER_ACCEPTED = booleanPreferencesKey("disclaimer_accepted")
         val BATTERY_GUIDANCE_SEEN = booleanPreferencesKey("battery_guidance_seen")
         val CURRENT_BIKE_ID = longPreferencesKey("current_bike_id")
@@ -192,6 +194,30 @@ class SettingsRepository @Inject constructor(
     suspend fun setSpeedAlertStyle(style: SpeedAlertStyle) {
         dataStore.edit { prefs ->
             prefs[Keys.SPEED_ALERT_STYLE] = style.name
+        }
+    }
+
+    // ============================================================
+    // Voice Announcements & Thermal Eco Mode
+    // ============================================================
+
+    val voiceAnnouncementsEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.VOICE_ANNOUNCEMENTS_ENABLED] ?: false
+    }
+
+    suspend fun setVoiceAnnouncementsEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.VOICE_ANNOUNCEMENTS_ENABLED] = enabled
+        }
+    }
+
+    val thermalEcoMode: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.THERMAL_ECO_MODE] ?: false
+    }
+
+    suspend fun setThermalEcoMode(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.THERMAL_ECO_MODE] = enabled
         }
     }
 

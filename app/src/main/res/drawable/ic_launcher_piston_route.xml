@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Option B: Piston & Route Silhouette -->
+    <!-- Stylized Piston Crown -->
+    <path
+        android:pathData="M38,36 L70,36 L70,48 L38,48 Z"
+        android:fillColor="#E0E6ED" />
+    <!-- Compression Rings -->
+    <path
+        android:pathData="M36,40 L72,40 M36,44 L72,44"
+        android:strokeWidth="1.2"
+        android:strokeColor="#1F2937" />
+    <!-- Piston Skirt -->
+    <path
+        android:pathData="M40,48 L40,66 L46,66 L46,58 L62,58 L62,66 L68,66 L68,48 Z"
+        android:fillColor="#CBD5E1" />
+    <!-- Winding GPS Route Ribbon Cutting Across -->
+    <path
+        android:pathData="M26,78 C38,78 40,62 54,62 C68,62 70,46 82,46"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#FFB703" />
+</vector>
