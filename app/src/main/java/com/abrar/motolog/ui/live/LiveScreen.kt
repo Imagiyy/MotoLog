@@ -132,11 +132,24 @@ fun LiveScreen(
     val isSystemDark = isSystemInDarkTheme()
     val palette = remember(themeMode, isSystemDark) { getCockpitThemePalette(themeMode, isSystemDark) }
 
-    // Keep screen on during active tracking if setting is enabled
-    val isTrackingActive = uiState is LiveUiState.WaitingForGps || uiState is LiveUiState.Tracking
+    val haptic = LocalHapticFeedback.current
+    val handleStart: () -> Unit = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        viewModel.startTracking()
+    }
+    val handlePause: () -> Unit = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        viewModel.pauseTracking()
+    }
+    val handleResume: () -> Unit = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        viewModel.resumeTracking()
+    }
+
+    // Keep screen on while viewing cockpit or tracking if setting is enabled
     val view = LocalView.current
-    DisposableEffect(keepScreenOn, isTrackingActive) {
-        view.keepScreenOn = keepScreenOn && isTrackingActive
+    DisposableEffect(keepScreenOn) {
+        view.keepScreenOn = keepScreenOn
         onDispose {
             view.keepScreenOn = false
         }
@@ -161,7 +174,7 @@ fun LiveScreen(
 
         when {
             fineGranted && notifGranted -> {
-                viewModel.startTracking()
+                handleStart()
             }
             coarseGranted && fineGranted.not() -> {
                 showApproximatePermissionDialog = true
@@ -203,7 +216,7 @@ fun LiveScreen(
             if (!batteryGuidanceSeen) {
                 showBatteryGuidanceDialog = true
             } else {
-                viewModel.startTracking()
+                handleStart()
             }
         } else {
             showPermissionRationaleDialog = true
@@ -227,8 +240,8 @@ fun LiveScreen(
                     isGpsLost = state.isGpsLost,
                     isSpeedAlert = state.isSpeedAlert,
                     mapStyleProvider = viewModel.mapStyleProvider,
-                    onPauseClick = { viewModel.pauseTracking() },
-                    onResumeClick = { viewModel.resumeTracking() },
+                    onPauseClick = handlePause,
+                    onResumeClick = handleResume,
                     onStopProgressChange = { viewModel.stopTracking() },
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
                     palette = palette,
@@ -246,8 +259,8 @@ fun LiveScreen(
                             isGpsLost = state.isGpsLost,
                             isSpeedAlert = state.isSpeedAlert,
                             bikeName = state.bikeName,
-                            onPauseClick = { viewModel.pauseTracking() },
-                            onResumeClick = { viewModel.resumeTracking() },
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
                             onStopConfirmed = { viewModel.stopTracking() },
                             onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                             palette = palette,
@@ -264,8 +277,8 @@ fun LiveScreen(
                             isGpsLost = state.isGpsLost,
                             isSpeedAlert = state.isSpeedAlert,
                             bikeName = state.bikeName,
-                            onPauseClick = { viewModel.pauseTracking() },
-                            onResumeClick = { viewModel.resumeTracking() },
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
                             onStopConfirmed = { viewModel.stopTracking() },
                             onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                             palette = palette,
@@ -282,8 +295,8 @@ fun LiveScreen(
                             isGpsLost = state.isGpsLost,
                             isSpeedAlert = state.isSpeedAlert,
                             bikeName = state.bikeName,
-                            onPauseClick = { viewModel.pauseTracking() },
-                            onResumeClick = { viewModel.resumeTracking() },
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
                             onStopConfirmed = { viewModel.stopTracking() },
                             onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                             palette = palette,
@@ -300,8 +313,8 @@ fun LiveScreen(
                             isGpsLost = state.isGpsLost,
                             isSpeedAlert = state.isSpeedAlert,
                             bikeName = state.bikeName,
-                            onPauseClick = { viewModel.pauseTracking() },
-                            onResumeClick = { viewModel.resumeTracking() },
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
                             onStopConfirmed = { viewModel.stopTracking() },
                             onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                             palette = palette,
@@ -318,8 +331,8 @@ fun LiveScreen(
                             isGpsLost = state.isGpsLost,
                             isSpeedAlert = state.isSpeedAlert,
                             bikeName = state.bikeName,
-                            onPauseClick = { viewModel.pauseTracking() },
-                            onResumeClick = { viewModel.resumeTracking() },
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
                             onStopConfirmed = { viewModel.stopTracking() },
                             onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                             palette = palette,
