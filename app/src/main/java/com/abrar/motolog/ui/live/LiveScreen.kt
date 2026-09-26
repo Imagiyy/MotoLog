@@ -224,6 +224,7 @@ fun LiveScreen(
     }
 
     val useMetricUnits by viewModel.useMetricUnits.collectAsStateWithLifecycle()
+    val defaultMapTheme by viewModel.defaultMapTheme.collectAsStateWithLifecycle()
     var currentViewMode by remember { mutableStateOf(LiveViewMode.COCKPIT) }
 
     when (val state = uiState) {
@@ -244,6 +245,7 @@ fun LiveScreen(
                     onResumeClick = handleResume,
                     onStopProgressChange = { viewModel.stopTracking() },
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
+                    defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     modifier = modifier.fillMaxSize()
                 )

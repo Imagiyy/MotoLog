@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PauseCircleOutline
 import androidx.compose.material.icons.filled.ScreenLockPortrait
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
+import com.abrar.motolog.domain.model.MapThemePreference
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -109,6 +111,7 @@ fun SettingsScreen(
     val autoPauseEnabled by viewModel.autoPauseEnabled.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val defaultMapTheme by viewModel.defaultMapTheme.collectAsStateWithLifecycle()
     val voiceAnnouncementsEnabled by viewModel.voiceAnnouncementsEnabled.collectAsStateWithLifecycle()
     val thermalEcoMode by viewModel.thermalEcoMode.collectAsStateWithLifecycle()
     val activeBikes by viewModel.activeBikes.collectAsStateWithLifecycle()
@@ -748,6 +751,70 @@ fun SettingsScreen(
                                         ThemeMode.LIGHT -> "Ultra-high contrast parchment for blinding sunlight"
                                         ThemeMode.SYSTEM -> "Follows your Android system display setting"
                                     },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ============================================================
+            // Default Map Background
+            // ============================================================
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Map,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Default Map Background",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Choose default map background for live tracking & history",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    MapThemePreference.entries.forEach { pref ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setDefaultMapTheme(pref) }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMapTheme == pref,
+                                onClick = { viewModel.setDefaultMapTheme(pref) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = when (pref) {
+                                        MapThemePreference.DARK -> "Dark Background (Night & AMOLED)"
+                                        MapThemePreference.LIGHT -> "White Background (High Daylight Contrast)"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (defaultMapTheme == pref) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    text = pref.description,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

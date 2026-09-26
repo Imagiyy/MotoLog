@@ -1,11 +1,16 @@
 package com.abrar.motolog.ui.live.retro
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +25,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,7 +43,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +77,7 @@ import com.abrar.motolog.ui.theme.RetroSurface
 import com.abrar.motolog.ui.theme.ThemeMode
 import com.abrar.motolog.ui.theme.getCockpitThemePalette
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraAnimation
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.expressions.dsl.const
@@ -99,6 +115,7 @@ fun RetroLiveMap(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
+    defaultMapTheme: com.abrar.motolog.domain.model.MapThemePreference = com.abrar.motolog.domain.model.MapThemePreference.DARK,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
 ) {
@@ -124,6 +141,11 @@ fun RetroLiveMap(
 
     var mapUnavailable by remember { mutableStateOf(false) }
     var followRider by remember { mutableStateOf(true) }
+    var isDarkMap by rememberSaveable(defaultMapTheme) {
+        mutableStateOf(defaultMapTheme == com.abrar.motolog.domain.model.MapThemePreference.DARK)
+    }
+    var isHudMinimized by rememberSaveable { mutableStateOf(false) }
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val initialCameraPosition = remember {
         if (latitude != null && longitude != null) {
@@ -143,7 +165,7 @@ fun RetroLiveMap(
         }
     }
 
-    val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme = !palette.isLight)
+    val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme = isDarkMap)
     val mapState = rememberMapState(
         baseStyle = BaseStyle.Uri(styleUrl),
         initialCameraPosition = initialCameraPosition
@@ -188,16 +210,17 @@ fun RetroLiveMap(
         )
     }
 
-    // Auto-center camera onto rider when following
+    // Auto-center camera onto rider ONLY when followRider is true
     LaunchedEffect(latitude, longitude, followRider) {
         if (followRider && latitude != null && longitude != null) {
             try {
+                val currentZoom = if (mapState.cameraPosition.zoom > 1.0) mapState.cameraPosition.zoom else 16.0
                 mapState.animateCameraPosition(
                     CameraPosition(
-                        bearing = 0.0,
+                        bearing = mapState.cameraPosition.bearing,
                         target = Position(longitude, latitude),
-                        tilt = 0.0,
-                        zoom = 16.0
+                        tilt = mapState.cameraPosition.tilt,
+                        zoom = currentZoom
                     ),
                     CameraAnimation.Ease(duration = 500.milliseconds)
                 )
@@ -218,7 +241,10 @@ fun RetroLiveMap(
                     mapUnavailable = false
                 }
                 is MapEvent.CameraMoveStarted -> {
-                    // If user manually drags/pans the map, pause auto-follow
+                    // When user manually drags, zooms, or gestures the map, disable auto-lock
+                    if (event.animated != true) {
+                        followRider = false
+                    }
                 }
                 else -> {}
             }
@@ -231,7 +257,19 @@ fun RetroLiveMap(
         }
     }
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.changes.size > 1 || event.changes.any { it.positionChanged() }) {
+                        followRider = false
+                    }
+                } while (event.changes.any { it.pressed })
+            }
+        }
+    ) {
         // Base MapLibre map rendered via TextureView
         MaplibreMap(
             state = mapState,
@@ -277,28 +315,72 @@ fun RetroLiveMap(
                 }
             }
 
-            // Recenter / Follow GPS Button
-            Surface(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .border(
-                        1.5.dp,
-                        if (followRider) palette.primaryAccent else palette.surfaceBorder.copy(alpha = 0.6f),
-                        CircleShape
-                    )
-                    .clickable {
-                        followRider = true
-                    },
-                color = palette.surface.copy(alpha = 0.92f)
+            // Top Right Action Buttons: Theme Toggle & Recenter
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.GpsFixed,
-                        contentDescription = "Recenter on Me",
-                        tint = if (followRider) palette.primaryAccent else palette.dialText.copy(alpha = 0.7f),
-                        modifier = Modifier.size(22.dp)
-                    )
+                // Map Light / Dark Theme Mode Button
+                Surface(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .border(
+                            1.5.dp,
+                            palette.surfaceBorder.copy(alpha = 0.8f),
+                            CircleShape
+                        )
+                        .clickable { isDarkMap = !isDarkMap },
+                    color = palette.surface.copy(alpha = 0.92f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isDarkMap) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isDarkMap) "Switch to Light Map" else "Switch to Dark Map",
+                            tint = palette.primaryAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Recenter / Follow GPS Button
+                Surface(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .border(
+                            1.5.dp,
+                            if (followRider) palette.primaryAccent else palette.surfaceBorder.copy(alpha = 0.6f),
+                            CircleShape
+                        )
+                        .clickable {
+                            followRider = true
+                            if (latitude != null && longitude != null) {
+                                coroutineScope.launch {
+                                    try {
+                                        mapState.animateCameraPosition(
+                                            CameraPosition(
+                                                bearing = 0.0,
+                                                target = Position(longitude, latitude),
+                                                tilt = 0.0,
+                                                zoom = 16.0
+                                            ),
+                                            CameraAnimation.Ease(duration = 500.milliseconds)
+                                        )
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        },
+                    color = palette.surface.copy(alpha = 0.92f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.GpsFixed,
+                            contentDescription = "Recenter on Me",
+                            tint = if (followRider) palette.primaryAccent else palette.dialText.copy(alpha = 0.7f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
@@ -311,25 +393,86 @@ fun RetroLiveMap(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Attribution link
-            MapAttributionBadge(
-                attribution = mapStyleProvider.getAttribution(),
-                mapUnavailable = mapUnavailable
-            )
+            // Attribution link & Minimize/Maximize HUD Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MapAttributionBadge(
+                    attribution = mapStyleProvider.getAttribution(),
+                    mapUnavailable = mapUnavailable
+                )
 
-            // Mini Cockpit Cluster
-            RetroMiniCockpitCluster(
-                stats = stats,
-                speedKmh = speedKmh,
-                isMetric = isMetric,
-                pauseState = pauseState,
-                isGpsLost = isGpsLost,
-                isSpeedAlert = isSpeedAlert,
-                onPauseClick = onPauseClick,
-                onResumeClick = onResumeClick,
-                onStopProgressChange = onStopProgressChange,
-                palette = palette
-            )
+                // Minimize / Maximize HUD Toggle Button
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(1.2.dp, palette.surfaceBorder.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                        .clickable { isHudMinimized = !isHudMinimized },
+                    color = palette.surface.copy(alpha = 0.92f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isHudMinimized) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isHudMinimized) "Maximize HUD" else "Minimize HUD",
+                            tint = palette.primaryAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = if (isHudMinimized) "EXPAND HUD" else "MINIMIZE HUD",
+                            color = palette.dialText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+            }
+
+            // Full Mini Cockpit Cluster
+            AnimatedVisibility(
+                visible = !isHudMinimized,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                RetroMiniCockpitCluster(
+                    stats = stats,
+                    speedKmh = speedKmh,
+                    isMetric = isMetric,
+                    pauseState = pauseState,
+                    isGpsLost = isGpsLost,
+                    isSpeedAlert = isSpeedAlert,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onStopProgressChange = onStopProgressChange,
+                    palette = palette
+                )
+            }
+
+            // Compact Minimized HUD Pill
+            AnimatedVisibility(
+                visible = isHudMinimized,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                RetroCompactMinimizedHudPill(
+                    speedKmh = speedKmh,
+                    isMetric = isMetric,
+                    pauseState = pauseState,
+                    isGpsLost = isGpsLost,
+                    isSpeedAlert = isSpeedAlert,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onStopProgressChange = onStopProgressChange,
+                    palette = palette
+                )
+            }
         }
     }
 }
@@ -739,6 +882,115 @@ private fun formatDurationMs(ms: Long): String {
         String.format(java.util.Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
     } else {
         String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+    }
+}
+
+@Composable
+private fun RetroCompactMinimizedHudPill(
+    speedKmh: Double,
+    isMetric: Boolean,
+    pauseState: PauseState,
+    isGpsLost: Boolean,
+    isSpeedAlert: Boolean,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopProgressChange: (Float) -> Unit,
+    palette: CockpitThemePalette,
+    modifier: Modifier = Modifier
+) {
+    val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
+    val speedUnit = if (isMetric) "KM/H" else "MPH"
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.85f), RoundedCornerShape(12.dp)),
+        color = palette.surface.copy(alpha = 0.95f),
+        tonalElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Left: Status Jewel Lamp & Speed
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RetroJewelLamp(
+                    label = if (isGpsLost) "GPS" else if (pauseState.isPaused) "PAUSE" else "REC",
+                    isActive = true,
+                    color = if (isGpsLost) JewelColor.RED else if (pauseState.isPaused) JewelColor.AMBER else JewelColor.GREEN,
+                    size = 18.dp,
+                    shouldBlink = pauseState.isPaused || isGpsLost
+                )
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = String.format(java.util.Locale.US, "%.0f", displaySpeed),
+                        color = if (isSpeedAlert) palette.needle else palette.dialText,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = speedUnit,
+                        color = palette.secondaryAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+            }
+
+            // Right: Pause/Resume + Hold to Stop
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    onClick = {
+                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (pauseState.isPaused) JewelAmber.copy(alpha = 0.2f) else palette.surfaceBorder.copy(alpha = 0.4f),
+                    border = BorderStroke(1.dp, if (pauseState.isPaused) JewelAmber else palette.primaryAccent)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = null,
+                            tint = if (pauseState.isPaused) JewelAmber else palette.primaryAccent,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = if (pauseState.isPaused) "RESUME" else "PAUSE",
+                            color = if (pauseState.isPaused) JewelAmber else palette.dialText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                RetroHoldToStopButton(
+                    onStopConfirmed = { onStopProgressChange(1f) },
+                    modifier = Modifier
+                        .width(110.dp)
+                        .height(36.dp)
+                )
+            }
+        }
     }
 }
 

@@ -46,6 +46,7 @@ class SettingsRepository @Inject constructor(
         val DISCLAIMER_ACCEPTED = booleanPreferencesKey("disclaimer_accepted")
         val BATTERY_GUIDANCE_SEEN = booleanPreferencesKey("battery_guidance_seen")
         val CURRENT_BIKE_ID = longPreferencesKey("current_bike_id")
+        val DEFAULT_MAP_THEME = stringPreferencesKey("default_map_theme")
     }
 
     // ============================================================
@@ -64,6 +65,21 @@ class SettingsRepository @Inject constructor(
     suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { prefs ->
             prefs[Keys.THEME_MODE] = mode.name
+        }
+    }
+
+    val defaultMapTheme: Flow<com.abrar.motolog.domain.model.MapThemePreference> = dataStore.data.map { prefs ->
+        val raw = prefs[Keys.DEFAULT_MAP_THEME]
+        try {
+            if (raw != null) com.abrar.motolog.domain.model.MapThemePreference.valueOf(raw) else com.abrar.motolog.domain.model.MapThemePreference.DARK
+        } catch (_: Exception) {
+            com.abrar.motolog.domain.model.MapThemePreference.DARK
+        }
+    }
+
+    suspend fun setDefaultMapTheme(pref: com.abrar.motolog.domain.model.MapThemePreference) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DEFAULT_MAP_THEME] = pref.name
         }
     }
 

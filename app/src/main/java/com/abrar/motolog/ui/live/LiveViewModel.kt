@@ -79,6 +79,13 @@ class LiveViewModel @Inject constructor(
             initialValue = true
         )
 
+    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = com.abrar.motolog.domain.model.MapThemePreference.DARK
+        )
+
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(
             scope = viewModelScope,

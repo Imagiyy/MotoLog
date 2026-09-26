@@ -80,6 +80,10 @@ class RideDetailViewModel @Inject constructor(
         ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
         ?: MutableStateFlow(true).asStateFlow()
 
+    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository?.defaultMapTheme
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.domain.model.MapThemePreference.DARK)
+        ?: MutableStateFlow(com.abrar.motolog.domain.model.MapThemePreference.DARK).asStateFlow()
+
     private val rideId: Long = runCatching {
         savedStateHandle.toRoute<RideDetailRoute>().rideId
     }.getOrElse {
@@ -88,6 +92,8 @@ class RideDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(RideDetailUiState())
     val uiState: StateFlow<RideDetailUiState> = _uiState.asStateFlow()
+
+    private var cachedGpsPoints: List<com.abrar.motolog.domain.model.GpsPoint> = emptyList()
 
     init {
         loadRideDetail()
@@ -114,6 +120,7 @@ class RideDetailViewModel @Inject constructor(
 
             val visuals = withContext(defaultDispatcher) {
                 val points = rideRepository.getPointsForRide(rideId)
+                cachedGpsPoints = points
                 val entities = points.map { point ->
                     RidePointEntity(
                         rideId = rideId,
@@ -128,7 +135,8 @@ class RideDetailViewModel @Inject constructor(
                     )
                 }
                 val isMetric = settingsRepository?.useMetricUnits?.firstOrNull() ?: true
-                val splitDistanceMeters = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
+                val baseDistance = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
+                val splitDistanceMeters = baseDistance * _uiState.value.selectedSplitInterval.distanceMultiplier
 
                 Pair(
                     SplitCalculator.computeSplits(points, splitDistanceMeters = splitDistanceMeters),
@@ -146,6 +154,19 @@ class RideDetailViewModel @Inject constructor(
                     elevationGraph = null
                 )
             }
+        }
+    }
+
+    fun setSplitInterval(interval: SplitInterval) {
+        _uiState.update { it.copy(selectedSplitInterval = interval) }
+        val points = cachedGpsPoints
+        if (points.isEmpty()) return
+        viewModelScope.launch(defaultDispatcher) {
+            val isMetric = settingsRepository?.useMetricUnits?.firstOrNull() ?: true
+            val baseDistance = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
+            val splitDistanceMeters = baseDistance * interval.distanceMultiplier
+            val splits = SplitCalculator.computeSplits(points, splitDistanceMeters = splitDistanceMeters)
+            _uiState.update { it.copy(splits = splits) }
         }
     }
 
@@ -276,6 +297,7 @@ class RideDetailViewModel @Inject constructor(
 
     fun shareRideGpx(context: Context) {
         val currentRide = _uiState.value.ride ?: return
+        val appContext = context.applicationContext
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val points = rideRepository.getPointsForRide(currentRide.id)
@@ -293,7 +315,7 @@ class RideDetailViewModel @Inject constructor(
                     )
                 }
 
-                val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+                val exportDir = File(appContext.cacheDir, "exports").apply { mkdirs() }
                 val exportFile = File(exportDir, "ride_${currentRide.id}.gpx")
 
                 FileOutputStream(exportFile).use { stream ->
@@ -301,23 +323,44 @@ class RideDetailViewModel @Inject constructor(
                 }
 
                 val contentUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
+                    appContext,
+                    "${appContext.packageName}.fileprovider",
                     exportFile
                 )
 
+                val rideName = currentRide.name.ifBlank { "Motorcycle Ride" }
+                val totalDistKm = currentRide.distanceMeters / 1000.0
+                val maxSpeedKmh = currentRide.maxSpeedMs * 3.6
+                val shareSummary = "$rideName • %.1f km • Max %.1f km/h".format(
+                    java.util.Locale.US,
+                    totalDistKm,
+                    maxSpeedKmh
+                )
+
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/gpx+xml"
+                    type = "*/*"
                     putExtra(Intent.EXTRA_STREAM, contentUri)
+                    clipData = android.content.ClipData.newRawUri("ride_${currentRide.id}.gpx", contentUri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    putExtra(Intent.EXTRA_SUBJECT, rideName)
+                    putExtra(Intent.EXTRA_TEXT, shareSummary)
                 }
 
                 val chooser = Intent.createChooser(shareIntent, "Share GPX Track").apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                context.startActivity(chooser)
-            } catch (_: Exception) {}
+                withContext(Dispatchers.Main) {
+                    context.startActivity(chooser)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Failed to share GPX: ${e.localizedMessage ?: "Unknown error"}",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
 }

@@ -95,6 +95,9 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.DARK)
 
+    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.domain.model.MapThemePreference.DARK)
+
     val voiceAnnouncementsEnabled: StateFlow<Boolean> = settingsRepository.voiceAnnouncementsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
 
@@ -157,6 +160,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
+    fun setDefaultMapTheme(pref: com.abrar.motolog.domain.model.MapThemePreference) {
+        viewModelScope.launch { settingsRepository.setDefaultMapTheme(pref) }
     }
 
     fun setVoiceAnnouncementsEnabled(enabled: Boolean) {
@@ -224,22 +231,26 @@ class SettingsViewModel @Inject constructor(
                 }
 
                 val contentUri = FileProvider.getUriForFile(
-                    ctx,
-                    "${ctx.packageName}.fileprovider",
+                    ctx.applicationContext,
+                    "${ctx.applicationContext.packageName}.fileprovider",
                     exportFile
                 )
 
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/gpx+xml"
+                    type = "*/*"
                     putExtra(Intent.EXTRA_STREAM, contentUri)
+                    clipData = android.content.ClipData.newRawUri("motolog_all_rides.gpx", contentUri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    putExtra(Intent.EXTRA_SUBJECT, "MotoLog All Rides Export")
+                    putExtra(Intent.EXTRA_TEXT, "Export of all motorcycle rides from MotoLog.")
                 }
 
                 val chooser = Intent.createChooser(shareIntent, "Share GPX Export").apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                ctx.startActivity(chooser)
+                withContext(Dispatchers.Main) {
+                    ctx.startActivity(chooser)
+                }
             } catch (e: Exception) {
                 _messageChannel.send("Share failed: ${e.localizedMessage ?: e.message}")
             }

@@ -133,6 +133,7 @@ class SettingsViewModelTest {
         viewModel.currencySymbol.launchIn(backgroundScope)
         viewModel.autoPauseEnabled.launchIn(backgroundScope)
         viewModel.keepScreenOn.launchIn(backgroundScope)
+        viewModel.defaultMapTheme.launchIn(backgroundScope)
 
         // Toggle units to Imperial
         viewModel.setUseMetricUnits(false)
@@ -168,9 +169,11 @@ class SettingsViewModelTest {
         // Auto pause and keep screen on
         viewModel.setAutoPauseEnabled(false)
         viewModel.setKeepScreenOn(false)
+        viewModel.setDefaultMapTheme(com.abrar.motolog.domain.model.MapThemePreference.LIGHT)
         advanceUntilIdle()
         assertFalse(viewModel.autoPauseEnabled.value)
         assertFalse(viewModel.keepScreenOn.value)
+        assertEquals(com.abrar.motolog.domain.model.MapThemePreference.LIGHT, viewModel.defaultMapTheme.value)
     }
 
     @Test

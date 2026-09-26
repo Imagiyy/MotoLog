@@ -44,6 +44,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +63,13 @@ import androidx.compose.material3.OutlinedButton
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import com.abrar.motolog.domain.engine.UnitConverter
 import com.abrar.motolog.domain.model.RideSplit
 import com.abrar.motolog.domain.model.RouteMapData
@@ -80,6 +90,7 @@ fun RideDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val useMetricUnits by viewModel.useMetricUnits.collectAsStateWithLifecycle()
+    val defaultMapTheme by viewModel.defaultMapTheme.collectAsStateWithLifecycle()
     val ride = uiState.ride
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -175,12 +186,15 @@ fun RideDetailScreen(
                         ride = ride,
                         assignedBike = uiState.assignedBike,
                         splits = uiState.splits,
+                        selectedSplitInterval = uiState.selectedSplitInterval,
+                        onSelectSplitInterval = viewModel::setSplitInterval,
                         routeMap = uiState.routeMap,
                         isVisualsLoading = uiState.isVisualsLoading,
                         mapStyleProvider = viewModel.mapStyleProvider,
                         isSplitsLoading = uiState.isSplitsLoading,
                         showOverallStats = uiState.showOverallStats,
                         useMetricUnits = useMetricUnits,
+                        defaultMapTheme = defaultMapTheme,
                         onToggleStatsMode = viewModel::toggleStatsMode,
                         onChangeBike = viewModel::openChangeBikeDialog
                     )
@@ -214,21 +228,27 @@ private fun RideDetailContent(
     ride: RideEntity,
     assignedBike: BikeEntity?,
     splits: List<RideSplit>,
+    selectedSplitInterval: SplitInterval = SplitInterval.SPLIT_1KM,
+    onSelectSplitInterval: (SplitInterval) -> Unit = {},
     routeMap: RouteMapData?,
     isVisualsLoading: Boolean,
     mapStyleProvider: com.abrar.motolog.domain.map.MapStyleProvider,
     isSplitsLoading: Boolean,
     showOverallStats: Boolean,
     useMetricUnits: Boolean = true,
+    defaultMapTheme: com.abrar.motolog.domain.model.MapThemePreference = com.abrar.motolog.domain.model.MapThemePreference.DARK,
     onToggleStatsMode: () -> Unit,
     onChangeBike: () -> Unit
 ) {
     val stoppedTimeMs = (ride.elapsedTimeMs - ride.movingTimeMs).coerceAtLeast(0L)
+    val isMapDark = defaultMapTheme == com.abrar.motolog.domain.model.MapThemePreference.DARK
+    var isMapTouching by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
+        userScrollEnabled = !isMapTouching,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (isVisualsLoading) {
@@ -239,12 +259,30 @@ private fun RideDetailContent(
             }
         } else if (routeMap != null && routeMap.segments.isNotEmpty()) {
             item {
-                RouteMap(
-                    route = routeMap,
-                    mapStyleProvider = mapStyleProvider,
-                    isDarkTheme = isSystemInDarkTheme(),
-                    modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(14.dp))
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val pressed = event.changes.any { it.pressed }
+                                    if (pressed != isMapTouching) {
+                                        isMapTouching = pressed
+                                    }
+                                }
+                            }
+                        }
+                ) {
+                    RouteMap(
+                        route = routeMap,
+                        mapStyleProvider = mapStyleProvider,
+                        isDarkTheme = isMapDark,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 
@@ -491,7 +529,7 @@ private fun RideDetailContent(
             }
         }
 
-        // Splits Header
+        // Splits Header & Interval Selector
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -500,7 +538,7 @@ private fun RideDetailContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = if (useMetricUnits) "PER-KILOMETRE SPLITS" else "PER-MILE SPLITS",
+                    text = "DISTANCE SPLITS",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -511,6 +549,33 @@ private fun RideDetailContent(
                         text = "${splits.size} ${if (splits.size == 1) "split" else "splits"}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Selectable interval chips: 1 km, 10 km, 100 km (or 1 mi, 10 mi, 100 mi)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SplitInterval.entries.forEach { interval ->
+                    val label = if (useMetricUnits) interval.labelKm else interval.labelMi
+                    val isSelected = interval == selectedSplitInterval
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onSelectSplitInterval(interval) },
+                        label = { Text(label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        } else null
                     )
                 }
             }
@@ -561,7 +626,11 @@ private fun RideDetailContent(
                 }
 
                 items(splits) { split ->
-                    SplitRow(split = split, useMetricUnits = useMetricUnits)
+                    SplitRow(
+                        split = split,
+                        splitInterval = selectedSplitInterval,
+                        useMetricUnits = useMetricUnits
+                    )
                 }
             }
         }
@@ -720,13 +789,21 @@ private fun SplitsTableHeader() {
 @Composable
 private fun SplitRow(
     split: RideSplit,
+    splitInterval: SplitInterval = SplitInterval.SPLIT_1KM,
     useMetricUnits: Boolean = true
 ) {
     val unitSuffix = UnitConverter.distanceUnit(useMetricUnits)
+    val multiplier = splitInterval.distanceMultiplier
     val splitTitle = if (split.isPartial) {
         "Split ${split.splitNumber} (final)"
     } else {
-        "${split.splitNumber} $unitSuffix"
+        if (multiplier == 1) {
+            "${split.splitNumber} $unitSuffix"
+        } else {
+            val startDist = (split.splitNumber - 1) * multiplier
+            val endDist = split.splitNumber * multiplier
+            "$startDist-$endDist $unitSuffix"
+        }
     }
 
     Row(

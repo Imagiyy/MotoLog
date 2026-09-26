@@ -32,3 +32,12 @@ enum class SpeedAlertStyle(val displayName: String) {
     VISUAL_AND_HAPTIC("Visual & Vibration"),
     ALL("Visual, Vibration & Audio Chime")
 }
+
+/**
+ * Default map background theme option.
+ */
+enum class MapThemePreference(val displayName: String, val description: String) {
+    DARK("Dark", "Dark background map style, optimized for night rides and AMOLED displays"),
+    LIGHT("White / Light", "Clean white background map style with high daytime contrast")
+}
+

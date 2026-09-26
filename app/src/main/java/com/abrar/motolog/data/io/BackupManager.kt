@@ -55,6 +55,7 @@ data class BackupSettings(
     val speedAlertThresholdKmh: Double = 100.0,
     val speedAlertStyle: String = "ALL",
     val themeMode: String = "DARK",
+    val defaultMapTheme: String = "DARK",
     val autoPauseEnabled: Boolean = true,
     val keepScreenOn: Boolean = true,
     val currentBikeId: Long? = null
@@ -117,6 +118,7 @@ class BackupManager @Inject constructor(
             speedAlertThresholdKmh = settingsRepository.speedAlertThresholdKmh.first(),
             speedAlertStyle = settingsRepository.speedAlertStyle.first().name,
             themeMode = settingsRepository.themeMode.first().name,
+            defaultMapTheme = settingsRepository.defaultMapTheme.first().name,
             autoPauseEnabled = settingsRepository.autoPauseEnabled.first(),
             keepScreenOn = settingsRepository.keepScreenOn.first(),
             currentBikeId = settingsRepository.currentBikeId.first()
@@ -250,6 +252,7 @@ class BackupManager @Inject constructor(
             settingsRepository.setSpeedAlertThresholdKmh(s.speedAlertThresholdKmh)
             try { settingsRepository.setSpeedAlertStyle(SpeedAlertStyle.valueOf(s.speedAlertStyle)) } catch (_: Exception) {}
             try { settingsRepository.setThemeMode(ThemeMode.valueOf(s.themeMode)) } catch (_: Exception) {}
+            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (_: Exception) {}
             settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
             settingsRepository.setKeepScreenOn(s.keepScreenOn)
             settingsRepository.setCurrentBikeId(s.currentBikeId)

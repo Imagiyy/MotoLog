@@ -42,6 +42,18 @@ import org.maplibre.compose.map.renderMode
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.BoundingBox
 import org.maplibre.spatialk.geojson.Position
 import kotlin.time.Duration.Companion.milliseconds
@@ -50,7 +62,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun RouteMap(
     route: RouteMapData,
     mapStyleProvider: MapStyleProvider,
-    isDarkTheme: Boolean,
+    isDarkTheme: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isNativeSupported = remember { MapSupport.isNativeSupported }
@@ -73,14 +85,21 @@ fun RouteMap(
                 minSpeedKmh = route.minSpeedKmh,
                 maxSpeedKmh = route.maxSpeedKmh,
                 attribution = mapStyleProvider.getAttribution(),
-                mapUnavailable = true
+                mapUnavailable = true,
+                isDarkMap = isDarkTheme,
+                onToggleMapTheme = {},
+                onZoomIn = {},
+                onZoomOut = {},
+                onFitRoute = {}
             )
         }
         return
     }
 
+    var isDarkMap by rememberSaveable(isDarkTheme) { mutableStateOf(isDarkTheme) }
     var mapUnavailable by remember { mutableStateOf(false) }
-    val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme)
+    val styleUrl = mapStyleProvider.getStyleUrl(isDarkMap)
+    val coroutineScope = rememberCoroutineScope()
 
     val firstPoint = route.start ?: route.segments.firstOrNull()?.points?.firstOrNull()
     val initialCameraPosition = remember(firstPoint) {
@@ -192,7 +211,73 @@ fun RouteMap(
             minSpeedKmh = route.minSpeedKmh,
             maxSpeedKmh = route.maxSpeedKmh,
             attribution = mapStyleProvider.getAttribution(),
-            mapUnavailable = mapUnavailable
+            mapUnavailable = mapUnavailable,
+            isDarkMap = isDarkMap,
+            onToggleMapTheme = { isDarkMap = !isDarkMap },
+            onZoomIn = {
+                coroutineScope.launch {
+                    try {
+                        val currentZoom = mapState.cameraPosition.zoom
+                        val nextZoom = (currentZoom + 1.0).coerceAtMost(20.0)
+                        mapState.animateCameraPosition(
+                            CameraPosition(
+                                bearing = mapState.cameraPosition.bearing,
+                                target = mapState.cameraPosition.target,
+                                tilt = mapState.cameraPosition.tilt,
+                                zoom = nextZoom
+                            ),
+                            CameraAnimation.Ease(duration = 250.milliseconds)
+                        )
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                    }
+                }
+            },
+            onZoomOut = {
+                coroutineScope.launch {
+                    try {
+                        val currentZoom = mapState.cameraPosition.zoom
+                        val nextZoom = (currentZoom - 1.0).coerceAtLeast(1.0)
+                        mapState.animateCameraPosition(
+                            CameraPosition(
+                                bearing = mapState.cameraPosition.bearing,
+                                target = mapState.cameraPosition.target,
+                                tilt = mapState.cameraPosition.tilt,
+                                zoom = nextZoom
+                            ),
+                            CameraAnimation.Ease(duration = 250.milliseconds)
+                        )
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                    }
+                }
+            },
+            onFitRoute = {
+                coroutineScope.launch {
+                    try {
+                        val points = route.segments.flatMap { it.points }
+                        if (points.isNotEmpty()) {
+                            val minLon = points.minOf { it.longitude }
+                            val minLat = points.minOf { it.latitude }
+                            val maxLon = points.maxOf { it.longitude }
+                            val maxLat = points.maxOf { it.latitude }
+                            val delta = 0.002
+                            mapState.animateCameraToBounds(
+                                boundingBox = BoundingBox(
+                                    west = if (minLon == maxLon) minLon - delta else minLon,
+                                    south = if (minLat == maxLat) minLat - delta else minLat,
+                                    east = if (minLon == maxLon) maxLon + delta else maxLon,
+                                    north = if (minLat == maxLat) maxLat + delta else maxLat
+                                ),
+                                padding = PaddingValues(48.dp),
+                                animation = CameraAnimation.Ease(duration = 500.milliseconds)
+                            )
+                        }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                    }
+                }
+            }
         )
     }
 }
@@ -202,7 +287,12 @@ private fun RouteMapOverlay(
     minSpeedKmh: Double,
     maxSpeedKmh: Double,
     attribution: String,
-    mapUnavailable: Boolean
+    mapUnavailable: Boolean,
+    isDarkMap: Boolean,
+    onToggleMapTheme: () -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onFitRoute: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
     Column(
@@ -211,6 +301,85 @@ private fun RouteMapOverlay(
             .padding(10.dp),
         horizontalAlignment = Alignment.End
     ) {
+        // Floating Controls Column (Theme toggle, Zoom In, Zoom Out, Fit Route)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(bottom = 6.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                tonalElevation = 3.dp
+            ) {
+                IconButton(
+                    onClick = onToggleMapTheme,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isDarkMap) Icons.Default.LightMode else Icons.Default.DarkMode,
+                        contentDescription = if (isDarkMap) "Switch to Light Map" else "Switch to Dark Map",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                tonalElevation = 3.dp
+            ) {
+                IconButton(
+                    onClick = onZoomIn,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Zoom In",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                tonalElevation = 3.dp
+            ) {
+                IconButton(
+                    onClick = onZoomOut,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Zoom Out",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                tonalElevation = 3.dp
+            ) {
+                IconButton(
+                    onClick = onFitRoute,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CropFree,
+                        contentDescription = "Fit Entire Route",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
             tonalElevation = 3.dp
