@@ -31,7 +31,7 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
         MaintenanceItemEntity::class,
         FuelLogEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -107,6 +107,13 @@ abstract class MotoLogDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Add composite index for fast ride point retrieval and export
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_ride_points_rideId_timestamp` ON `ride_points` (`rideId`, `timestamp`)")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add vehicle registration number column to bikes
+                db.execSQL("ALTER TABLE `bikes` ADD COLUMN `registrationNumber` TEXT NOT NULL DEFAULT ''")
             }
         }
     }

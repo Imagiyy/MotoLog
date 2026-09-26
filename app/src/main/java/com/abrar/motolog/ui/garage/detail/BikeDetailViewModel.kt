@@ -143,10 +143,16 @@ class BikeDetailViewModel @Inject constructor(
         _dialogState.update { it.copy(isEditBikeDialogOpen = false) }
     }
 
-    fun updateBike(name: String, makeModel: String) {
+    fun updateBike(name: String, makeModel: String, registrationNumber: String = "") {
         val currentBike = uiState.value.bike ?: return
         viewModelScope.launch {
-            garageRepository.updateBike(currentBike.copy(name = name.trim(), makeModel = makeModel.trim()))
+            garageRepository.updateBike(
+                currentBike.copy(
+                    name = name.trim(),
+                    makeModel = makeModel.trim(),
+                    registrationNumber = registrationNumber.trim()
+                )
+            )
             dismissEditBikeDialog()
         }
     }

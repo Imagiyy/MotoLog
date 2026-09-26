@@ -167,8 +167,8 @@ class GarageViewModelTest {
         override fun observeBikeOdometer(bikeId: Long): Flow<Double> =
             MutableStateFlow(0.0)
 
-        override suspend fun addBike(name: String, makeModel: String, initialOdometerKm: Double): Long {
-            val bike = BikeEntity(id = (addedBikes.size + 1).toLong(), name = name, makeModel = makeModel, initialOdometerKm = initialOdometerKm)
+        override suspend fun addBike(name: String, makeModel: String, initialOdometerKm: Double, registrationNumber: String): Long {
+            val bike = BikeEntity(id = (addedBikes.size + 1).toLong(), name = name, makeModel = makeModel, initialOdometerKm = initialOdometerKm, registrationNumber = registrationNumber)
             addedBikes.add(bike)
             activeBikesFlow.value = activeBikesFlow.value + bike
             return bike.id

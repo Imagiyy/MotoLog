@@ -63,6 +63,7 @@ import androidx.compose.material3.OutlinedButton
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import com.abrar.motolog.ui.garage.RegistrationPlateBadge
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.material.icons.filled.Check
@@ -353,6 +354,10 @@ private fun RideDetailContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold
                             )
+                            if (assignedBike?.registrationNumber?.isNotBlank() == true) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                RegistrationPlateBadge(registrationNumber = assignedBike.registrationNumber)
+                            }
                         }
                     }
 

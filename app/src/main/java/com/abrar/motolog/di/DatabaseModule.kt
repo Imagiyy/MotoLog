@@ -37,7 +37,8 @@ object DatabaseModule {
                 MotoLogDatabase.MIGRATION_1_2,
                 MotoLogDatabase.MIGRATION_2_3,
                 MotoLogDatabase.MIGRATION_3_4,
-                MotoLogDatabase.MIGRATION_4_5
+                MotoLogDatabase.MIGRATION_4_5,
+                MotoLogDatabase.MIGRATION_5_6
             )
             .build()
     }

@@ -221,7 +221,7 @@ class BikeDetailViewModelTest {
         override fun observeBike(bikeId: Long): Flow<BikeEntity?> = bikeFlow
         override fun observeBikeOdometer(bikeId: Long): Flow<Double> = bikeOdoFlow
 
-        override suspend fun addBike(name: String, makeModel: String, initialOdometerKm: Double): Long = 1L
+        override suspend fun addBike(name: String, makeModel: String, initialOdometerKm: Double, registrationNumber: String): Long = 1L
         override suspend fun updateBike(bike: BikeEntity) {
             bikeFlow.value = bike
         }

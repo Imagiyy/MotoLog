@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -60,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -69,6 +72,8 @@ import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
 import com.abrar.motolog.domain.model.MaintenanceEvaluation
 import com.abrar.motolog.domain.model.MaintenancePreset
 import com.abrar.motolog.domain.model.MaintenanceStatus
+import com.abrar.motolog.ui.garage.MotorcycleCatalogSelector
+import com.abrar.motolog.ui.garage.RegistrationPlateBadge
 import com.abrar.motolog.ui.util.FormatUtils
 import com.abrar.motolog.domain.engine.UnitConverter
 import java.util.Locale
@@ -139,6 +144,7 @@ fun BikeDetailScreen(
                         OdometerHeaderCard(
                             currentOdometerKm = uiState.currentOdometerKm,
                             makeModel = bike.makeModel,
+                            registrationNumber = bike.registrationNumber,
                             ridesCount = uiState.recordedRidesCount,
                             ridesDistanceKm = uiState.recordedRidesDistanceKm,
                             useMetricUnits = uiState.useMetricUnits,
@@ -196,8 +202,11 @@ fun BikeDetailScreen(
         EditBikeDialog(
             initialName = bike.name,
             initialMakeModel = bike.makeModel,
+            initialRegistrationNumber = bike.registrationNumber,
             onDismiss = { viewModel.dismissEditBikeDialog() },
-            onConfirm = { name, makeModel -> viewModel.updateBike(name, makeModel) }
+            onConfirm = { name, makeModel, regNumber ->
+                viewModel.updateBike(name, makeModel, regNumber)
+            }
         )
     }
 
@@ -309,6 +318,7 @@ fun BikeDetailScreen(
 private fun OdometerHeaderCard(
     currentOdometerKm: Double,
     makeModel: String,
+    registrationNumber: String = "",
     ridesCount: Int,
     ridesDistanceKm: Double,
     useMetricUnits: Boolean,
@@ -352,13 +362,21 @@ private fun OdometerHeaderCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (makeModel.isNotBlank()) makeModel else "MotoLog Registered",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(modifier = Modifier.weight(1f, fill = false)) {
+                    Text(
+                        text = if (makeModel.isNotBlank()) makeModel else "MotoLog Registered",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (registrationNumber.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        RegistrationPlateBadge(registrationNumber = registrationNumber)
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 val userRidesDist = UnitConverter.kmToUserDistance(ridesDistanceKm, useMetricUnits)
                 val unitStr = UnitConverter.distanceUnit(useMetricUnits)
                 Text(
@@ -862,18 +880,42 @@ private fun SetOdometerDialog(
 private fun EditBikeDialog(
     initialName: String,
     initialMakeModel: String,
+    initialRegistrationNumber: String,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, makeModel: String) -> Unit
+    onConfirm: (name: String, makeModel: String, registrationNumber: String) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
     var makeModel by rememberSaveable { mutableStateOf(initialMakeModel) }
+    var registrationNumber by rememberSaveable { mutableStateOf(initialRegistrationNumber) }
     val isValid = name.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Motorcycle") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Quick Catalog Search & Brand browser
+                MotorcycleCatalogSelector(
+                    onSelectMotorcycle = { _, model, fullName ->
+                        makeModel = fullName
+                        if (name.isBlank() || name == initialMakeModel) {
+                            name = fullName
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "BIKE CONFIGURATION",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -881,6 +923,7 @@ private fun EditBikeDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
                     value = makeModel,
                     onValueChange = { makeModel = it },
@@ -888,10 +931,39 @@ private fun EditBikeDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Column {
+                    OutlinedTextField(
+                        value = registrationNumber,
+                        onValueChange = { registrationNumber = it.uppercase() },
+                        label = { Text("Registration / Plate (optional)") },
+                        placeholder = { Text("e.g. KA-01-AB-1234") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (registrationNumber.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Plate preview: ",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            RegistrationPlateBadge(registrationNumber = registrationNumber)
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (isValid) onConfirm(name, makeModel) }, enabled = isValid) {
+            TextButton(
+                onClick = { if (isValid) onConfirm(name, makeModel, registrationNumber) },
+                enabled = isValid
+            ) {
                 Text("Save")
             }
         },

@@ -21,7 +21,12 @@ interface GarageRepository {
     fun observeBike(bikeId: Long): Flow<BikeEntity?>
     fun observeBikeOdometer(bikeId: Long): Flow<Double>
 
-    suspend fun addBike(name: String, makeModel: String, initialOdometerKm: Double): Long
+    suspend fun addBike(
+        name: String,
+        makeModel: String,
+        initialOdometerKm: Double,
+        registrationNumber: String = ""
+    ): Long
     suspend fun updateBike(bike: BikeEntity)
     suspend fun setOdometer(bikeId: Long, targetOdometerKm: Double)
     suspend fun archiveOrDeleteBike(bikeId: Long): Boolean

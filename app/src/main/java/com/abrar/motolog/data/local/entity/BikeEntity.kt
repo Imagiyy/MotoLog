@@ -32,5 +32,8 @@ data class BikeEntity(
     val createdAt: Long = System.currentTimeMillis(),
 
     /** True if the bike is archived (hidden from active selection, preserved for history) */
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+
+    /** Vehicle registration / license plate number (e.g., "KA-01-AB-1234") */
+    val registrationNumber: String = ""
 )

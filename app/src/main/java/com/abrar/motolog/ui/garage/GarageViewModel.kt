@@ -97,9 +97,19 @@ class GarageViewModel @Inject constructor(
         _dialogState.update { it.copy(isAddBikeDialogOpen = false) }
     }
 
-    fun addBike(name: String, makeModel: String, initialOdometerKm: Double) {
+    fun addBike(
+        name: String,
+        makeModel: String,
+        initialOdometerKm: Double,
+        registrationNumber: String = ""
+    ) {
         viewModelScope.launch {
-            garageRepository.addBike(name.trim(), makeModel.trim(), initialOdometerKm)
+            garageRepository.addBike(
+                name = name.trim(),
+                makeModel = makeModel.trim(),
+                initialOdometerKm = initialOdometerKm,
+                registrationNumber = registrationNumber.trim()
+            )
             _dialogState.update { it.copy(isAddBikeDialogOpen = false) }
         }
     }

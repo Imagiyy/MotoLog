@@ -228,4 +228,43 @@ class DatabaseMigrationTest {
             executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_ride_points_rideId_timestamp` ON `ride_points` (`rideId`, `timestamp`)") }
         )
     }
+
+    @Test
+    fun `migration from version 5 to 6 adds registrationNumber column to bikes`() {
+        val executedSql = mutableListOf<String>()
+
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL") {
+                val sql = args[0] as String
+                executedSql.add(sql)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_5_6.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(5, MotoLogDatabase.MIGRATION_5_6.startVersion)
+        assertEquals(6, MotoLogDatabase.MIGRATION_5_6.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Adds registrationNumber column
+        assertTrue(
+            "Must add registrationNumber column to bikes",
+            executedSql.any { it.contains("ALTER TABLE `bikes` ADD COLUMN `registrationNumber` TEXT NOT NULL DEFAULT ''") }
+        )
+
+        // 4. Verify default BikeEntity contains registrationNumber
+        val defaultBike = BikeEntity(id = 1L, name = "Ninja 400")
+        assertEquals("", defaultBike.registrationNumber)
+
+        val bikeWithPlate = BikeEntity(id = 2L, name = "Ninja 400", registrationNumber = "KA-01-AB-1234")
+        assertEquals("KA-01-AB-1234", bikeWithPlate.registrationNumber)
+    }
 }

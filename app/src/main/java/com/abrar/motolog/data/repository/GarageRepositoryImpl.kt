@@ -68,7 +68,8 @@ class GarageRepositoryImpl @Inject constructor(
     override suspend fun addBike(
         name: String,
         makeModel: String,
-        initialOdometerKm: Double
+        initialOdometerKm: Double,
+        registrationNumber: String
     ): Long = withContext(Dispatchers.IO) {
         val bike = BikeEntity(
             name = name,
@@ -76,7 +77,8 @@ class GarageRepositoryImpl @Inject constructor(
             initialOdometerKm = initialOdometerKm,
             odometerOffsetKm = 0.0,
             createdAt = System.currentTimeMillis(),
-            isArchived = false
+            isArchived = false,
+            registrationNumber = registrationNumber.trim()
         )
         val newId = bikeDao.insert(bike)
         // If this is the only active bike, automatically make it current

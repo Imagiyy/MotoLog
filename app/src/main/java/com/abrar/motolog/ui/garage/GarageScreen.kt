@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -55,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -146,8 +149,8 @@ fun GarageScreen(
         AddBikeDialog(
             useMetricUnits = uiState.useMetricUnits,
             onDismiss = { viewModel.dismissAddBikeDialog() },
-            onConfirm = { name, makeModel, initialOdo ->
-                viewModel.addBike(name, makeModel, initialOdo)
+            onConfirm = { name, makeModel, initialOdo, registrationNumber ->
+                viewModel.addBike(name, makeModel, initialOdo, registrationNumber)
             }
         )
     }
@@ -219,6 +222,10 @@ private fun BikeCard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                        if (item.bike.registrationNumber.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            RegistrationPlateBadge(registrationNumber = item.bike.registrationNumber)
                         }
                     }
                 }
@@ -394,11 +401,13 @@ private fun EmptyGarageView(
 private fun AddBikeDialog(
     useMetricUnits: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, makeModel: String, initialOdometerKm: Double) -> Unit
+    onConfirm: (name: String, makeModel: String, initialOdometerKm: Double, registrationNumber: String) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var makeModel by rememberSaveable { mutableStateOf("") }
+    var registrationNumber by rememberSaveable { mutableStateOf("") }
     var initialOdoText by rememberSaveable { mutableStateOf("0") }
+
     val isNameValid = name.isNotBlank()
     val initialOdo = initialOdoText.toDoubleOrNull()
     val isOdoValid = initialOdo != null && initialOdo >= 0.0
@@ -407,7 +416,29 @@ private fun AddBikeDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Motorcycle") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Quick Catalog Search & Brand browser
+                MotorcycleCatalogSelector(
+                    onSelectMotorcycle = { _, model, fullName ->
+                        makeModel = fullName
+                        if (name.isBlank() || name == makeModel) {
+                            name = fullName
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "BIKE CONFIGURATION",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -415,6 +446,7 @@ private fun AddBikeDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
                     value = makeModel,
                     onValueChange = { makeModel = it },
@@ -422,6 +454,33 @@ private fun AddBikeDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Column {
+                    OutlinedTextField(
+                        value = registrationNumber,
+                        onValueChange = { registrationNumber = it.uppercase() },
+                        label = { Text("Registration / Plate (optional)") },
+                        placeholder = { Text("e.g. KA-01-AB-1234") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (registrationNumber.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Plate preview: ",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            RegistrationPlateBadge(registrationNumber = registrationNumber)
+                        }
+                    }
+                }
+
                 val unitLabel = UnitConverter.distanceUnit(useMetricUnits)
                 OutlinedTextField(
                     value = initialOdoText,
@@ -438,7 +497,7 @@ private fun AddBikeDialog(
                 onClick = {
                     if (isNameValid && isOdoValid) {
                         val odoKm = UnitConverter.userDistanceToKm(initialOdo!!, useMetricUnits)
-                        onConfirm(name, makeModel, odoKm)
+                        onConfirm(name, makeModel, odoKm, registrationNumber)
                     }
                 },
                 enabled = isNameValid && isOdoValid
