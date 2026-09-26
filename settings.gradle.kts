@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "MotoLog"
 include(":app")
+include(":shared")
+

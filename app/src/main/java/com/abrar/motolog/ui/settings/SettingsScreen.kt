@@ -41,7 +41,7 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
-import com.abrar.motolog.domain.model.MapThemePreference
+import com.abrar.motolog.shared.domain.model.MapThemePreference
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -83,10 +83,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.abrar.motolog.data.local.entity.BikeEntity
-import com.abrar.motolog.domain.engine.UnitConverter
-import com.abrar.motolog.domain.model.FuelUnit
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.model.FuelUnit
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat

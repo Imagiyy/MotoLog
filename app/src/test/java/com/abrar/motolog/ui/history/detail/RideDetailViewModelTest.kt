@@ -7,8 +7,8 @@ import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.repository.FakeRideRepository
-import com.abrar.motolog.domain.model.GpsPoint
-import com.abrar.motolog.domain.util.RideNameGenerator
+import com.abrar.motolog.shared.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.util.RideNameGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow

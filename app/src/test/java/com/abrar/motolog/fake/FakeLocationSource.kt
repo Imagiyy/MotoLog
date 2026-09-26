@@ -1,7 +1,7 @@
 package com.abrar.motolog.fake
 
-import com.abrar.motolog.domain.location.LocationSource
-import com.abrar.motolog.domain.model.LocationPoint
+import com.abrar.motolog.shared.domain.location.LocationSource
+import com.abrar.motolog.shared.domain.model.LocationPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -11,7 +11,7 @@ class FakeLocationSource : LocationSource {
     var stopCalled: Boolean = false
         private set
 
-    override fun getLocationUpdates(trackingMode: com.abrar.motolog.domain.model.TrackingMode): Flow<LocationPoint> = locationFlow
+    override fun getLocationUpdates(trackingMode: com.abrar.motolog.shared.domain.model.TrackingMode): Flow<LocationPoint> = locationFlow
 
     override fun stopLocationUpdates() {
         stopCalled = true

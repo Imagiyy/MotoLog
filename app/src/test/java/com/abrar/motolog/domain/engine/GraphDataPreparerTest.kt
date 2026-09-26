@@ -1,7 +1,7 @@
 package com.abrar.motolog.domain.engine
 
 import com.abrar.motolog.data.local.entity.RidePointEntity
-import com.abrar.motolog.domain.model.GraphPoint
+import com.abrar.motolog.shared.domain.model.GraphPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

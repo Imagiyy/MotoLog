@@ -53,7 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
-import com.abrar.motolog.domain.util.RideNameGenerator
+import com.abrar.motolog.shared.domain.util.RideNameGenerator
 import com.abrar.motolog.ui.util.FormatUtils
 
 /**
@@ -248,7 +248,7 @@ private fun RideCard(
             ) {
                 MetricColumn(
                     label = "DISTANCE",
-                    value = com.abrar.motolog.domain.engine.UnitConverter.formatDistanceWithUnit(ride.distanceMeters, useMetricUnits)
+                    value = com.abrar.motolog.shared.domain.engine.UnitConverter.formatDistanceWithUnit(ride.distanceMeters, useMetricUnits)
                 )
 
                 Box(
@@ -272,7 +272,7 @@ private fun RideCard(
 
                 MetricColumn(
                     label = "AVG SPEED",
-                    value = com.abrar.motolog.domain.engine.UnitConverter.formatSpeedWithUnit(ride.avgMovingSpeedMs * 3.6, useMetricUnits, decimals = 1)
+                    value = com.abrar.motolog.shared.domain.engine.UnitConverter.formatSpeedWithUnit(ride.avgMovingSpeedMs * 3.6, useMetricUnits, decimals = 1)
                 )
             }
         }

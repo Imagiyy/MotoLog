@@ -13,17 +13,17 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.sensor.BarometerSource
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.engine.ElevationCalculator
-import com.abrar.motolog.domain.engine.PointFilterResult
-import com.abrar.motolog.domain.engine.RideCalculator
-import com.abrar.motolog.domain.location.LocationSource
-import com.abrar.motolog.domain.model.GpsPoint
-import com.abrar.motolog.domain.model.PauseState
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.engine.ElevationCalculator
+import com.abrar.motolog.shared.domain.engine.PointFilterResult
+import com.abrar.motolog.shared.domain.engine.RideCalculator
+import com.abrar.motolog.shared.domain.location.LocationSource
+import com.abrar.motolog.shared.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.domain.repository.TrackingRepository
-import com.abrar.motolog.domain.repository.TrackingSessionState
-import com.abrar.motolog.domain.time.Clock
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.time.Clock
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,9 +43,9 @@ import android.media.ToneGenerator
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import com.abrar.motolog.domain.engine.SpeedAlertEngine
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.engine.SpeedAlertEngine
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -289,8 +289,9 @@ class TrackingService : Service() {
                     }
 
                     // Buffer point for database write
-                    val speedMs = if (locationPoint.speedMps != null) {
-                        locationPoint.speedMps.toDouble()
+                    val pointSpeedMps = locationPoint.speedMps
+                    val speedMs = if (pointSpeedMps != null) {
+                        pointSpeedMps.toDouble()
                     } else {
                         speedKmh / 3.6
                     }
@@ -517,7 +518,7 @@ class TrackingService : Service() {
             val existingRide = rideDao.getRideById(activeRideId)
             val startTime = existingRide?.startTime ?: now
             val rideName = if (existingRide?.name.isNullOrBlank()) {
-                com.abrar.motolog.domain.util.RideNameGenerator.defaultNameForTimestamp(startTime)
+                com.abrar.motolog.shared.domain.util.RideNameGenerator.defaultNameForTimestamp(startTime)
             } else {
                 existingRide.name
             }

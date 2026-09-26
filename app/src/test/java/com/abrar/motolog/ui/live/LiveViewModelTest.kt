@@ -5,8 +5,8 @@ import app.cash.turbine.test
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.model.RideStats
-import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.model.RideStats
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import com.abrar.motolog.fake.FakeTrackingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -230,7 +230,7 @@ class LiveViewModelTest {
         fakeRepository.updateState(
             TrackingSessionState.Tracking(
                 rideId = 1L,
-                pauseState = com.abrar.motolog.domain.model.PauseState.AUTO_PAUSED,
+                pauseState = com.abrar.motolog.shared.domain.model.PauseState.AUTO_PAUSED,
                 isGpsLost = false,
                 stats = RideStats(totalDistanceMeters = 1200.0),
                 accuracyMeters = 6.0f
@@ -242,7 +242,7 @@ class LiveViewModelTest {
         assertTrue(state is LiveUiState.Tracking)
         val trackingState = state as LiveUiState.Tracking
         assertTrue(trackingState.isPaused)
-        assertEquals(com.abrar.motolog.domain.model.PauseState.AUTO_PAUSED, trackingState.pauseState)
+        assertEquals(com.abrar.motolog.shared.domain.model.PauseState.AUTO_PAUSED, trackingState.pauseState)
         assertFalse(trackingState.isGpsLost)
     }
 
@@ -251,7 +251,7 @@ class LiveViewModelTest {
         fakeRepository.updateState(
             TrackingSessionState.Tracking(
                 rideId = 1L,
-                pauseState = com.abrar.motolog.domain.model.PauseState.RECORDING,
+                pauseState = com.abrar.motolog.shared.domain.model.PauseState.RECORDING,
                 isGpsLost = true,
                 stats = RideStats(totalDistanceMeters = 3400.0),
                 accuracyMeters = 5.0f
@@ -263,6 +263,6 @@ class LiveViewModelTest {
         assertTrue(state is LiveUiState.Tracking)
         val trackingState = state as LiveUiState.Tracking
         assertTrue(trackingState.isGpsLost)
-        assertEquals(com.abrar.motolog.domain.model.PauseState.RECORDING, trackingState.pauseState)
+        assertEquals(com.abrar.motolog.shared.domain.model.PauseState.RECORDING, trackingState.pauseState)
     }
 }

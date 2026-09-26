@@ -4,8 +4,8 @@ import com.abrar.motolog.data.map.OpenFreeMapStyleProvider
 import com.abrar.motolog.data.map.MapLibreMapProvider
 import com.abrar.motolog.data.sensor.AndroidBarometerSource
 import com.abrar.motolog.data.sensor.BarometerSource
-import com.abrar.motolog.domain.map.MapStyleProvider
-import com.abrar.motolog.domain.map.MapProvider
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.map.MapProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

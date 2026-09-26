@@ -3,7 +3,7 @@ package com.abrar.motolog.data.repository
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.RideEntity
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import com.abrar.motolog.domain.repository.RideRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

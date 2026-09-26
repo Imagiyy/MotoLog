@@ -3,7 +3,9 @@ package com.abrar.motolog.domain.engine
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.engine.PointFilterResult
+import com.abrar.motolog.shared.domain.engine.RideCalculator
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue

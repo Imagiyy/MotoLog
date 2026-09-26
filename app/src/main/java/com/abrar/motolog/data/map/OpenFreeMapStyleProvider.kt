@@ -1,6 +1,6 @@
 package com.abrar.motolog.data.map
 
-import com.abrar.motolog.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
 import javax.inject.Inject
 import javax.inject.Singleton
 

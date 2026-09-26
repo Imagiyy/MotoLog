@@ -7,11 +7,11 @@ import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
-import com.abrar.motolog.domain.engine.RideCalculator
-import com.abrar.motolog.domain.model.GpsPoint
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.engine.RideCalculator
+import com.abrar.motolog.shared.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.domain.repository.TrackingRepository
-import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import com.abrar.motolog.service.TrackingService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +91,7 @@ class TrackingRepositoryImpl @Inject constructor(
         val endTime = rawPoints.lastOrNull()?.timestamp ?: System.currentTimeMillis()
 
         val rideName = if (activeRide.name.isBlank()) {
-            com.abrar.motolog.domain.util.RideNameGenerator.defaultNameForTimestamp(activeRide.startTime)
+            com.abrar.motolog.shared.domain.util.RideNameGenerator.defaultNameForTimestamp(activeRide.startTime)
         } else {
             activeRide.name
         }

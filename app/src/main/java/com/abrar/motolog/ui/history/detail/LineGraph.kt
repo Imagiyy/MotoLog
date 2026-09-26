@@ -32,9 +32,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.abrar.motolog.domain.model.GraphData
-import com.abrar.motolog.domain.model.GraphMarker
-import com.abrar.motolog.domain.model.GraphPoint
+import com.abrar.motolog.shared.domain.model.GraphData
+import com.abrar.motolog.shared.domain.model.GraphMarker
+import com.abrar.motolog.shared.domain.model.GraphPoint
 import kotlin.math.roundToInt
 
 /**

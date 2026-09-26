@@ -1,9 +1,11 @@
 package com.abrar.motolog.domain.engine
 
 import com.abrar.motolog.data.local.entity.RidePointEntity
-import com.abrar.motolog.domain.model.RouteMapData
-import com.abrar.motolog.domain.model.RouteMapPoint
-import com.abrar.motolog.domain.model.RouteMapSegment
+import com.abrar.motolog.shared.domain.engine.RouteDownsampler
+import com.abrar.motolog.shared.domain.engine.SpeedColorScale
+import com.abrar.motolog.shared.domain.model.RouteMapData
+import com.abrar.motolog.shared.domain.model.RouteMapPoint
+import com.abrar.motolog.shared.domain.model.RouteMapSegment
 
 /** Builds speed-bucketed, gap-safe route data for the map. */
 object RouteMapPreparer {

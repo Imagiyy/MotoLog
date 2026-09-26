@@ -1,6 +1,6 @@
 package com.abrar.motolog.test
 
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import java.io.InputStream
 import java.time.Instant
 import javax.xml.parsers.DocumentBuilderFactory

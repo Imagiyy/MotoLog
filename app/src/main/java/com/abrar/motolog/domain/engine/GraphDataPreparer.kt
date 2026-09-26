@@ -1,9 +1,9 @@
 package com.abrar.motolog.domain.engine
 
 import com.abrar.motolog.data.local.entity.RidePointEntity
-import com.abrar.motolog.domain.model.GraphData
-import com.abrar.motolog.domain.model.GraphPoint
-import com.abrar.motolog.domain.model.GraphSegment
+import com.abrar.motolog.shared.domain.model.GraphData
+import com.abrar.motolog.shared.domain.model.GraphPoint
+import com.abrar.motolog.shared.domain.model.GraphSegment
 import kotlin.math.roundToInt
 
 /**

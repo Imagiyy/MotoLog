@@ -54,9 +54,9 @@ class BikeDetailViewModel @Inject constructor(
     private data class BikeData(
         val bike: com.abrar.motolog.data.local.entity.BikeEntity?,
         val odo: Double,
-        val maintenanceEvals: List<com.abrar.motolog.domain.model.MaintenanceEvaluation>,
+        val maintenanceEvals: List<com.abrar.motolog.shared.domain.model.MaintenanceEvaluation>,
         val fuelLogs: List<com.abrar.motolog.data.local.entity.FuelLogEntity>,
-        val fuelStats: com.abrar.motolog.domain.model.FuelMileageStats
+        val fuelStats: com.abrar.motolog.shared.domain.model.FuelMileageStats
     )
 
     private val bikeDataFlow = combine(

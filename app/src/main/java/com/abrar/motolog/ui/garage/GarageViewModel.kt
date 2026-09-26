@@ -6,8 +6,9 @@ import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.entity.BikeEntity
-import com.abrar.motolog.domain.engine.MaintenanceCalculator
-import com.abrar.motolog.domain.engine.OdometerCalculator
+import com.abrar.motolog.domain.engine.evaluate
+import com.abrar.motolog.shared.domain.engine.MaintenanceCalculator
+import com.abrar.motolog.shared.domain.engine.OdometerCalculator
 import com.abrar.motolog.domain.repository.GarageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

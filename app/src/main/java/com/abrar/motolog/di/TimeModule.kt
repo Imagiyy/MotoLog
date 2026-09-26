@@ -1,7 +1,7 @@
 package com.abrar.motolog.di
 
-import com.abrar.motolog.domain.time.Clock
-import com.abrar.motolog.domain.time.DefaultClock
+import com.abrar.motolog.shared.domain.time.Clock
+import com.abrar.motolog.shared.domain.time.DefaultClock
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

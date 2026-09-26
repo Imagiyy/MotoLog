@@ -2,9 +2,9 @@ package com.abrar.motolog.data.location
 
 import android.annotation.SuppressLint
 import android.os.Looper
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.location.LocationSource
-import com.abrar.motolog.domain.model.LocationPoint
+import com.abrar.motolog.shared.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.location.LocationSource
+import com.abrar.motolog.shared.domain.model.LocationPoint
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -39,11 +39,11 @@ class FusedLocationSource @Inject constructor(
     override fun getLocationAvailability(): Flow<Boolean> = _isLocationAvailable
 
     @SuppressLint("MissingPermission")
-    override fun getLocationUpdates(trackingMode: com.abrar.motolog.domain.model.TrackingMode): Flow<LocationPoint> = callbackFlow {
+    override fun getLocationUpdates(trackingMode: com.abrar.motolog.shared.domain.model.TrackingMode): Flow<LocationPoint> = callbackFlow {
         val (intervalMs, fastestMs) = when (trackingMode) {
-            com.abrar.motolog.domain.model.TrackingMode.HIGH_ACCURACY ->
+            com.abrar.motolog.shared.domain.model.TrackingMode.HIGH_ACCURACY ->
                 TrackingConstants.LOCATION_UPDATE_INTERVAL_MS to TrackingConstants.LOCATION_FASTEST_INTERVAL_MS
-            com.abrar.motolog.domain.model.TrackingMode.BATTERY_SAVER ->
+            com.abrar.motolog.shared.domain.model.TrackingMode.BATTERY_SAVER ->
                 TrackingConstants.BATTERY_SAVER_UPDATE_INTERVAL_MS to TrackingConstants.BATTERY_SAVER_FASTEST_INTERVAL_MS
         }
 

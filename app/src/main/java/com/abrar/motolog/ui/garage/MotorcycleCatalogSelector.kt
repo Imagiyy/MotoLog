@@ -39,7 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.abrar.motolog.domain.model.MotorcycleCatalog
+import com.abrar.motolog.shared.domain.model.MotorcycleCatalog
 
 /**
  * Reusable catalog selector allowing riders to quickly search from hundreds of

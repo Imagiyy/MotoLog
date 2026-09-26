@@ -60,9 +60,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.data.map.MapSupport
-import com.abrar.motolog.domain.map.MapStyleProvider
-import com.abrar.motolog.domain.model.PauseState
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.ui.theme.CockpitThemePalette
 import com.abrar.motolog.ui.theme.JewelAmber
 import com.abrar.motolog.ui.theme.JewelGreen
@@ -115,7 +115,7 @@ fun RetroLiveMap(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
-    defaultMapTheme: com.abrar.motolog.domain.model.MapThemePreference = com.abrar.motolog.domain.model.MapThemePreference.DARK,
+    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
 ) {
@@ -142,7 +142,7 @@ fun RetroLiveMap(
     var mapUnavailable by remember { mutableStateOf(false) }
     var followRider by remember { mutableStateOf(true) }
     var isDarkMap by rememberSaveable(defaultMapTheme) {
-        mutableStateOf(defaultMapTheme == com.abrar.motolog.domain.model.MapThemePreference.DARK)
+        mutableStateOf(defaultMapTheme == com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)
     }
     var isHudMinimized by rememberSaveable { mutableStateOf(false) }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()

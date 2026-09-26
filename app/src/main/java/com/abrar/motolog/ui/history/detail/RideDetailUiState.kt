@@ -2,9 +2,9 @@ package com.abrar.motolog.ui.history.detail
 
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
-import com.abrar.motolog.domain.model.RideSplit
-import com.abrar.motolog.domain.model.GraphData
-import com.abrar.motolog.domain.model.RouteMapData
+import com.abrar.motolog.shared.domain.model.RideSplit
+import com.abrar.motolog.shared.domain.model.GraphData
+import com.abrar.motolog.shared.domain.model.RouteMapData
 
 /**
  * Supported distance split intervals for ride breakdown analysis.

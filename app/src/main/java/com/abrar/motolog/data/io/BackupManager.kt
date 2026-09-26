@@ -14,9 +14,9 @@ import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.model.FuelUnit
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.model.FuelUnit
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -252,7 +252,7 @@ class BackupManager @Inject constructor(
             settingsRepository.setSpeedAlertThresholdKmh(s.speedAlertThresholdKmh)
             try { settingsRepository.setSpeedAlertStyle(SpeedAlertStyle.valueOf(s.speedAlertStyle)) } catch (_: Exception) {}
             try { settingsRepository.setThemeMode(ThemeMode.valueOf(s.themeMode)) } catch (_: Exception) {}
-            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (_: Exception) {}
+            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (_: Exception) {}
             settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
             settingsRepository.setKeepScreenOn(s.keepScreenOn)
             settingsRepository.setCurrentBikeId(s.currentBikeId)

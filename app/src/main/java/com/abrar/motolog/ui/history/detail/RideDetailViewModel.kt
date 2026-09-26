@@ -10,11 +10,11 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.map.MapLibreMapProvider
 import com.abrar.motolog.data.map.OpenFreeMapStyleProvider
 import com.abrar.motolog.domain.engine.RouteMapPreparer
-import com.abrar.motolog.domain.engine.SplitCalculator
+import com.abrar.motolog.shared.domain.engine.SplitCalculator
 import com.abrar.motolog.domain.repository.RideRepository
-import com.abrar.motolog.domain.map.MapStyleProvider
-import com.abrar.motolog.domain.map.MapProvider
-import com.abrar.motolog.domain.util.RideNameGenerator
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.map.MapProvider
+import com.abrar.motolog.shared.domain.util.RideNameGenerator
 import com.abrar.motolog.ui.navigation.RideDetailRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,7 +34,7 @@ import androidx.core.content.FileProvider
 import com.abrar.motolog.data.io.CsvExporter
 import com.abrar.motolog.data.io.GpxExporter
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.engine.UnitConverter
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
@@ -80,9 +80,9 @@ class RideDetailViewModel @Inject constructor(
         ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
         ?: MutableStateFlow(true).asStateFlow()
 
-    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository?.defaultMapTheme
-        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.domain.model.MapThemePreference.DARK)
-        ?: MutableStateFlow(com.abrar.motolog.domain.model.MapThemePreference.DARK).asStateFlow()
+    val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository?.defaultMapTheme
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)
+        ?: MutableStateFlow(com.abrar.motolog.shared.domain.model.MapThemePreference.DARK).asStateFlow()
 
     private val rideId: Long = runCatching {
         savedStateHandle.toRoute<RideDetailRoute>().rideId
@@ -93,7 +93,7 @@ class RideDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RideDetailUiState())
     val uiState: StateFlow<RideDetailUiState> = _uiState.asStateFlow()
 
-    private var cachedGpsPoints: List<com.abrar.motolog.domain.model.GpsPoint> = emptyList()
+    private var cachedGpsPoints: List<com.abrar.motolog.shared.domain.model.GpsPoint> = emptyList()
 
     init {
         loadRideDetail()

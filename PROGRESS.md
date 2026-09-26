@@ -726,5 +726,51 @@
    - Open History $\to$ verify saved ride card appears and is not corrupted by minification.
    - Open Ride Detail $\to$ verify MapLibre map renders route line, speed-over-time graph renders, and per-km/per-mile splits table loads without class-not-found or reflection crashes.
    - Open Garage $\to$ verify motorcycle odometer, maintenance tasks, and fuel logs persist and display properly.
+7. **GPX & Backup Interoperability**:
    - Perform a GPX export, CSV export, and ZIP backup $\to$ verify files export successfully without serialization errors.
+
+---
+
+## Stage 10: Extract Shared KMP Module
+**Status:** COMPLETED
+
+### Built
+- [x] Shared Kotlin Multiplatform module (`:shared`):
+  - Plugins: `kotlin.multiplatform` 2.4.20, `com.android.kotlin.multiplatform.library` (AGP 9.4.0), `kotlinx.serialization`
+  - Targets: `android` (`compileSdk=37`, `minSdk=26`, `jvmTarget=17`, `withHostTest`), `iosArm64`, `iosSimulatorArm64`, `iosX64`
+  - Binaries: static framework `MotoLogShared`
+  - Dependencies: `kotlinx-datetime` 0.6.2, `kotlinx-coroutines-core` 1.10.1, `kotlinx-serialization-json` 1.7.3, `kotlin.test`
+- [x] Pure-Kotlin domain models and engines moved to `shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/`:
+  - `TrackingConstants.kt` (all AGENTS.md thresholds)
+  - `time/Clock.kt` (`DefaultClock` backed by `kotlinx-datetime`)
+  - `util/PlatformFormatter.kt` (`expect object PlatformFormatter`)
+  - `util/RideNameGenerator.kt` (pure `kotlinx-datetime`)
+  - `model/`: `LocationPoint`, `GpsPoint`, `RideStats`, `PauseState`, `RideSplit`, `MaintenancePreset`, `MaintenanceTask` (pure decoupled model), `MaintenanceStatus`, `FuelMileageStats` (`FuelFill`, `FuelIntervalResult`), `GraphData`, `RouteMapData`, `SettingsModels`, `MotorcycleCatalog`
+  - `location/LocationSource.kt`
+  - `map/MapStyleProvider.kt`, `MapProvider.kt`
+  - `repository/TrackingSessionState.kt`
+  - `engine/`: `PointFilterResult`, `AutoPauseStateMachine`, `RideCalculator`, `SplitCalculator`, `OdometerCalculator`, `ElevationCalculator`, `RouteDownsampler`, `SpeedColorScale`, `SpeedAlertEngine`, `UnitConverter`, `FuelMileageCalculator`, `MaintenanceCalculator`
+- [x] Platform formatting implementations:
+  - `androidMain`: `String.format(Locale.US, ...)` for decimals and thousands grouping
+  - `iosMain`: `NSNumberFormatter` with `en_US_POSIX` and `NSNumberFormatterRoundHalfUp`
+- [x] Unit test suites ported to `shared/src/commonTest/kotlin/com/abrar/motolog/shared/`:
+  - `PlatformFormatterTest.kt` with binary-imprecise and half-way boundary test suite (`1.005`, `1.05`, `2.675`, `0.145`, etc.)
+  - `FixturePoints.kt` pure deterministic GPX fixture generator in commonTest
+  - All domain engine tests ported to `kotlin.test`
+- [x] Room Entity adapters in `:app` (`com.abrar.motolog.domain.engine.DomainEntityAdapters.kt`):
+  - `MaintenanceItemEntity.toDomain(): MaintenanceTask` and `MaintenanceTask.toEntity(): MaintenanceItemEntity`
+  - `MaintenanceCalculator.evaluate(MaintenanceItemEntity, ...)` and `shouldNotify(MaintenanceItemEntity, ...)`
+  - `FuelLogEntity.toDomain(): FuelFill` and `FuelMileageCalculator.calculate(List<FuelLogEntity>)`
+- [x] All imports across `:app` repointed to `com.abrar.motolog.shared.domain.*`
+
+### Verified
+- [x] `kotlinx-datetime 0.6.2` verified compatible with Kotlin 2.4.20 across commonMain and iOS targets (0 mismatches)
+- [x] `./gradlew compileCommonMainKotlinMetadata` — VERIFIED
+- [x] `./gradlew compileKotlinIosArm64 compileKotlinIosSimulatorArm64 compileKotlinIosX64` (iOS KLIBs compile on Linux) — VERIFIED
+- [x] `./gradlew :shared:testAndroidHostTest` (all shared common tests pass on JVM) — VERIFIED
+- [x] `./gradlew :app:testDebugUnitTest` (all app unit tests pass) — VERIFIED
+- [x] `./gradlew assembleDebug` (debug APK builds cleanly with :shared integrated) — VERIFIED
+- [x] `./gradlew :app:lintDebug` (0 errors) — VERIFIED
+- [ ] iOS simulator execution and iOS framework link (`link*Framework*`) — DEFERRED TO MACOS HOST
+
 

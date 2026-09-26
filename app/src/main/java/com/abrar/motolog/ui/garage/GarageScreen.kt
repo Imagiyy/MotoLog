@@ -63,7 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.abrar.motolog.data.local.entity.BikeEntity
-import com.abrar.motolog.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.engine.UnitConverter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)

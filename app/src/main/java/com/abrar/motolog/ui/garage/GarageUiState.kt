@@ -1,8 +1,8 @@
 package com.abrar.motolog.ui.garage
 
 import com.abrar.motolog.data.local.entity.BikeEntity
-import com.abrar.motolog.domain.model.MaintenanceEvaluation
-import com.abrar.motolog.domain.model.MaintenanceStatus
+import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
+import com.abrar.motolog.shared.domain.model.MaintenanceStatus
 
 data class BikeListItem(
     val bike: BikeEntity,

@@ -1,6 +1,6 @@
 package com.abrar.motolog.data.io
 
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream

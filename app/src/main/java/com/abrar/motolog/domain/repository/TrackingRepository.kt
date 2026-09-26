@@ -1,7 +1,8 @@
 package com.abrar.motolog.domain.repository
 
 import com.abrar.motolog.data.local.entity.RideEntity
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.model.RideStats
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import kotlinx.coroutines.flow.StateFlow
 
 /**

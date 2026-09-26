@@ -15,9 +15,9 @@ import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.model.FuelUnit
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.model.FuelUnit
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -169,11 +169,11 @@ class SettingsViewModelTest {
         // Auto pause and keep screen on
         viewModel.setAutoPauseEnabled(false)
         viewModel.setKeepScreenOn(false)
-        viewModel.setDefaultMapTheme(com.abrar.motolog.domain.model.MapThemePreference.LIGHT)
+        viewModel.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT)
         advanceUntilIdle()
         assertFalse(viewModel.autoPauseEnabled.value)
         assertFalse(viewModel.keepScreenOn.value)
-        assertEquals(com.abrar.motolog.domain.model.MapThemePreference.LIGHT, viewModel.defaultMapTheme.value)
+        assertEquals(com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT, viewModel.defaultMapTheme.value)
     }
 
     @Test

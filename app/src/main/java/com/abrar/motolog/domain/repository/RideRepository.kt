@@ -1,7 +1,7 @@
 package com.abrar.motolog.domain.repository
 
 import com.abrar.motolog.data.local.entity.RideEntity
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import kotlinx.coroutines.flow.Flow
 
 /**

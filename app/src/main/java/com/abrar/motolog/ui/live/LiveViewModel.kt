@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.domain.repository.TrackingRepository
-import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +20,7 @@ import com.abrar.motolog.domain.repository.GarageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 
-import com.abrar.motolog.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
 import com.abrar.motolog.ui.theme.ThemeMode
 
 /**
@@ -79,11 +79,11 @@ class LiveViewModel @Inject constructor(
             initialValue = true
         )
 
-    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
+    val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = com.abrar.motolog.domain.model.MapThemePreference.DARK
+            initialValue = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
         )
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
@@ -130,8 +130,10 @@ class LiveViewModel @Inject constructor(
                     is TrackingSessionState.Tracking -> {
                         startObservingRidePointsIfNeeded(sessionState.rideId)
                         val coords = _routePoints.value.toMutableList()
-                        if (sessionState.latitude != null && sessionState.longitude != null) {
-                            val newPoint = Pair(sessionState.latitude, sessionState.longitude)
+                        val lat = sessionState.latitude
+                        val lon = sessionState.longitude
+                        if (lat != null && lon != null) {
+                            val newPoint = Pair(lat, lon)
                             if (coords.isEmpty() || coords.last() != newPoint) {
                                 coords.add(newPoint)
                                 if (coords.size > 2000) {

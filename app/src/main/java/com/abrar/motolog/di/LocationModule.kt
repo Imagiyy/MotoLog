@@ -2,7 +2,7 @@ package com.abrar.motolog.di
 
 import android.content.Context
 import com.abrar.motolog.data.location.FusedLocationSource
-import com.abrar.motolog.domain.location.LocationSource
+import com.abrar.motolog.shared.domain.location.LocationSource
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import dagger.Binds

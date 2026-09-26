@@ -71,10 +71,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
-import com.abrar.motolog.domain.engine.UnitConverter
-import com.abrar.motolog.domain.model.RideSplit
-import com.abrar.motolog.domain.model.RouteMapData
-import com.abrar.motolog.domain.util.RideNameGenerator
+import com.abrar.motolog.shared.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.model.RideSplit
+import com.abrar.motolog.shared.domain.model.RouteMapData
+import com.abrar.motolog.shared.domain.util.RideNameGenerator
 import com.abrar.motolog.ui.util.FormatUtils
 import androidx.compose.foundation.isSystemInDarkTheme
 
@@ -233,16 +233,16 @@ private fun RideDetailContent(
     onSelectSplitInterval: (SplitInterval) -> Unit = {},
     routeMap: RouteMapData?,
     isVisualsLoading: Boolean,
-    mapStyleProvider: com.abrar.motolog.domain.map.MapStyleProvider,
+    mapStyleProvider: com.abrar.motolog.shared.domain.map.MapStyleProvider,
     isSplitsLoading: Boolean,
     showOverallStats: Boolean,
     useMetricUnits: Boolean = true,
-    defaultMapTheme: com.abrar.motolog.domain.model.MapThemePreference = com.abrar.motolog.domain.model.MapThemePreference.DARK,
+    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
     onToggleStatsMode: () -> Unit,
     onChangeBike: () -> Unit
 ) {
     val stoppedTimeMs = (ride.elapsedTimeMs - ride.movingTimeMs).coerceAtLeast(0L)
-    val isMapDark = defaultMapTheme == com.abrar.motolog.domain.model.MapThemePreference.DARK
+    val isMapDark = defaultMapTheme == com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
     var isMapTouching by remember { mutableStateOf(false) }
 
     LazyColumn(

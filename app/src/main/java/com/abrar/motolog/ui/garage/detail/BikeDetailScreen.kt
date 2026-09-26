@@ -1,5 +1,6 @@
 package com.abrar.motolog.ui.garage.detail
 
+import com.abrar.motolog.domain.engine.toEntity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,13 +70,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
-import com.abrar.motolog.domain.model.MaintenanceEvaluation
-import com.abrar.motolog.domain.model.MaintenancePreset
-import com.abrar.motolog.domain.model.MaintenanceStatus
+import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
+import com.abrar.motolog.shared.domain.model.MaintenancePreset
+import com.abrar.motolog.shared.domain.model.MaintenanceStatus
 import com.abrar.motolog.ui.garage.MotorcycleCatalogSelector
 import com.abrar.motolog.ui.garage.RegistrationPlateBadge
 import com.abrar.motolog.ui.util.FormatUtils
-import com.abrar.motolog.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.engine.UnitConverter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -171,9 +172,9 @@ fun BikeDetailScreen(
                                 evaluations = uiState.maintenanceEvaluations,
                                 useMetricUnits = uiState.useMetricUnits,
                                 onAddItem = { viewModel.openAddMaintenanceDialog() },
-                                onMarkDone = { viewModel.requestMarkDone(it.item) },
-                                onEdit = { viewModel.openEditMaintenanceDialog(it.item) },
-                                onDelete = { viewModel.requestDeleteMaintenanceItem(it.item) }
+                                onMarkDone = { viewModel.requestMarkDone(it.item.toEntity()) },
+                                onEdit = { viewModel.openEditMaintenanceDialog(it.item.toEntity()) },
+                                onDelete = { viewModel.requestDeleteMaintenanceItem(it.item.toEntity()) }
                             )
                             1 -> FuelTabContent(
                                 uiState = uiState,
@@ -631,8 +632,8 @@ private fun FuelTabContent(
 
 @Composable
 private fun FuelSummaryCard(
-    stats: com.abrar.motolog.domain.model.FuelMileageStats,
-    fuelUnit: com.abrar.motolog.domain.model.FuelUnit
+    stats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
+    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -697,7 +698,7 @@ private fun FuelLogCard(
     log: FuelLogEntity,
     intervalKml: Double?,
     useMetricUnits: Boolean,
-    fuelUnit: com.abrar.motolog.domain.model.FuelUnit,
+    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
     currencySymbol: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,

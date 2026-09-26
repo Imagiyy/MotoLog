@@ -25,8 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.abrar.motolog.data.map.MapSupport
-import com.abrar.motolog.domain.map.MapStyleProvider
-import com.abrar.motolog.domain.model.RouteMapData
+import com.abrar.motolog.shared.domain.map.MapStyleProvider
+import com.abrar.motolog.shared.domain.model.RouteMapData
 import kotlinx.coroutines.CancellationException
 import org.maplibre.compose.camera.CameraAnimation
 import org.maplibre.compose.camera.CameraPosition
@@ -439,7 +439,7 @@ private val bucketColors = listOf(
 
 private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
-private fun bucketMultiLineJson(segments: List<List<com.abrar.motolog.domain.model.RouteMapPoint>>): String {
+private fun bucketMultiLineJson(segments: List<List<com.abrar.motolog.shared.domain.model.RouteMapPoint>>): String {
     if (segments.isEmpty()) return EMPTY_GEOJSON
     val validSegments = segments.filter { it.size >= 2 }
     if (validSegments.isEmpty()) return EMPTY_GEOJSON

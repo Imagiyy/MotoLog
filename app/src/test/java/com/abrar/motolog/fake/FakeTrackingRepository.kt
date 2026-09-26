@@ -1,9 +1,9 @@
 package com.abrar.motolog.fake
 
 import com.abrar.motolog.data.local.entity.RideEntity
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.domain.repository.TrackingRepository
-import com.abrar.motolog.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

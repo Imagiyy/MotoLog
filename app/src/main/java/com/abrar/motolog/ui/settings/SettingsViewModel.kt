@@ -20,13 +20,13 @@ import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.data.settings.SettingsRepository
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.engine.ElevationCalculator
-import com.abrar.motolog.domain.engine.RideCalculator
-import com.abrar.motolog.domain.engine.UnitConverter
-import com.abrar.motolog.domain.model.FuelUnit
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.engine.ElevationCalculator
+import com.abrar.motolog.shared.domain.engine.RideCalculator
+import com.abrar.motolog.shared.domain.engine.UnitConverter
+import com.abrar.motolog.shared.domain.model.FuelUnit
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -95,8 +95,8 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.DARK)
 
-    val defaultMapTheme: StateFlow<com.abrar.motolog.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.domain.model.MapThemePreference.DARK)
+    val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)
 
     val voiceAnnouncementsEnabled: StateFlow<Boolean> = settingsRepository.voiceAnnouncementsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
@@ -162,7 +162,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
-    fun setDefaultMapTheme(pref: com.abrar.motolog.domain.model.MapThemePreference) {
+    fun setDefaultMapTheme(pref: com.abrar.motolog.shared.domain.model.MapThemePreference) {
         viewModelScope.launch { settingsRepository.setDefaultMapTheme(pref) }
     }
 

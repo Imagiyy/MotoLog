@@ -7,10 +7,10 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.model.FuelUnit
-import com.abrar.motolog.domain.model.SpeedAlertStyle
-import com.abrar.motolog.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.model.FuelUnit
+import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
+import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -68,16 +68,16 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    val defaultMapTheme: Flow<com.abrar.motolog.domain.model.MapThemePreference> = dataStore.data.map { prefs ->
+    val defaultMapTheme: Flow<com.abrar.motolog.shared.domain.model.MapThemePreference> = dataStore.data.map { prefs ->
         val raw = prefs[Keys.DEFAULT_MAP_THEME]
         try {
-            if (raw != null) com.abrar.motolog.domain.model.MapThemePreference.valueOf(raw) else com.abrar.motolog.domain.model.MapThemePreference.DARK
+            if (raw != null) com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(raw) else com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
         } catch (_: Exception) {
-            com.abrar.motolog.domain.model.MapThemePreference.DARK
+            com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
         }
     }
 
-    suspend fun setDefaultMapTheme(pref: com.abrar.motolog.domain.model.MapThemePreference) {
+    suspend fun setDefaultMapTheme(pref: com.abrar.motolog.shared.domain.model.MapThemePreference) {
         dataStore.edit { prefs ->
             prefs[Keys.DEFAULT_MAP_THEME] = pref.name
         }

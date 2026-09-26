@@ -8,8 +8,8 @@ import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
-import com.abrar.motolog.domain.model.FuelMileageStats
-import com.abrar.motolog.domain.model.MaintenanceEvaluation
+import com.abrar.motolog.shared.domain.model.FuelMileageStats
+import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 import com.abrar.motolog.domain.repository.GarageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

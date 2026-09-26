@@ -1,8 +1,8 @@
 package com.abrar.motolog.ui.live
 
 import androidx.compose.runtime.Immutable
-import com.abrar.motolog.domain.model.PauseState
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
 
 /**
  * UI State for the Live tracking screen.

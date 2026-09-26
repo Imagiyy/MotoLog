@@ -3,8 +3,8 @@ package com.abrar.motolog.domain.repository
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
-import com.abrar.motolog.domain.model.FuelMileageStats
-import com.abrar.motolog.domain.model.MaintenanceEvaluation
+import com.abrar.motolog.shared.domain.model.FuelMileageStats
+import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 import kotlinx.coroutines.flow.Flow
 
 /**

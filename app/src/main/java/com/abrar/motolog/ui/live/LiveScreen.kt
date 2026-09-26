@@ -39,8 +39,8 @@ import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
-import com.abrar.motolog.domain.model.PauseState
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.ui.live.retro.JewelColor
 import com.abrar.motolog.ui.live.retro.RetroCockpitDashboard
 import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
@@ -850,7 +850,7 @@ private fun RetroWaitingForGpsView(
 
 @Composable
 private fun RetroStoppedCockpitView(
-    stats: com.abrar.motolog.domain.model.RideStats,
+    stats: com.abrar.motolog.shared.domain.model.RideStats,
     useMetricUnits: Boolean,
     onResetClick: () -> Unit,
     modifier: Modifier = Modifier,

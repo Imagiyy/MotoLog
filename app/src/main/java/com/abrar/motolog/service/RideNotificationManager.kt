@@ -10,9 +10,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.abrar.motolog.MainActivity
 import com.abrar.motolog.R
-import com.abrar.motolog.domain.TrackingConstants
-import com.abrar.motolog.domain.model.PauseState
-import com.abrar.motolog.domain.model.RideStats
+import com.abrar.motolog.shared.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
@@ -144,8 +144,8 @@ class RideNotificationManager @Inject constructor(
             String.format(Locale.US, "%02d:%02d", mins, secs)
         }
 
-        val distStr = com.abrar.motolog.domain.engine.UnitConverter.formatDistanceWithUnit(stats.totalDistanceMeters, isMetric)
-        val speedStr = com.abrar.motolog.domain.engine.UnitConverter.formatSpeedWithUnit(stats.currentSpeedKmh, isMetric)
+        val distStr = com.abrar.motolog.shared.domain.engine.UnitConverter.formatDistanceWithUnit(stats.totalDistanceMeters, isMetric)
+        val speedStr = com.abrar.motolog.shared.domain.engine.UnitConverter.formatSpeedWithUnit(stats.currentSpeedKmh, isMetric)
 
         val contentText = when {
             isWaitingGps -> {

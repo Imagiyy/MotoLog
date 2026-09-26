@@ -95,6 +95,9 @@ kotlin {
 }
 
 dependencies {
+    // Shared KMP Domain Module
+    implementation(project(":shared"))
+
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
 

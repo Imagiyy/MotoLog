@@ -2,7 +2,7 @@ package com.abrar.motolog.data.repository
 
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
-import com.abrar.motolog.domain.model.GpsPoint
+import com.abrar.motolog.shared.domain.model.GpsPoint
 import com.abrar.motolog.domain.repository.RideRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

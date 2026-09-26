@@ -3,8 +3,8 @@ package com.abrar.motolog.ui.garage.detail
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
-import com.abrar.motolog.domain.model.FuelMileageStats
-import com.abrar.motolog.domain.model.MaintenanceEvaluation
+import com.abrar.motolog.shared.domain.model.FuelMileageStats
+import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 
 data class BikeDetailUiState(
     val isLoading: Boolean = true,
@@ -17,7 +17,7 @@ data class BikeDetailUiState(
     val fuelStats: FuelMileageStats = FuelMileageStats(),
     val selectedTab: Int = 0, // 0 = Maintenance, 1 = Fuel
     val useMetricUnits: Boolean = true,
-    val fuelUnit: com.abrar.motolog.domain.model.FuelUnit = com.abrar.motolog.domain.model.FuelUnit.KM_PER_LITER,
+    val fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit = com.abrar.motolog.shared.domain.model.FuelUnit.KM_PER_LITER,
     val currencySymbol: String = "$",
 
     // Dialogs

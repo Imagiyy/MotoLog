@@ -2,7 +2,7 @@ package com.abrar.motolog.data.io
 
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
-import com.abrar.motolog.domain.TrackingConstants
+import com.abrar.motolog.shared.domain.TrackingConstants
 import java.io.BufferedWriter
 import java.io.OutputStream
 import java.io.OutputStreamWriter
