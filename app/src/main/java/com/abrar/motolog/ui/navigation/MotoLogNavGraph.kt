@@ -27,8 +27,12 @@ import kotlinx.serialization.Serializable
 // Type-safe navigation routes
 // ============================================================
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TwoWheeler
+import androidx.compose.ui.unit.dp
 import com.abrar.motolog.ui.garage.GarageScreen
 import com.abrar.motolog.ui.garage.detail.BikeDetailScreen
 import com.abrar.motolog.ui.settings.SettingsScreen
@@ -79,6 +83,7 @@ fun MotoLogNavGraph() {
     val isLiveScreen = currentDestination?.hasRoute(LiveRoute::class) == true
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (!isLandscape || !isLiveScreen) {
                 NavigationBar {
@@ -110,10 +115,13 @@ fun MotoLogNavGraph() {
         NavHost(
             navController = navController,
             startDestination = LiveRoute,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             composable<LiveRoute> {
                 LiveScreen(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding(),
                     onNavigateToSettings = {
                         navController.navigate(SettingsRoute)
                     }

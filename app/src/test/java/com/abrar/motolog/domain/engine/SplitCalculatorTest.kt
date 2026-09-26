@@ -276,4 +276,54 @@ class SplitCalculatorTest {
         val splits = SplitCalculator.computeSplits(points)
         assertTrue(splits.isEmpty())
     }
+
+    @Test
+    fun splitDistanceMeters_tenKmAndHundredKm_producesExpectedSplits() {
+        val points = mutableListOf<GpsPoint>()
+        var currentLat = originLat
+        var timestamp = 1_000_000L
+
+        // 25 km with 50 points per km = 1250 intervals
+        for (i in 0 until 1250) {
+            points.add(
+                GpsPoint(
+                    timestampEpochMs = timestamp,
+                    latitude = currentLat,
+                    longitude = originLon,
+                    speedMps = 20f,
+                    accuracyMeters = 5f
+                )
+            )
+            timestamp += 1000L
+            currentLat += latPerKm / 50.0
+        }
+        points.add(
+            GpsPoint(
+                timestampEpochMs = timestamp,
+                latitude = currentLat,
+                longitude = originLon,
+                speedMps = 20f,
+                accuracyMeters = 5f
+            )
+        )
+
+        // 10 km splits: expect 2 full (10 km each) and 1 partial (5 km)
+        val splits10k = SplitCalculator.computeSplits(points, splitDistanceMeters = 10_000.0)
+        assertEquals(3, splits10k.size)
+        assertEquals(1, splits10k[0].splitNumber)
+        assertFalse(splits10k[0].isPartial)
+        assertEquals(10_000.0, splits10k[0].distanceMeters, 50.0)
+        assertEquals(2, splits10k[1].splitNumber)
+        assertFalse(splits10k[1].isPartial)
+        assertEquals(10_000.0, splits10k[1].distanceMeters, 50.0)
+        assertEquals(3, splits10k[2].splitNumber)
+        assertTrue(splits10k[2].isPartial)
+        assertEquals(5_000.0, splits10k[2].distanceMeters, 50.0)
+
+        // 100 km splits: expect 1 partial (25 km)
+        val splits100k = SplitCalculator.computeSplits(points, splitDistanceMeters = 100_000.0)
+        assertEquals(1, splits100k.size)
+        assertTrue(splits100k[0].isPartial)
+        assertEquals(25_000.0, splits100k[0].distanceMeters, 100.0)
+    }
 }

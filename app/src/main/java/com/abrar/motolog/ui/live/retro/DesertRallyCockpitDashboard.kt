@@ -111,22 +111,17 @@ fun DesertRallyCockpitDashboard(
     onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.DESERT_RALLY)
 ) {
-    var showOverallStats by remember { mutableStateOf(false) }
-
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
     val displayDistance = if (isMetric) totalDistanceKm else totalDistanceKm * 0.621371
     val speedUnit = if (isMetric) "KM/H" else "MPH"
     val distanceUnit = if (isMetric) "KM" else "MI"
 
-    val avgSpeedDisplay = if (showOverallStats) {
-        if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
-    } else {
-        if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
-    }
-
+    val movingTimeDisplay = CockpitUtils.formatDurationMs(stats.movingTimeMs)
+    val totalTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
+    val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val avgOverallSpeedDisplay = if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
-    val timeDisplay = CockpitUtils.formatDurationMs(if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs)
 
     BoxWithConstraints(
         modifier = modifier
@@ -204,41 +199,56 @@ fun DesertRallyCockpitDashboard(
                     accentColor = RallySandGold,
                     modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Numerical Telemetry Row
+                    // Numerical Telemetry Row - Displays all specifications
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         RallyTelemetryCard(
-                            label = if (showOverallStats) "STAGE ELAPSED" else "SPECIAL STAGE TIME",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            label = "SPECIAL STAGE",
+                            value = movingTimeDisplay,
+                            subtitle = "MOVING TIME",
                             accentColor = RallySandGold,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         RallyTelemetryCard(
-                            label = if (showOverallStats) "TOTAL AVG PACE" else "MOVING AVG PACE",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            label = "STAGE ELAPSED",
+                            value = totalTimeDisplay,
+                            subtitle = "TOTAL ON RIDE",
+                            accentColor = RallySandGold,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RallyTelemetryCard(
+                            label = "MOVING AVG",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                             unit = speedUnit,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            subtitle = "ACTIVE PACE",
                             accentColor = RallyHighVisYellow,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         RallyTelemetryCard(
-                            label = "STAGE TOP VELOCITY",
+                            label = "TOTAL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "OVERALL PACE",
+                            accentColor = RallyHighVisYellow,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RallyTelemetryCard(
+                            label = "TOP VELOCITY",
                             value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                             unit = speedUnit,
-                            subtitle = "MAX RECORD",
+                            subtitle = "PEAK SPEED",
                             accentColor = RallyDakarOrange,
                             modifier = Modifier.weight(1f)
                         )
 
                         RallyTelemetryCard(
-                            label = "SAT-LOCK ACCURACY",
+                            label = "SAT ACCURACY",
                             value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                             subtitle = if (isGpsLost) "SIGNAL LOST" else "GPS SYNC",
                             accentColor = if (isGpsLost) RallyDakarOrange else RallyCompassCyan,
@@ -458,28 +468,48 @@ fun DesertRallyCockpitDashboard(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 2x2 Telemetry Cards
+                // Telemetry Cards displaying ALL specifications
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RallyTelemetryCard(
-                        label = if (showOverallStats) "STAGE ELAPSED" else "SPECIAL STAGE TIME",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        label = "SPECIAL STAGE TIME",
+                        value = movingTimeDisplay,
+                        subtitle = "MOVING TIME",
                         accentColor = RallySandGold,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
                     )
 
                     RallyTelemetryCard(
-                        label = if (showOverallStats) "TOTAL AVG PACE" else "MOVING AVG PACE",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        label = "STAGE ELAPSED",
+                        value = totalTimeDisplay,
+                        subtitle = "TOTAL ON RIDE",
+                        accentColor = RallySandGold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RallyTelemetryCard(
+                        label = "MOVING AVG PACE",
+                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                         unit = speedUnit,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        subtitle = "ACTIVE PACE",
                         accentColor = RallyHighVisYellow,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    RallyTelemetryCard(
+                        label = "TOTAL AVG PACE",
+                        value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "OVERALL PACE",
+                        accentColor = RallyHighVisYellow,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 

@@ -7,6 +7,15 @@ import com.abrar.motolog.domain.model.GraphData
 import com.abrar.motolog.domain.model.RouteMapData
 
 /**
+ * Supported distance split intervals for ride breakdown analysis.
+ */
+enum class SplitInterval(val distanceMultiplier: Int, val labelKm: String, val labelMi: String) {
+    SPLIT_1KM(1, "1 km", "1 mi"),
+    SPLIT_10KM(10, "10 km", "10 mi"),
+    SPLIT_100KM(100, "100 km", "100 mi")
+}
+
+/**
  * UI state for the Ride Detail screen.
  */
 data class RideDetailUiState(
@@ -17,6 +26,7 @@ data class RideDetailUiState(
     val isChangeBikeDialogOpen: Boolean = false,
     val isSplitsLoading: Boolean = true,
     val splits: List<RideSplit> = emptyList(),
+    val selectedSplitInterval: SplitInterval = SplitInterval.SPLIT_1KM,
     val routeMap: RouteMapData? = null,
     val speedGraph: GraphData? = null,
     val elevationGraph: GraphData? = null,

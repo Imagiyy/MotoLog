@@ -200,32 +200,47 @@ fun TrackDayCockpitDashboard(
                     accentColor = RaceCyan,
                     modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Numerical Telemetry Row
+                    // Numerical Telemetry Row - Displays all specifications
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         TrackTelemetryCard(
-                            label = if (showOverallStats) "ELAPSED TIME" else "SESSION TIME",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            label = "SESSION TIME",
+                            value = CockpitUtils.formatDurationMs(stats.movingTimeMs),
+                            subtitle = "MOVING",
                             accentColor = RaceCyan,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         TrackTelemetryCard(
-                            label = if (showOverallStats) "OVERALL AVG" else "MOVING AVG",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            label = "TOTAL TIME",
+                            value = CockpitUtils.formatDurationMs(stats.elapsedTimeMs),
+                            subtitle = "TOTAL ON RIDE",
+                            accentColor = RaceCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        TrackTelemetryCard(
+                            label = "MOVING AVG",
+                            value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371),
                             unit = speedUnit,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            subtitle = "ACTIVE",
                             accentColor = RaceGreen,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         TrackTelemetryCard(
-                            label = "V-MAX (PEAK)",
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371),
+                            unit = speedUnit,
+                            subtitle = "OVERALL",
+                            accentColor = RaceGreen,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        TrackTelemetryCard(
+                            label = "V-MAX",
                             value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                             unit = speedUnit,
                             subtitle = "TOP SPEED",
@@ -234,7 +249,7 @@ fun TrackDayCockpitDashboard(
                         )
 
                         TrackTelemetryCard(
-                            label = "GPS ACCURACY",
+                            label = "ACCURACY",
                             value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                             subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
                             accentColor = if (isGpsLost) RaceRed else RaceAmber,
@@ -454,28 +469,48 @@ fun TrackDayCockpitDashboard(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 2x2 Telemetry Cards
+                // Telemetry Cards displaying ALL specifications
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TrackTelemetryCard(
-                        label = if (showOverallStats) "ELAPSED TIME" else "SESSION TIME",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        label = "SESSION TIME",
+                        value = CockpitUtils.formatDurationMs(stats.movingTimeMs),
+                        subtitle = "MOVING",
                         accentColor = RaceCyan,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
                     )
 
                     TrackTelemetryCard(
-                        label = if (showOverallStats) "OVERALL AVG" else "MOVING AVG",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        label = "TOTAL TIME",
+                        value = CockpitUtils.formatDurationMs(stats.elapsedTimeMs),
+                        subtitle = "TOTAL ON RIDE",
+                        accentColor = RaceCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TrackTelemetryCard(
+                        label = "MOVING AVG",
+                        value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371),
                         unit = speedUnit,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        subtitle = "ACTIVE PACE",
                         accentColor = RaceGreen,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    TrackTelemetryCard(
+                        label = "OVERALL AVG",
+                        value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371),
+                        unit = speedUnit,
+                        subtitle = "OVERALL PACE",
+                        accentColor = RaceGreen,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -718,7 +753,7 @@ private fun SuperbikeSpeedCluster(
                 )
 
                 Text(
-                    text = if (isSpeedAlert) "⚠ SPEED LIMIT EXCEEDED" else "GEAR D // TRACTION ON",
+                    text = if (isSpeedAlert) "⚠ SPEED LIMIT EXCEEDED" else "TRACK TELEMETRY",
                     color = if (isSpeedAlert) RaceRedGlow else RaceGreen,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,

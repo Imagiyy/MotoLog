@@ -108,22 +108,17 @@ fun NeonCyberCockpitDashboard(
     onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.NEON_CYBER)
 ) {
-    var showOverallStats by remember { mutableStateOf(false) }
-
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
     val displayDistance = if (isMetric) totalDistanceKm else totalDistanceKm * 0.621371
     val speedUnit = if (isMetric) "KM/H" else "MPH"
     val distanceUnit = if (isMetric) "KM" else "MI"
 
-    val avgSpeedDisplay = if (showOverallStats) {
-        if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
-    } else {
-        if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
-    }
-
+    val movingTimeDisplay = CockpitUtils.formatDurationMs(stats.movingTimeMs)
+    val totalTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
+    val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val avgOverallSpeedDisplay = if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
-    val timeDisplay = CockpitUtils.formatDurationMs(if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs)
 
     BoxWithConstraints(
         modifier = modifier
@@ -187,28 +182,43 @@ fun NeonCyberCockpitDashboard(
                     accentColor = CyberMagenta,
                     modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Numerical Telemetry Row
+                    // Numerical Telemetry Row - Displays all specifications
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         CyberTelemetryCard(
-                            label = if (showOverallStats) "CHRONO // TOTAL" else "CHRONO // MOVING",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "TOTAL" else "MOVING",
+                            label = "CHRONO // MOVING",
+                            value = movingTimeDisplay,
+                            subtitle = "MOVING",
                             accentColor = CyberCyan,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         CyberTelemetryCard(
-                            label = if (showOverallStats) "VELOCITY // TOTAL AVG" else "VELOCITY // MOVE AVG",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            label = "CHRONO // TOTAL",
+                            value = totalTimeDisplay,
+                            subtitle = "TOTAL ON RIDE",
+                            accentColor = CyberCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        CyberTelemetryCard(
+                            label = "VELOCITY // MOVE",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                             unit = speedUnit,
-                            subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                            subtitle = "MOVING AVG",
                             accentColor = CyberYellow,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        CyberTelemetryCard(
+                            label = "VELOCITY // TOTAL",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "OVERALL AVG",
+                            accentColor = CyberYellow,
+                            modifier = Modifier.weight(1f)
                         )
 
                         CyberTelemetryCard(
@@ -431,28 +441,48 @@ fun NeonCyberCockpitDashboard(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 2x2 Cyber Telemetry Grid
+                // Cyber Telemetry Grid displaying ALL specifications
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
-                        label = if (showOverallStats) "CHRONO // TOTAL" else "CHRONO // MOVING",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "TOTAL" else "MOVING",
+                        label = "CHRONO // MOVING",
+                        value = movingTimeDisplay,
+                        subtitle = "MOVING TIME",
                         accentColor = CyberCyan,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
                     )
 
                     CyberTelemetryCard(
-                        label = if (showOverallStats) "VELOCITY // TOTAL AVG" else "VELOCITY // MOVE AVG",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        label = "CHRONO // TOTAL",
+                        value = totalTimeDisplay,
+                        subtitle = "TOTAL ON RIDE",
+                        accentColor = CyberCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CyberTelemetryCard(
+                        label = "VELOCITY // MOVE AVG",
+                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                         unit = speedUnit,
-                        subtitle = if (showOverallStats) "OVERALL" else "MOVING",
+                        subtitle = "MOVING AVERAGE",
                         accentColor = CyberYellow,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    CyberTelemetryCard(
+                        label = "VELOCITY // TOTAL AVG",
+                        value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "OVERALL AVERAGE",
+                        accentColor = CyberYellow,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 

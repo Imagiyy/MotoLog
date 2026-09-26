@@ -87,22 +87,17 @@ fun RetroCockpitDashboard(
     onNavigateToSettings: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
 ) {
-    var showOverallStats by remember { mutableStateOf(false) }
-
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
     val displayDistance = if (isMetric) totalDistanceKm else totalDistanceKm * 0.621371
     val speedUnit = if (isMetric) "km/h" else "mph"
     val distanceUnit = if (isMetric) "km" else "mi"
 
-    val avgSpeedDisplay = if (showOverallStats) {
-        if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
-    } else {
-        if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
-    }
-
+    val movingTimeDisplay = formatDurationMs(stats.movingTimeMs)
+    val totalTimeDisplay = formatDurationMs(stats.elapsedTimeMs)
+    val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val avgOverallSpeedDisplay = if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
-    val timeDisplay = formatDurationMs(if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs)
 
     BoxWithConstraints(
         modifier = modifier
@@ -182,28 +177,43 @@ fun RetroCockpitDashboard(
                     accentColor = palette.primaryAccent,
                     modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Numerical Telemetry Row
+                    // Numerical Telemetry Row - Displays all specifications
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         RetroInstrumentCard(
-                            label = if (showOverallStats) "Elapsed Time" else "Moving Time",
-                            value = timeDisplay,
-                            subtitle = if (showOverallStats) "Overall" else "Moving",
+                            label = "Moving Time",
+                            value = movingTimeDisplay,
+                            subtitle = "Moving Clock",
                             palette = palette,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
                         )
 
                         RetroInstrumentCard(
-                            label = if (showOverallStats) "Overall Avg" else "Moving Avg",
-                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                            unit = speedUnit,
-                            subtitle = if (showOverallStats) "Overall" else "Moving",
+                            label = "Total Time",
+                            value = totalTimeDisplay,
+                            subtitle = "Total on Ride",
                             palette = palette,
-                            modifier = Modifier.weight(1f),
-                            onClick = { showOverallStats = !showOverallStats }
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RetroInstrumentCard(
+                            label = "Moving Avg",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "Active Pace",
+                            palette = palette,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        RetroInstrumentCard(
+                            label = "Overall Avg",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            subtitle = "Trip Pace",
+                            palette = palette,
+                            modifier = Modifier.weight(1f)
                         )
 
                         RetroInstrumentCard(
@@ -364,28 +374,25 @@ fun RetroCockpitDashboard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 4. 2x2 Secondary Instrument Gauges
+                // Telemetry Cards displaying ALL specifications
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RetroInstrumentCard(
-                        label = if (showOverallStats) "Elapsed Time" else "Moving Time",
-                        value = timeDisplay,
-                        subtitle = if (showOverallStats) "Overall (tap to swap)" else "Moving (tap to swap)",
+                        label = "Moving Time",
+                        value = movingTimeDisplay,
+                        subtitle = "Moving Clock",
                         palette = palette,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
                     )
 
                     RetroInstrumentCard(
-                        label = if (showOverallStats) "Overall Avg" else "Moving Avg",
-                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = if (showOverallStats) "Overall (tap to swap)" else "Moving (tap to swap)",
+                        label = "Total Time",
+                        value = totalTimeDisplay,
+                        subtitle = "Total on Ride",
                         palette = palette,
-                        modifier = Modifier.weight(1f),
-                        onClick = { showOverallStats = !showOverallStats }
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -393,7 +400,32 @@ fun RetroCockpitDashboard(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RetroInstrumentCard(
+                        label = "Moving Avg",
+                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "Active Pace",
+                        palette = palette,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    RetroInstrumentCard(
+                        label = "Overall Avg",
+                        value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                        unit = speedUnit,
+                        subtitle = "Trip Pace",
+                        palette = palette,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RetroInstrumentCard(
                         label = "Max Speed",
@@ -407,7 +439,7 @@ fun RetroCockpitDashboard(
                     val accText = if (isMetric) "±${accuracyMeters.toInt()}m" else "±${(accuracyMeters * 3.28084).toInt()}ft"
                     RetroInstrumentCard(
                         label = "GPS Fix",
-                        value = accText,
+                        value = if (isGpsLost) "--" else accText,
                         subtitle = if (isGpsLost) "Signal Lost" else "Target ≤25m",
                         palette = palette,
                         modifier = Modifier.weight(1f)
