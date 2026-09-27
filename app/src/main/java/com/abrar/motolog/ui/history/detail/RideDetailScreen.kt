@@ -738,7 +738,7 @@ private fun SplitsTableHeader() {
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
             )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -746,31 +746,35 @@ private fun SplitsTableHeader() {
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1.4f),
+            maxLines = 1
         )
         Text(
             text = "DISTANCE",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.2f),
-            textAlign = TextAlign.Center
+            modifier = Modifier.weight(0.95f),
+            textAlign = TextAlign.Center,
+            maxLines = 1
         )
         Text(
             text = "TIME",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.2f),
-            textAlign = TextAlign.Center
+            modifier = Modifier.weight(0.75f),
+            textAlign = TextAlign.Center,
+            maxLines = 1
         )
         Text(
             text = "AVG SPEED",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.4f),
-            textAlign = TextAlign.End
+            modifier = Modifier.weight(0.95f),
+            textAlign = TextAlign.End,
+            maxLines = 1
         )
     }
 }
@@ -812,7 +816,7 @@ private fun SplitRow(
             .background(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -820,29 +824,35 @@ private fun SplitRow(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1.4f)
         )
         Text(
             text = formattedDistance,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.2f),
-            textAlign = TextAlign.Center
+            modifier = Modifier.weight(0.95f),
+            textAlign = TextAlign.Center,
+            maxLines = 1
         )
         Text(
             text = formattedDuration,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.2f),
-            textAlign = TextAlign.Center
+            modifier = Modifier.weight(0.75f),
+            textAlign = TextAlign.Center,
+            maxLines = 1
         )
         Text(
             text = formattedSpeed,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1.4f),
-            textAlign = TextAlign.End
+            modifier = Modifier.weight(0.95f),
+            textAlign = TextAlign.End,
+            maxLines = 1
         )
     }
 }
