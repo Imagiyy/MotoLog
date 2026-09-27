@@ -792,10 +792,22 @@
   - Added explicit `contentType` metadata to all heterogeneous items in `RideDetailScreen`'s `LazyColumn` for optimal view composition recycling.
   - Added stable `key = { it.splitNumber }` and `contentType = { "split_row" }` to `items(splits)`.
   - Memoized formatted strings (`splitTitle`, `formattedDistance`, `formattedDuration`, `formattedSpeed`) inside `SplitRow` with `remember` to eliminate allocations and frame drops during high-speed swiping.
+- [x] **Distance Splits Single-Line Layout & Tightened Spacing**:
+  - Rebalanced column weights (`SPLIT` 1.4f, `DISTANCE` 0.95f, `TIME` 0.75f, `AVG SPEED` 0.95f) to ensure split labels like `380-390 km` never wrap to 2 lines.
+  - Reduced empty gap between centered `TIME` and right-aligned `AVG SPEED`.
+  - Added `maxLines = 1`, `softWrap = false`, and `overflow = TextOverflow.Ellipsis`.
+- [x] **App Launcher Icon Pop-Out & Studio White Canvas**:
+  - Replaced solid black background with crisp Studio White (`#FFFFFF`) with a subtle 28% opacity floating drop shadow.
+  - Preserved 100% of the original neon cyan, neon magenta, and sunset road visor illustration with perfect contrast against light and dark device wallpapers.
+  - Fully regenerated adaptive icon layers (`ic_launcher_background.png`, `ic_launcher_foreground.png`), Google Play store asset (`play_store_512.png`), and all mipmap density variants (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) for both standard squircle and circular masks.
+- [x] **Live Cockpit UI Clutter & `//` Cleanup**:
+  - Removed the `ICO TRIP 1 // ROADBOOK` header row and redundant accuracy readout from the top distance card across portrait and landscape Dakar Rally dashboards, leaving a clean `KM-TOT` trip readout.
+  - Purged all `//` stylistic separators across all 5 live cockpit themes (Desert Rally, Superbike Track Day, Neon Cyber, Cafe Racer, Retro Classic).
 
 ### Verified
 - [x] `./gradlew test` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+
 
 
 
