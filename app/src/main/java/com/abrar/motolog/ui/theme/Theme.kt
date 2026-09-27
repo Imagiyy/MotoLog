@@ -12,152 +12,23 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Theme mode options for MotoLog.
- * AMOLED mode uses pure black backgrounds for OLED battery savings.
+ * 8 Dedicated Unique Motorcycle Cockpit Themes for MotoLog.
+ * Each theme represents a distinct motorcycle discipline with its own custom
+ * instrument dashboard layout, speed visualization architecture, and telemetry cards.
+ * Zero generic recolors.
  */
 enum class ThemeMode {
-    RETRO,
-    CAFE_RACER,
-    TRACK_DAY,
-    NEON_CYBER,
-    DESERT_RALLY,
-    DARK,
-    AMOLED,
-    LIGHT,
-    SYSTEM
+    TRACK_DAY,          // Superbike MotoGP / WorldSBK Panoramic TFT Display
+    DESERT_RALLY,       // Dakar Rally Navigation Tower & Dual-Trip Master
+    NEON_CYBER,         // Tokyo Synthwave Holographic HUD with Hex Dial
+    RETRO_CLASSIC,      // 1960s Smiths Chronometer & Rolling Mechanical Drum
+    STEALTH_HUD,        // Fighter Jet Collimator Reticle & Pure OLED Black
+    ADVENTURE_TOURING,  // Globe Explorer GS Alpine Split Cockpit & Live Altimeter
+    CUSTOM_BOBBER,      // American V-Twin 180° Machined Billet Arc Speedometer
+    NIGHT_CRUISER       // Midnight Highway Low-Glare Ambient Horizon
 }
 
-private val LightColorScheme = lightColorScheme(
-    primary = PrimaryLight,
-    onPrimary = OnPrimaryLight,
-    primaryContainer = PrimaryContainerLight,
-    onPrimaryContainer = OnPrimaryContainerLight,
-    secondary = SecondaryLight,
-    onSecondary = OnSecondaryLight,
-    secondaryContainer = SecondaryContainerLight,
-    onSecondaryContainer = OnSecondaryContainerLight,
-    tertiary = TertiaryLight,
-    onTertiary = OnTertiaryLight,
-    tertiaryContainer = TertiaryContainerLight,
-    onTertiaryContainer = OnTertiaryContainerLight,
-    error = ErrorLight,
-    onError = OnErrorLight,
-    errorContainer = ErrorContainerLight,
-    onErrorContainer = OnErrorContainerLight,
-    background = BackgroundLight,
-    onBackground = OnBackgroundLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
-    outline = OutlineLight,
-    outlineVariant = OutlineVariantLight
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryContainerDark,
-    onPrimaryContainer = OnPrimaryContainerDark,
-    secondary = SecondaryDark,
-    onSecondary = OnSecondaryDark,
-    secondaryContainer = SecondaryContainerDark,
-    onSecondaryContainer = OnSecondaryContainerDark,
-    tertiary = TertiaryDark,
-    onTertiary = OnTertiaryDark,
-    tertiaryContainer = TertiaryContainerDark,
-    onTertiaryContainer = OnTertiaryContainerDark,
-    error = ErrorDark,
-    onError = OnErrorDark,
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = OnErrorContainerDark,
-    background = BackgroundDark,
-    onBackground = OnBackgroundDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    outline = OutlineDark,
-    outlineVariant = OutlineVariantDark
-)
-
-private val AmoledColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryContainerDark,
-    onPrimaryContainer = OnPrimaryContainerDark,
-    secondary = SecondaryDark,
-    onSecondary = OnSecondaryDark,
-    secondaryContainer = SecondaryContainerDark,
-    onSecondaryContainer = OnSecondaryContainerDark,
-    tertiary = TertiaryDark,
-    onTertiary = OnTertiaryDark,
-    tertiaryContainer = TertiaryContainerDark,
-    onTertiaryContainer = OnTertiaryContainerDark,
-    error = ErrorDark,
-    onError = OnErrorDark,
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = OnErrorContainerDark,
-    background = BackgroundAmoled,
-    onBackground = OnBackgroundDark,
-    surface = SurfaceAmoled,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantAmoled,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    outline = OutlineDark,
-    outlineVariant = OutlineVariantDark
-)
-
-private val RetroColorScheme = darkColorScheme(
-    primary = RetroPrimary,
-    onPrimary = RetroOnPrimary,
-    primaryContainer = RetroPrimaryContainer,
-    onPrimaryContainer = RetroOnPrimaryContainer,
-    secondary = RetroSecondary,
-    onSecondary = RetroOnSecondary,
-    secondaryContainer = RetroSecondaryContainer,
-    onSecondaryContainer = RetroOnSecondaryContainer,
-    tertiary = RetroSecondary,
-    onTertiary = RetroOnSecondary,
-    tertiaryContainer = RetroSecondaryContainer,
-    onTertiaryContainer = RetroOnSecondaryContainer,
-    error = JewelRed,
-    onError = Color.White,
-    errorContainer = Color(0xFF5C0000),
-    onErrorContainer = Color(0xFFFFCDD2),
-    background = RetroBackground,
-    onBackground = RetroOnBackground,
-    surface = RetroSurface,
-    onSurface = RetroOnSurface,
-    surfaceVariant = RetroSurfaceVariant,
-    onSurfaceVariant = RetroOnSurfaceVariant,
-    outline = RetroOutline,
-    outlineVariant = RetroOutlineVariant
-)
-
-private val CafeRacerColorScheme = darkColorScheme(
-    primary = CafeRacerPrimary,
-    onPrimary = CafeRacerOnPrimary,
-    primaryContainer = CafeRacerPrimaryContainer,
-    onPrimaryContainer = CafeRacerOnPrimaryContainer,
-    secondary = CafeRacerSecondary,
-    onSecondary = CafeRacerOnSecondary,
-    secondaryContainer = CafeRacerSecondaryContainer,
-    onSecondaryContainer = CafeRacerOnSecondaryContainer,
-    tertiary = CafeRacerSecondary,
-    onTertiary = CafeRacerOnSecondary,
-    error = JewelRed,
-    onError = Color.White,
-    background = CafeRacerBackground,
-    onBackground = CafeRacerOnBackground,
-    surface = CafeRacerSurface,
-    onSurface = CafeRacerOnSurface,
-    surfaceVariant = CafeRacerSurfaceVariant,
-    onSurfaceVariant = CafeRacerOnSurfaceVariant,
-    outline = CafeRacerOutline,
-    outlineVariant = Color(0xFF264A3B)
-)
-
+// 1. Track Day (Corse Racing Scarlet & Carbon Fiber)
 private val TrackDayColorScheme = darkColorScheme(
     primary = TrackDayPrimary,
     onPrimary = TrackDayOnPrimary,
@@ -181,6 +52,31 @@ private val TrackDayColorScheme = darkColorScheme(
     outlineVariant = Color(0xFF424242)
 )
 
+// 2. Desert Rally (Dakar Sand & Tactical Khaki)
+private val DesertRallyColorScheme = darkColorScheme(
+    primary = DesertRallyPrimary,
+    onPrimary = DesertRallyOnPrimary,
+    primaryContainer = DesertRallyPrimaryContainer,
+    onPrimaryContainer = DesertRallyOnPrimaryContainer,
+    secondary = DesertRallySecondary,
+    onSecondary = DesertRallyOnSecondary,
+    secondaryContainer = DesertRallySecondaryContainer,
+    onSecondaryContainer = DesertRallyOnSecondaryContainer,
+    tertiary = DesertRallySecondary,
+    onTertiary = DesertRallyOnSecondary,
+    error = JewelRed,
+    onError = Color.White,
+    background = DesertRallyBackground,
+    onBackground = DesertRallyOnBackground,
+    surface = DesertRallySurface,
+    onSurface = DesertRallyOnSurface,
+    surfaceVariant = DesertRallySurfaceVariant,
+    onSurfaceVariant = DesertRallyOnSurfaceVariant,
+    outline = DesertRallyOutline,
+    outlineVariant = Color(0xFF453D34)
+)
+
+// 3. Neon Cyber (Tokyo Night, Electric Cyan & Hot Magenta)
 private val NeonCyberColorScheme = darkColorScheme(
     primary = NeonCyberPrimary,
     onPrimary = NeonCyberOnPrimary,
@@ -204,27 +100,124 @@ private val NeonCyberColorScheme = darkColorScheme(
     outlineVariant = Color(0xFF37275E)
 )
 
-private val DesertRallyColorScheme = darkColorScheme(
-    primary = DesertRallyPrimary,
-    onPrimary = DesertRallyOnPrimary,
-    primaryContainer = DesertRallyPrimaryContainer,
-    onPrimaryContainer = DesertRallyOnPrimaryContainer,
-    secondary = DesertRallySecondary,
-    onSecondary = DesertRallyOnSecondary,
-    secondaryContainer = DesertRallySecondaryContainer,
-    onSecondaryContainer = DesertRallyOnSecondaryContainer,
-    tertiary = DesertRallySecondary,
-    onTertiary = DesertRallyOnSecondary,
+// 4. Retro Classic (British Racing Green, Polished Aluminium & Vintage Ivory)
+private val RetroClassicColorScheme = darkColorScheme(
+    primary = CafeRacerPrimary,
+    onPrimary = CafeRacerOnPrimary,
+    primaryContainer = CafeRacerPrimaryContainer,
+    onPrimaryContainer = CafeRacerOnPrimaryContainer,
+    secondary = CafeRacerSecondary,
+    onSecondary = CafeRacerOnSecondary,
+    secondaryContainer = CafeRacerSecondaryContainer,
+    onSecondaryContainer = CafeRacerOnSecondaryContainer,
+    tertiary = RetroBrass,
+    onTertiary = RetroOnSecondary,
     error = JewelRed,
     onError = Color.White,
-    background = DesertRallyBackground,
-    onBackground = DesertRallyOnBackground,
-    surface = DesertRallySurface,
-    onSurface = DesertRallyOnSurface,
-    surfaceVariant = DesertRallySurfaceVariant,
-    onSurfaceVariant = DesertRallyOnSurfaceVariant,
-    outline = DesertRallyOutline,
-    outlineVariant = Color(0xFF453D34)
+    background = CafeRacerBackground,
+    onBackground = CafeRacerOnBackground,
+    surface = CafeRacerSurface,
+    onSurface = CafeRacerOnSurface,
+    surfaceVariant = CafeRacerSurfaceVariant,
+    onSurfaceVariant = CafeRacerOnSurfaceVariant,
+    outline = CafeRacerOutline,
+    outlineVariant = Color(0xFF264A3B)
+)
+
+// 5. Stealth HUD (Fighter Jet Collimator & Pure OLED Black)
+private val StealthHudColorScheme = darkColorScheme(
+    primary = StealthHudPrimary,
+    onPrimary = StealthHudOnPrimary,
+    primaryContainer = StealthHudPrimaryContainer,
+    onPrimaryContainer = StealthHudOnPrimaryContainer,
+    secondary = StealthHudSecondary,
+    onSecondary = StealthHudOnSecondary,
+    secondaryContainer = StealthHudSecondaryContainer,
+    onSecondaryContainer = StealthHudOnSecondaryContainer,
+    tertiary = StealthHudNeedle,
+    onTertiary = StealthHudOnPrimary,
+    error = JewelRed,
+    onError = Color.White,
+    background = StealthHudBackground,
+    onBackground = StealthHudOnBackground,
+    surface = StealthHudSurface,
+    onSurface = StealthHudOnSurface,
+    surfaceVariant = StealthHudSurfaceVariant,
+    onSurfaceVariant = StealthHudOnSurfaceVariant,
+    outline = StealthHudOutline,
+    outlineVariant = Color(0xFF14331C)
+)
+
+// 6. Adventure Touring (Globe Explorer GS Alpine & Cordoba Blue)
+private val AdventureTouringColorScheme = darkColorScheme(
+    primary = AdventureTouringPrimary,
+    onPrimary = AdventureTouringOnPrimary,
+    primaryContainer = AdventureTouringPrimaryContainer,
+    onPrimaryContainer = AdventureTouringOnPrimaryContainer,
+    secondary = AdventureTouringSecondary,
+    onSecondary = AdventureTouringOnSecondary,
+    secondaryContainer = AdventureTouringSecondaryContainer,
+    onSecondaryContainer = AdventureTouringOnSecondaryContainer,
+    tertiary = AdventureTouringGlacial,
+    onTertiary = AdventureTouringOnPrimary,
+    error = JewelRed,
+    onError = Color.White,
+    background = AdventureTouringBackground,
+    onBackground = AdventureTouringOnBackground,
+    surface = AdventureTouringSurface,
+    onSurface = AdventureTouringOnSurface,
+    surfaceVariant = AdventureTouringSurfaceVariant,
+    onSurfaceVariant = AdventureTouringOnSurfaceVariant,
+    outline = AdventureTouringOutline,
+    outlineVariant = Color(0xFF253041)
+)
+
+// 7. Custom Bobber (American V-Twin Billet Bronze & Raw Steel)
+private val CustomBobberColorScheme = darkColorScheme(
+    primary = CustomBobberPrimary,
+    onPrimary = CustomBobberOnPrimary,
+    primaryContainer = CustomBobberPrimaryContainer,
+    onPrimaryContainer = CustomBobberOnPrimaryContainer,
+    secondary = CustomBobberSecondary,
+    onSecondary = CustomBobberOnSecondary,
+    secondaryContainer = CustomBobberSecondaryContainer,
+    onSecondaryContainer = CustomBobberOnSecondaryContainer,
+    tertiary = CustomBobberSteel,
+    onTertiary = CustomBobberOnPrimary,
+    error = JewelRed,
+    onError = Color.White,
+    background = CustomBobberBackground,
+    onBackground = CustomBobberOnBackground,
+    surface = CustomBobberSurface,
+    onSurface = CustomBobberOnSurface,
+    surfaceVariant = CustomBobberSurfaceVariant,
+    onSurfaceVariant = CustomBobberOnSurfaceVariant,
+    outline = CustomBobberOutline,
+    outlineVariant = Color(0xFF423328)
+)
+
+// 8. Night Cruiser (Midnight Interstate Horizon & Starlight Blue)
+private val NightCruiserColorScheme = darkColorScheme(
+    primary = NightCruiserPrimary,
+    onPrimary = NightCruiserOnPrimary,
+    primaryContainer = NightCruiserPrimaryContainer,
+    onPrimaryContainer = NightCruiserOnPrimaryContainer,
+    secondary = NightCruiserSecondary,
+    onSecondary = NightCruiserOnSecondary,
+    secondaryContainer = NightCruiserSecondaryContainer,
+    onSecondaryContainer = NightCruiserOnSecondaryContainer,
+    tertiary = NightCruiserHorizon,
+    onTertiary = NightCruiserOnPrimary,
+    error = JewelRed,
+    onError = Color.White,
+    background = NightCruiserBackground,
+    onBackground = NightCruiserOnBackground,
+    surface = NightCruiserSurface,
+    onSurface = NightCruiserOnSurface,
+    surfaceVariant = NightCruiserSurfaceVariant,
+    onSurfaceVariant = NightCruiserOnSurfaceVariant,
+    outline = NightCruiserOutline,
+    outlineVariant = Color(0xFF1E2D4F)
 )
 
 /**
@@ -252,45 +245,7 @@ data class CockpitThemePalette(
 )
 
 fun getCockpitThemePalette(themeMode: ThemeMode?, isSystemDark: Boolean = true): CockpitThemePalette {
-    return when (themeMode) {
-        ThemeMode.RETRO -> CockpitThemePalette(
-            background = RetroBackground,
-            surface = RetroSurface,
-            surfaceBorder = RetroBrass,
-            bezelOuter = RetroChrome,
-            bezelInner = RetroBrass,
-            dialFace = RetroDialFace,
-            dialText = RetroIvory,
-            tickMajor = RetroBrass,
-            tickMinor = RetroIvory.copy(alpha = 0.65f),
-            needle = RetroNeedle,
-            needleGradientStart = Color(0xFF7A1E0B),
-            needleGradientEnd = Color(0xFFFF7A47),
-            primaryAccent = RetroAmber,
-            secondaryAccent = RetroBrass,
-            hubColor = RetroBrass,
-            hubCenter = RetroChrome
-        )
-
-        ThemeMode.CAFE_RACER -> CockpitThemePalette(
-            background = CafeRacerBackground,
-            surface = CafeRacerSurface,
-            surfaceBorder = CafeRacerSecondary,
-            bezelOuter = Color(0xFFECEFF1),
-            bezelInner = CafeRacerPrimary,
-            dialFace = Color(0xFF0F261E),
-            dialText = CafeRacerIvory,
-            tickMajor = Color(0xFFECEFF1),
-            tickMinor = Color(0xFF81C784),
-            needle = CafeRacerNeedle,
-            needleGradientStart = Color(0xFFBF360C),
-            needleGradientEnd = Color(0xFFFFB74D),
-            primaryAccent = CafeRacerPrimary,
-            secondaryAccent = CafeRacerSecondary,
-            hubColor = Color(0xFFCFD8DC),
-            hubCenter = Color(0xFF2E7D5B)
-        )
-
+    return when (themeMode ?: ThemeMode.TRACK_DAY) {
         ThemeMode.TRACK_DAY -> CockpitThemePalette(
             background = TrackDayBackground,
             surface = TrackDaySurface,
@@ -308,25 +263,6 @@ fun getCockpitThemePalette(themeMode: ThemeMode?, isSystemDark: Boolean = true):
             secondaryAccent = TrackDaySecondary,
             hubColor = Color(0xFF37474F),
             hubCenter = TrackDayPrimary
-        )
-
-        ThemeMode.NEON_CYBER -> CockpitThemePalette(
-            background = NeonCyberBackground,
-            surface = NeonCyberSurface,
-            surfaceBorder = NeonCyberPrimary,
-            bezelOuter = NeonCyberSecondary,
-            bezelInner = NeonCyberPrimary,
-            dialFace = Color(0xFF0E0B1A),
-            dialText = NeonCyberIvory,
-            tickMajor = NeonCyberPrimary,
-            tickMinor = NeonCyberSecondary.copy(alpha = 0.7f),
-            needle = NeonCyberNeedle,
-            needleGradientStart = Color(0xFF880E4F),
-            needleGradientEnd = Color(0xFFFF4081),
-            primaryAccent = NeonCyberPrimary,
-            secondaryAccent = NeonCyberSecondary,
-            hubColor = NeonCyberSecondary,
-            hubCenter = NeonCyberPrimary
         )
 
         ThemeMode.DESERT_RALLY -> CockpitThemePalette(
@@ -348,129 +284,156 @@ fun getCockpitThemePalette(themeMode: ThemeMode?, isSystemDark: Boolean = true):
             hubCenter = DesertRallyPrimary
         )
 
-        ThemeMode.AMOLED -> CockpitThemePalette(
-            background = BackgroundAmoled,
-            surface = SurfaceAmoled,
-            surfaceBorder = Color(0xFF333333),
-            bezelOuter = Color(0xFF222222),
-            bezelInner = PrimaryDark,
-            dialFace = Color(0xFF000000),
-            dialText = Color.White,
-            tickMajor = PrimaryDark,
-            tickMinor = Color(0xFF555555),
-            needle = RetroNeedle,
+        ThemeMode.NEON_CYBER -> CockpitThemePalette(
+            background = NeonCyberBackground,
+            surface = NeonCyberSurface,
+            surfaceBorder = NeonCyberPrimary,
+            bezelOuter = NeonCyberSecondary,
+            bezelInner = NeonCyberPrimary,
+            dialFace = Color(0xFF0E0B1A),
+            dialText = NeonCyberIvory,
+            tickMajor = NeonCyberPrimary,
+            tickMinor = NeonCyberSecondary.copy(alpha = 0.7f),
+            needle = NeonCyberNeedle,
+            needleGradientStart = Color(0xFF880E4F),
+            needleGradientEnd = Color(0xFFFF4081),
+            primaryAccent = NeonCyberPrimary,
+            secondaryAccent = NeonCyberSecondary,
+            hubColor = NeonCyberSecondary,
+            hubCenter = NeonCyberPrimary
+        )
+
+        ThemeMode.RETRO_CLASSIC -> CockpitThemePalette(
+            background = CafeRacerBackground,
+            surface = CafeRacerSurface,
+            surfaceBorder = RetroBrass,
+            bezelOuter = Color(0xFFD2D9DE),
+            bezelInner = CafeRacerPrimary,
+            dialFace = Color(0xFF092015),
+            dialText = CafeRacerIvory,
+            tickMajor = Color(0xFFD2D9DE),
+            tickMinor = Color(0xFF81C784),
+            needle = CafeRacerNeedle,
             needleGradientStart = Color(0xFFBF360C),
-            needleGradientEnd = Color(0xFFFF5722),
-            primaryAccent = PrimaryDark,
-            secondaryAccent = SecondaryDark,
-            hubColor = Color(0xFF212121),
-            hubCenter = Color.White
+            needleGradientEnd = Color(0xFFFFB74D),
+            primaryAccent = CafeRacerPrimary,
+            secondaryAccent = RetroBrass,
+            hubColor = Color(0xFFCFD8DC),
+            hubCenter = Color(0xFF2E7D5B)
         )
 
-        ThemeMode.LIGHT -> CockpitThemePalette(
-            background = BackgroundLight,
-            surface = SurfaceLight,
-            surfaceBorder = PrimaryLight,
-            bezelOuter = Color(0xFFB0BEC5),
-            bezelInner = PrimaryLight,
-            dialFace = Color(0xFFF5EFEB),
-            dialText = Color(0xFF1A1A1A),
-            tickMajor = PrimaryLight,
-            tickMinor = Color(0xFF78909C),
-            needle = Color(0xFFD32F2F),
-            needleGradientStart = Color(0xFFB71C1C),
-            needleGradientEnd = Color(0xFFFF5252),
-            primaryAccent = PrimaryLight,
-            secondaryAccent = SecondaryLight,
-            hubColor = Color(0xFF90A4AE),
-            hubCenter = Color.Black,
-            isLight = true
+        ThemeMode.STEALTH_HUD -> CockpitThemePalette(
+            background = StealthHudBackground,
+            surface = StealthHudSurface,
+            surfaceBorder = StealthHudPrimary,
+            bezelOuter = Color(0xFF1B4D2B),
+            bezelInner = StealthHudPrimary,
+            dialFace = Color(0xFF000000),
+            dialText = StealthHudPrimary,
+            tickMajor = StealthHudPrimary,
+            tickMinor = StealthHudSecondary.copy(alpha = 0.6f),
+            needle = StealthHudNeedle,
+            needleGradientStart = Color(0xFF009624),
+            needleGradientEnd = Color(0xFF00FF66),
+            primaryAccent = StealthHudPrimary,
+            secondaryAccent = StealthHudSecondary,
+            hubColor = Color(0xFF003314),
+            hubCenter = StealthHudPrimary
         )
 
-        ThemeMode.DARK, ThemeMode.SYSTEM, null -> {
-            if (themeMode == ThemeMode.SYSTEM && !isSystemDark) {
-                CockpitThemePalette(
-                    background = BackgroundLight,
-                    surface = SurfaceLight,
-                    surfaceBorder = PrimaryLight,
-                    bezelOuter = Color(0xFFB0BEC5),
-                    bezelInner = PrimaryLight,
-                    dialFace = Color(0xFFF5EFEB),
-                    dialText = Color(0xFF1A1A1A),
-                    tickMajor = PrimaryLight,
-                    tickMinor = Color(0xFF78909C),
-                    needle = Color(0xFFD32F2F),
-                    needleGradientStart = Color(0xFFB71C1C),
-                    needleGradientEnd = Color(0xFFFF5252),
-                    primaryAccent = PrimaryLight,
-                    secondaryAccent = SecondaryLight,
-                    hubColor = Color(0xFF90A4AE),
-                    hubCenter = Color.Black,
-                    isLight = true
-                )
-            } else {
-                CockpitThemePalette(
-                    background = BackgroundDark,
-                    surface = SurfaceDark,
-                    surfaceBorder = PrimaryDark,
-                    bezelOuter = Color(0xFF78909C),
-                    bezelInner = PrimaryDark,
-                    dialFace = Color(0xFF151417),
-                    dialText = Color(0xFFECE0DB),
-                    tickMajor = PrimaryDark,
-                    tickMinor = Color(0xFF90A4AE),
-                    needle = Color(0xFFFF7043),
-                    needleGradientStart = Color(0xFFD84315),
-                    needleGradientEnd = Color(0xFFFFAB91),
-                    primaryAccent = PrimaryDark,
-                    secondaryAccent = SecondaryDark,
-                    hubColor = Color(0xFF455A64),
-                    hubCenter = PrimaryDark
-                )
-            }
-        }
+        ThemeMode.ADVENTURE_TOURING -> CockpitThemePalette(
+            background = AdventureTouringBackground,
+            surface = AdventureTouringSurface,
+            surfaceBorder = AdventureTouringPrimary,
+            bezelOuter = Color(0xFF30363D),
+            bezelInner = AdventureTouringPrimary,
+            dialFace = Color(0xFF161B22),
+            dialText = Color(0xFFF0F6FC),
+            tickMajor = AdventureTouringPrimary,
+            tickMinor = AdventureTouringGlacial,
+            needle = AdventureTouringNeedle,
+            needleGradientStart = Color(0xFFE65100),
+            needleGradientEnd = Color(0xFFFFB300),
+            primaryAccent = AdventureTouringPrimary,
+            secondaryAccent = AdventureTouringSecondary,
+            hubColor = Color(0xFF21262D),
+            hubCenter = AdventureTouringGlacial
+        )
+
+        ThemeMode.CUSTOM_BOBBER -> CockpitThemePalette(
+            background = CustomBobberBackground,
+            surface = CustomBobberSurface,
+            surfaceBorder = CustomBobberPrimary,
+            bezelOuter = Color(0xFF4A3423),
+            bezelInner = CustomBobberPrimary,
+            dialFace = Color(0xFF1A1512),
+            dialText = Color(0xFFF5EBE1),
+            tickMajor = CustomBobberPrimary,
+            tickMinor = CustomBobberSteel,
+            needle = CustomBobberNeedle,
+            needleGradientStart = Color(0xFFD84315),
+            needleGradientEnd = Color(0xFFFF851B),
+            primaryAccent = CustomBobberPrimary,
+            secondaryAccent = CustomBobberSecondary,
+            hubColor = Color(0xFF33251B),
+            hubCenter = CustomBobberPrimary
+        )
+
+        ThemeMode.NIGHT_CRUISER -> CockpitThemePalette(
+            background = NightCruiserBackground,
+            surface = NightCruiserSurface,
+            surfaceBorder = NightCruiserPrimary,
+            bezelOuter = Color(0xFF1E2D4F),
+            bezelInner = NightCruiserPrimary,
+            dialFace = Color(0xFF0E172E),
+            dialText = Color(0xFFEDF2F7),
+            tickMajor = NightCruiserPrimary,
+            tickMinor = NightCruiserSecondary,
+            needle = NightCruiserNeedle,
+            needleGradientStart = Color(0xFF0284C7),
+            needleGradientEnd = Color(0xFF38BDF8),
+            primaryAccent = NightCruiserPrimary,
+            secondaryAccent = NightCruiserSecondary,
+            hubColor = Color(0xFF182442),
+            hubCenter = NightCruiserPrimary
+        )
     }
 }
 
 /**
  * MotoLog Material 3 Theme.
  *
- * Supports themes:
- * - RETRO (Vintage Biker Cockpit)
- * - CAFE_RACER (British Racing Green & Aluminum)
+ * Supports the 8 unique motorcycle themes:
  * - TRACK_DAY (Corse Racing Scarlet & Carbon)
- * - NEON_CYBER (Cyberpunk Tokyo Cyan & Magenta)
  * - DESERT_RALLY (Dakar Sand & Tactical Khaki)
- * - DARK (Modern Sport Dark)
- * - AMOLED (Night Stealth Pure Black)
- * - LIGHT (High-Noon Sunlight High-Contrast)
- * - SYSTEM (Follows Android Device Setting)
+ * - NEON_CYBER (Tokyo Night & Electric Cyan)
+ * - RETRO_CLASSIC (Smiths Chrono & British Racing Green)
+ * - STEALTH_HUD (Pure OLED Black & Phosphor Green)
+ * - ADVENTURE_TOURING (GS Alpine Basalt & Cordoba Blue)
+ * - CUSTOM_BOBBER (American V-Twin Billet Bronze & Raw Steel)
+ * - NIGHT_CRUISER (Midnight Interstate Horizon & Starlight Blue)
  */
 @Composable
 fun MotoLogTheme(
     themeMode: ThemeMode? = null,
     content: @Composable () -> Unit
 ) {
-    val isDarkSystem = isSystemInDarkTheme()
-
-    val colorScheme = when (themeMode) {
-        ThemeMode.RETRO -> RetroColorScheme
-        ThemeMode.CAFE_RACER -> CafeRacerColorScheme
+    val colorScheme = when (themeMode ?: ThemeMode.TRACK_DAY) {
         ThemeMode.TRACK_DAY -> TrackDayColorScheme
-        ThemeMode.NEON_CYBER -> NeonCyberColorScheme
         ThemeMode.DESERT_RALLY -> DesertRallyColorScheme
-        ThemeMode.DARK -> DarkColorScheme
-        ThemeMode.AMOLED -> AmoledColorScheme
-        ThemeMode.LIGHT -> LightColorScheme
-        ThemeMode.SYSTEM, null -> if (isDarkSystem) DarkColorScheme else LightColorScheme
+        ThemeMode.NEON_CYBER -> NeonCyberColorScheme
+        ThemeMode.RETRO_CLASSIC -> RetroClassicColorScheme
+        ThemeMode.STEALTH_HUD -> StealthHudColorScheme
+        ThemeMode.ADVENTURE_TOURING -> AdventureTouringColorScheme
+        ThemeMode.CUSTOM_BOBBER -> CustomBobberColorScheme
+        ThemeMode.NIGHT_CRUISER -> NightCruiserColorScheme
     }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-                colorScheme == LightColorScheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 

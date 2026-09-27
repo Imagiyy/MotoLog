@@ -37,6 +37,11 @@ import com.abrar.motolog.ui.garage.GarageScreen
 import com.abrar.motolog.ui.garage.detail.BikeDetailScreen
 import com.abrar.motolog.ui.settings.SettingsScreen
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+
 @Serializable
 data object LiveRoute
 
@@ -88,6 +93,7 @@ fun MotoLogNavGraph() {
             if (!isLandscape || !isLiveScreen) {
                 NavigationBar {
                     TopLevelDestination.entries.forEach { destination ->
+                        val isSelected = currentDestination?.hasRoute(destination.route::class) == true
                         NavigationBarItem(
                             icon = {
                                 Icon(
@@ -96,10 +102,12 @@ fun MotoLogNavGraph() {
                                 )
                             },
                             label = { Text(destination.label) },
-                            selected = currentDestination?.hasRoute(destination.route::class) == true,
+                            selected = isSelected,
                             onClick = {
+                                if (isSelected) return@NavigationBarItem
+
                                 if (destination.route == LiveRoute) {
-                                    val popped = navController.popBackStack(LiveRoute, inclusive = false)
+                                    val popped = navController.popBackStack(LiveRoute, inclusive = false, saveState = true)
                                     if (!popped) {
                                         navController.navigate(LiveRoute) {
                                             popUpTo(navController.graph.findStartDestination().id) {
@@ -128,7 +136,11 @@ fun MotoLogNavGraph() {
         NavHost(
             navController = navController,
             startDestination = LiveRoute,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             composable<LiveRoute> {
                 LiveScreen(
@@ -167,14 +179,64 @@ fun MotoLogNavGraph() {
                     }
                 )
             }
-            composable<BikeDetailRoute> {
+            composable<BikeDetailRoute>(
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                }
+            ) {
                 BikeDetailScreen(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
                 )
             }
-            composable<RideDetailRoute> {
+            composable<RideDetailRoute>(
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                }
+            ) {
                 com.abrar.motolog.ui.history.detail.RideDetailScreen(
                     onNavigateBack = {
                         navController.popBackStack()

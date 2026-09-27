@@ -154,7 +154,7 @@ class BackupManagerTest {
         settingsRepository.setUseMetricUnits(false)
         settingsRepository.setCurrencySymbol("£")
         settingsRepository.setTrackingMode(TrackingMode.BATTERY_SAVER)
-        settingsRepository.setThemeMode(ThemeMode.AMOLED)
+        settingsRepository.setThemeMode(ThemeMode.STEALTH_HUD)
 
         val out = ByteArrayOutputStream()
         backupManager.createBackup(out)
@@ -189,7 +189,7 @@ class BackupManagerTest {
         assertEquals(false, settingsRepository.useMetricUnits.first())
         assertEquals("£", settingsRepository.currencySymbol.first())
         assertEquals(TrackingMode.BATTERY_SAVER, settingsRepository.trackingMode.first())
-        assertEquals(ThemeMode.AMOLED, settingsRepository.themeMode.first())
+        assertEquals(ThemeMode.STEALTH_HUD, settingsRepository.themeMode.first())
     }
 
     @Test

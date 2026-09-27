@@ -84,7 +84,7 @@ private val CafeTextMuted = Color(0xFFA5B8A8)
  * mechanical roller drum odometer, and Lucas-style pilot jewel lamps.
  */
 @Composable
-fun CafeRacerCockpitDashboard(
+fun RetroClassicCockpitDashboard(
     stats: RideStats,
     speedKmh: Double,
     accuracyMeters: Float,
@@ -103,7 +103,7 @@ fun CafeRacerCockpitDashboard(
     keepScreenOn: Boolean = false,
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.CAFE_RACER)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371

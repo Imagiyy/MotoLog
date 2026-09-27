@@ -204,4 +204,88 @@ val DesertRallyOutline = Color(0xFF8D7A65)
 val DesertRallyIvory = Color(0xFFF7F1E5)          // Parchment Numerals
 val DesertRallyNeedle = Color(0xFFFF6D00)         // Hazard Dune Orange
 
+// ============================================================
+// Stealth HUD Palette (Fighter Jet Collimator & Pure OLED Black)
+// ============================================================
+val StealthHudPrimary = Color(0xFF00FF66)          // Electric Phosphor Green
+val StealthHudOnPrimary = Color(0xFF00290F)
+val StealthHudPrimaryContainer = Color(0xFF004D1F)
+val StealthHudOnPrimaryContainer = Color(0xFF80FFB3)
+val StealthHudSecondary = Color(0xFF00E5FF)        // HUD Cyan
+val StealthHudOnSecondary = Color(0xFF00272B)
+val StealthHudSecondaryContainer = Color(0xFF004D56)
+val StealthHudOnSecondaryContainer = Color(0xFF80F2FF)
+val StealthHudBackground = Color(0xFF000000)       // Pure 0% OLED Black
+val StealthHudOnBackground = Color(0xFFE8F5E9)
+val StealthHudSurface = Color(0xFF050B07)          // Night Stealth Wireframe
+val StealthHudOnSurface = Color(0xFFE8F5E9)
+val StealthHudSurfaceVariant = Color(0xFF0C1910)
+val StealthHudOnSurfaceVariant = Color(0xFFA5D6A7)
+val StealthHudOutline = Color(0xFF1B4D2B)
+val StealthHudWireframe = Color(0xFF00FF66)
+val StealthHudNeedle = Color(0xFF39FF14)
+
+// ============================================================
+// Adventure Touring Palette (Globe Explorer GS Alpine & Cordoba)
+// ============================================================
+val AdventureTouringPrimary = Color(0xFF1E88E5)    // Cordoba Blue
+val AdventureTouringOnPrimary = Color(0xFFFFFFFF)
+val AdventureTouringPrimaryContainer = Color(0xFF0D47A1)
+val AdventureTouringOnPrimaryContainer = Color(0xFFBBDEFB)
+val AdventureTouringSecondary = Color(0xFFFFB300)  // Expedition Gold
+val AdventureTouringOnSecondary = Color(0xFF261A00)
+val AdventureTouringSecondaryContainer = Color(0xFF4D3600)
+val AdventureTouringOnSecondaryContainer = Color(0xFFFFE082)
+val AdventureTouringBackground = Color(0xFF0D1117) // Arctic Basalt Night
+val AdventureTouringOnBackground = Color(0xFFF0F6FC)
+val AdventureTouringSurface = Color(0xFF161B22)    // Rugged Expedition Cluster
+val AdventureTouringOnSurface = Color(0xFFF0F6FC)
+val AdventureTouringSurfaceVariant = Color(0xFF21262D)
+val AdventureTouringOnSurfaceVariant = Color(0xFFC9D1D9)
+val AdventureTouringOutline = Color(0xFF30363D)
+val AdventureTouringGlacial = Color(0xFF4FC3F7)    // Glacial Ice Peak
+val AdventureTouringNeedle = Color(0xFFFF9800)
+
+// ============================================================
+// Custom Bobber Palette (American V-Twin Billet Bronze & Steel)
+// ============================================================
+val CustomBobberPrimary = Color(0xFFD48B47)        // Machined Billet Bronze
+val CustomBobberOnPrimary = Color(0xFF2B1605)
+val CustomBobberPrimaryContainer = Color(0xFF522E10)
+val CustomBobberOnPrimaryContainer = Color(0xFFFFD9B3)
+val CustomBobberSecondary = Color(0xFFFF5722)      // Exhaust Flame Orange
+val CustomBobberOnSecondary = Color(0xFFFFFFFF)
+val CustomBobberSecondaryContainer = Color(0xFF5A1C08)
+val CustomBobberOnSecondaryContainer = Color(0xFFFFCCBC)
+val CustomBobberBackground = Color(0xFF110E0C)     // Matte Raw Crankcase
+val CustomBobberOnBackground = Color(0xFFF5EBE1)
+val CustomBobberSurface = Color(0xFF1A1512)        // Cast Iron Billet Housing
+val CustomBobberOnSurface = Color(0xFFF5EBE1)
+val CustomBobberSurfaceVariant = Color(0xFF2A221D)
+val CustomBobberOnSurfaceVariant = Color(0xFFDFD1C7)
+val CustomBobberOutline = Color(0xFF7D604D)
+val CustomBobberSteel = Color(0xFFA4ADB8)
+val CustomBobberNeedle = Color(0xFFFF6F00)
+
+// ============================================================
+// Night Cruiser Palette (Midnight Interstate Horizon & Starlight)
+// ============================================================
+val NightCruiserPrimary = Color(0xFF4D96FF)        // Starlight Blue
+val NightCruiserOnPrimary = Color(0xFF001F4D)
+val NightCruiserPrimaryContainer = Color(0xFF003882)
+val NightCruiserOnPrimaryContainer = Color(0xFFB8D6FF)
+val NightCruiserSecondary = Color(0xFF6BCB77)      // Horizon Mint
+val NightCruiserOnSecondary = Color(0xFF002A0B)
+val NightCruiserSecondaryContainer = Color(0xFF004D1B)
+val NightCruiserOnSecondaryContainer = Color(0xFFB3F2BC)
+val NightCruiserBackground = Color(0xFF060B19)     // Deep Midnight Navy
+val NightCruiserOnBackground = Color(0xFFEDF2F7)
+val NightCruiserSurface = Color(0xFF0E172E)        // Highway Horizon Dashboard
+val NightCruiserOnSurface = Color(0xFFEDF2F7)
+val NightCruiserSurfaceVariant = Color(0xFF182442)
+val NightCruiserOnSurfaceVariant = Color(0xFFCBD5E1)
+val NightCruiserOutline = Color(0xFF283A61)
+val NightCruiserHorizon = Color(0xFF38BDF8)
+val NightCruiserNeedle = Color(0xFF38BDF8)
+
 

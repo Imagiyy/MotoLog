@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.Stop
 import com.abrar.motolog.shared.domain.model.PauseState
 import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.ui.live.retro.JewelColor
-import com.abrar.motolog.ui.live.retro.RetroCockpitDashboard
 import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
 import com.abrar.motolog.ui.live.retro.RetroInstrumentCard
 import com.abrar.motolog.ui.live.retro.RetroJewelLamp
@@ -50,9 +49,13 @@ import com.abrar.motolog.ui.live.retro.RetroLiveMap
 import com.abrar.motolog.ui.live.retro.RetroOdometerDrum
 import com.abrar.motolog.ui.live.retro.RetroSpeedometerDial
 import com.abrar.motolog.ui.live.retro.TrackDayCockpitDashboard
-import com.abrar.motolog.ui.live.retro.NeonCyberCockpitDashboard
 import com.abrar.motolog.ui.live.retro.DesertRallyCockpitDashboard
-import com.abrar.motolog.ui.live.retro.CafeRacerCockpitDashboard
+import com.abrar.motolog.ui.live.retro.NeonCyberCockpitDashboard
+import com.abrar.motolog.ui.live.retro.RetroClassicCockpitDashboard
+import com.abrar.motolog.ui.live.retro.StealthHudCockpitDashboard
+import com.abrar.motolog.ui.live.retro.AdventureTouringCockpitDashboard
+import com.abrar.motolog.ui.live.retro.CustomBobberCockpitDashboard
+import com.abrar.motolog.ui.live.retro.NightCruiserCockpitDashboard
 import com.abrar.motolog.ui.theme.JewelAmber
 import com.abrar.motolog.ui.theme.JewelGreen
 import com.abrar.motolog.ui.theme.JewelRed
@@ -269,24 +272,6 @@ fun LiveScreen(
                             modifier = modifier.fillMaxSize()
                         )
                     }
-                    ThemeMode.NEON_CYBER -> {
-                        NeonCyberCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
                     ThemeMode.DESERT_RALLY -> {
                         DesertRallyCockpitDashboard(
                             stats = state.stats,
@@ -305,8 +290,8 @@ fun LiveScreen(
                             modifier = modifier.fillMaxSize()
                         )
                     }
-                    ThemeMode.CAFE_RACER -> {
-                        CafeRacerCockpitDashboard(
+                    ThemeMode.NEON_CYBER -> {
+                        NeonCyberCockpitDashboard(
                             stats = state.stats,
                             speedKmh = state.speedKmh,
                             accuracyMeters = state.accuracyMeters,
@@ -323,8 +308,80 @@ fun LiveScreen(
                             modifier = modifier.fillMaxSize()
                         )
                     }
-                    else -> {
-                        RetroCockpitDashboard(
+                    ThemeMode.RETRO_CLASSIC -> {
+                        RetroClassicCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.STEALTH_HUD -> {
+                        StealthHudCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.ADVENTURE_TOURING -> {
+                        AdventureTouringCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.CUSTOM_BOBBER -> {
+                        CustomBobberCockpitDashboard(
+                            stats = state.stats,
+                            speedKmh = state.speedKmh,
+                            accuracyMeters = state.accuracyMeters,
+                            isMetric = useMetricUnits,
+                            pauseState = state.pauseState,
+                            isGpsLost = state.isGpsLost,
+                            isSpeedAlert = state.isSpeedAlert,
+                            bikeName = state.bikeName,
+                            onPauseClick = handlePause,
+                            onResumeClick = handleResume,
+                            onStopConfirmed = { viewModel.stopTracking() },
+                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                            palette = palette,
+                            modifier = modifier.fillMaxSize()
+                        )
+                    }
+                    ThemeMode.NIGHT_CRUISER -> {
+                        NightCruiserCockpitDashboard(
                             stats = state.stats,
                             speedKmh = state.speedKmh,
                             accuracyMeters = state.accuracyMeters,
@@ -384,29 +441,6 @@ fun LiveScreen(
                         modifier = modifier.fillMaxSize()
                     )
                 }
-                ThemeMode.NEON_CYBER -> {
-                    NeonCyberCockpitDashboard(
-                        stats = emptyStats,
-                        speedKmh = 0.0,
-                        accuracyMeters = 0f,
-                        isMetric = useMetricUnits,
-                        pauseState = PauseState.RECORDING,
-                        isGpsLost = false,
-                        isSpeedAlert = false,
-                        bikeName = null,
-                        onPauseClick = {},
-                        onResumeClick = {},
-                        onStopConfirmed = {},
-                        onSwitchToMap = {},
-                        isIdle = true,
-                        onStartClick = { initiateStart() },
-                        keepScreenOn = keepScreenOn,
-                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                        onNavigateToSettings = onNavigateToSettings,
-                        palette = palette,
-                        modifier = modifier.fillMaxSize()
-                    )
-                }
                 ThemeMode.DESERT_RALLY -> {
                     DesertRallyCockpitDashboard(
                         stats = emptyStats,
@@ -430,8 +464,8 @@ fun LiveScreen(
                         modifier = modifier.fillMaxSize()
                     )
                 }
-                ThemeMode.CAFE_RACER -> {
-                    CafeRacerCockpitDashboard(
+                ThemeMode.NEON_CYBER -> {
+                    NeonCyberCockpitDashboard(
                         stats = emptyStats,
                         speedKmh = 0.0,
                         accuracyMeters = 0f,
@@ -453,8 +487,100 @@ fun LiveScreen(
                         modifier = modifier.fillMaxSize()
                     )
                 }
-                else -> {
-                    RetroCockpitDashboard(
+                ThemeMode.RETRO_CLASSIC -> {
+                    RetroClassicCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.STEALTH_HUD -> {
+                    StealthHudCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.ADVENTURE_TOURING -> {
+                    AdventureTouringCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.CUSTOM_BOBBER -> {
+                    CustomBobberCockpitDashboard(
+                        stats = emptyStats,
+                        speedKmh = 0.0,
+                        accuracyMeters = 0f,
+                        isMetric = useMetricUnits,
+                        pauseState = PauseState.RECORDING,
+                        isGpsLost = false,
+                        isSpeedAlert = false,
+                        bikeName = null,
+                        onPauseClick = {},
+                        onResumeClick = {},
+                        onStopConfirmed = {},
+                        onSwitchToMap = {},
+                        isIdle = true,
+                        onStartClick = { initiateStart() },
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
+                ThemeMode.NIGHT_CRUISER -> {
+                    NightCruiserCockpitDashboard(
                         stats = emptyStats,
                         speedKmh = 0.0,
                         accuracyMeters = 0f,
@@ -771,7 +897,7 @@ private fun RetroWaitingForGpsView(
     onNavigateToSettings: () -> Unit,
     onStopConfirmed: () -> Unit,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -854,7 +980,7 @@ private fun RetroStoppedCockpitView(
     useMetricUnits: Boolean,
     onResetClick: () -> Unit,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     val totalDistKm = stats.totalDistanceMeters / 1000.0
     val displayDistance = if (useMetricUnits) totalDistKm else totalDistKm * 0.621371
@@ -977,7 +1103,7 @@ private fun IdleTopBar(
     keepScreenOn: Boolean,
     onToggleKeepScreenOn: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),

@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle(
-                initialValue = ThemeMode.DARK
+                initialValue = ThemeMode.TRACK_DAY
             )
             MotoLogTheme(themeMode = themeMode) {
                 MotoLogNavGraph()

@@ -51,7 +51,7 @@ fun RetroSpeedometerDial(
     isMetric: Boolean,
     isSpeedAlert: Boolean,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     val maxGaugeSpeed = if (isMetric) 200f else 120f
     val redlineStart = if (isMetric) 140f else 85f

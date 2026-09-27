@@ -90,7 +90,7 @@ class LiveViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = ThemeMode.DARK
+            initialValue = ThemeMode.TRACK_DAY
         )
 
     init {

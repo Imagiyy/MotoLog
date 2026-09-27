@@ -39,7 +39,7 @@ fun RetroOdometerDrum(
     distanceValue: Double,
     unitLabel: String,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     // Format distance as 6 characters: 5 integer digits + 1 decimal digit
     val clamped = distanceValue.coerceAtLeast(0.0)
@@ -109,7 +109,7 @@ fun RetroOdometerDrum(
 private fun OdometerDrumWheel(
     digit: String,
     isDecimal: Boolean,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     val bgColor = if (isDecimal) palette.needle else if (palette.isLight) Color(0xFF263238) else Color(0xFF111111)
     val textColor = if (isDecimal) Color.Black else palette.dialText

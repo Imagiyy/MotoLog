@@ -804,10 +804,24 @@
   - Removed the `ICO TRIP 1 // ROADBOOK` header row and redundant accuracy readout from the top distance card across portrait and landscape Dakar Rally dashboards, leaving a clean `KM-TOT` trip readout.
   - Purged all `//` stylistic separators across all 5 live cockpit themes (Desert Rally, Superbike Track Day, Neon Cyber, Cafe Racer, Retro Classic).
 
+- [x] **Instantaneous Bottom Navigation Tab Switching**:
+  - Eliminated navigation transition delay when switching between Live, Garage, History, and Settings by setting `EnterTransition.None` and `ExitTransition.None` on the main navigation graph.
+  - Added fast guard against re-navigating to the current active tab (`if (currentRoute == item.route) return@NavigationBarItem`).
+  - Implemented `saveState = true` and `restoreState = true` on tab transitions to preserve ViewModel and scroll states without reload stutter.
+- [x] **Elimination of Generic Recolors & Introduction of 8 Unique Motorcycle Cockpits**:
+  - Removed generic dark, amoled, light, and system recolors from `ThemeMode`.
+  - Consolidated duplicate analog needle gauges into a single definitive vintage Smiths chronometer theme (`RETRO_CLASSIC`).
+  - Designed, architected, and implemented 4 brand-new, completely unique motorcycle cockpits with dedicated layouts, visual instruments, and instrumentation palettes:
+    1. **Superbike Track Day (`TRACK_DAY`)**: Panoramic MotoGP TFT dash with carbon fiber weave, dynamic LED shift-light bar, track telemetry cards, and racing apex red accents.
+    2. **Dakar Rally Tower (`DESERT_RALLY`)**: High-contrast Dakar roadbook navigation tower with dual high-precision tripmaster displays, live CAP 360° compass ribbon, and desert rally sand/orange accents.
+    3. **Neon Cyberpunk HUD (`NEON_CYBER`)**: Tokyo night synthwave cockpit with glowing hexagonal vector tachometer, laser speed sweep, frequency equalizer bar, and cyan/magenta accents.
+    4. **Vintage Classic Smiths (`RETRO_CLASSIC`)**: 1960s cafe racer chronometer with polished billet aluminum bezel, smooth sweeping mechanical needle, rolling mechanical drum odometer, and Lucas jewel indicator lamps.
+    5. **Stealth Fighter Jet HUD (`STEALTH_HUD`)**: Pure AMOLED black cockpit with collimator target reticle, vertical airspeed altitude ladder tapes, and military phosphor cyan/amber night-vision instruments.
+    6. **Adventure Overland Tourer (`ADVENTURE_TOURING`)**: BMW GS / Africa Twin expedition cluster with elevation climb profile, dual expedition trips, terrain compass ring, and Cordoba blue / Kalahari gold accents.
+    7. **Custom American Bobber (`CUSTOM_BOBBER`)**: Milwaukee V-Twin machined cast-iron console with 180° semi-circular billet speedometer arc, stamped steel typography, and engine rumble frequency bar.
+    8. **Midnight Highway Cruiser (`NIGHT_CRUISER`)**: Anti-glare midnight interstate dashboard with glowing horizon speed beam, floating starlight blue numerals, and low-fatigue night riding ergonomics.
+  - Every theme features full portrait and landscape responsiveness, 56dp glove-friendly controls, 2-second hold-to-stop safety rings, and custom Material 3 color schemes.
+
 ### Verified
-- [x] `./gradlew test` (all unit tests pass across :shared and :app) — VERIFIED
+- [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
-
-
-
-

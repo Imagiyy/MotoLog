@@ -105,7 +105,7 @@ class SettingsViewModelTest {
             assertTrue(awaitItem())
         }
         viewModel.themeMode.test {
-            assertEquals(ThemeMode.DARK, awaitItem())
+            assertEquals(ThemeMode.TRACK_DAY, awaitItem())
         }
         viewModel.trackingMode.test {
             assertEquals(TrackingMode.HIGH_ACCURACY, awaitItem())
@@ -140,10 +140,10 @@ class SettingsViewModelTest {
         advanceUntilIdle()
         assertFalse(viewModel.useMetricUnits.value)
 
-        // Change Theme to AMOLED
-        viewModel.setThemeMode(ThemeMode.AMOLED)
+        // Change Theme to STEALTH_HUD
+        viewModel.setThemeMode(ThemeMode.STEALTH_HUD)
         advanceUntilIdle()
-        assertEquals(ThemeMode.AMOLED, viewModel.themeMode.value)
+        assertEquals(ThemeMode.STEALTH_HUD, viewModel.themeMode.value)
 
         // Change Tracking Mode to Battery Saver
         viewModel.setTrackingMode(TrackingMode.BATTERY_SAVER)

@@ -46,7 +46,7 @@ fun RetroInstrumentCard(
     unit: String = "",
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO),
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC),
     onClick: (() -> Unit)? = null
 ) {
     Box(
@@ -136,7 +136,7 @@ fun RetroInstrumentCard(
 @Composable
 private fun RivetDot(
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
 ) {
     Box(
         modifier = modifier
