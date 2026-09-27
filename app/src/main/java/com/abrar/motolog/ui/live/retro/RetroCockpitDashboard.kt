@@ -339,7 +339,7 @@ fun RetroCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "RETRO CLASSIC // STANDBY"
+                        badgeText = "RETRO CLASSIC STANDBY"
                     )
                 } else {
                     DashboardTopBar(

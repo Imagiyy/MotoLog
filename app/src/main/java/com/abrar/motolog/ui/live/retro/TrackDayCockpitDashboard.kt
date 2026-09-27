@@ -408,7 +408,7 @@ fun TrackDayCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "SUPERBIKE // STANDBY"
+                        badgeText = "SUPERBIKE STANDBY"
                     )
                 } else {
                     Row(
@@ -416,7 +416,7 @@ fun TrackDayCockpitDashboard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RaceBadge(text = "RACE TELEMETRY // ${bikeName?.uppercase(Locale.US) ?: "PANIGALE V4"}")
+                        RaceBadge(text = "RACE TELEMETRY - ${bikeName?.uppercase(Locale.US) ?: "PANIGALE V4"}")
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -976,7 +976,7 @@ private fun TrackStatusBar(
 
             Text(
                 text = when {
-                    isGpsLost -> "GPS LOST // SEARCHING"
+                    isGpsLost -> "GPS LOST - SEARCHING"
                     pauseState.isPaused -> "PIT PAUSED"
                     else -> "LIVE TELEMETRY ACTIVE"
                 },

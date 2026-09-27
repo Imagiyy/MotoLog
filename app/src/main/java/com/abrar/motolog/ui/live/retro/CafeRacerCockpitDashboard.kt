@@ -269,7 +269,7 @@ fun CafeRacerCockpitDashboard(
                                     .height(52.dp)
                             ) {
                                 Text(
-                                    text = "IGNITION // START RIDE",
+                                    text = "IGNITION - START RIDE",
                                     color = CafeIvory,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
@@ -394,7 +394,7 @@ fun CafeRacerCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "CAFE RACER // STANDBY"
+                        badgeText = "CAFE RACER STANDBY"
                     )
                 } else {
                     Row(
@@ -541,7 +541,7 @@ fun CafeRacerCockpitDashboard(
                             .height(60.dp)
                     ) {
                         Text(
-                            text = "IGNITION // START RIDE",
+                            text = "IGNITION - START RIDE",
                             color = CafeIvory,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,

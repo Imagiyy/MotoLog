@@ -188,7 +188,7 @@ fun NeonCyberCockpitDashboard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         CyberTelemetryCard(
-                            label = "CHRONO // MOVING",
+                            label = "CHRONO MOVING",
                             value = movingTimeDisplay,
                             subtitle = "MOVING",
                             accentColor = CyberCyan,
@@ -196,7 +196,7 @@ fun NeonCyberCockpitDashboard(
                         )
 
                         CyberTelemetryCard(
-                            label = "CHRONO // TOTAL",
+                            label = "CHRONO TOTAL",
                             value = totalTimeDisplay,
                             subtitle = "TOTAL ON RIDE",
                             accentColor = CyberCyan,
@@ -204,7 +204,7 @@ fun NeonCyberCockpitDashboard(
                         )
 
                         CyberTelemetryCard(
-                            label = "VELOCITY // MOVE",
+                            label = "VELOCITY MOVE",
                             value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                             unit = speedUnit,
                             subtitle = "MOVING AVG",
@@ -213,7 +213,7 @@ fun NeonCyberCockpitDashboard(
                         )
 
                         CyberTelemetryCard(
-                            label = "VELOCITY // TOTAL",
+                            label = "VELOCITY TOTAL",
                             value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
                             unit = speedUnit,
                             subtitle = "OVERALL AVG",
@@ -383,7 +383,7 @@ fun NeonCyberCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "CYBER // STANDBY"
+                        badgeText = "CYBER STANDBY"
                     )
                 } else {
                     Row(
@@ -391,7 +391,7 @@ fun NeonCyberCockpitDashboard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CyberHudTag(text = "NEO-HUD // ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}")
+                        CyberHudTag(text = "NEO-HUD - ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}")
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -447,7 +447,7 @@ fun NeonCyberCockpitDashboard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
-                        label = "CHRONO // MOVING",
+                        label = "CHRONO MOVING",
                         value = movingTimeDisplay,
                         subtitle = "MOVING TIME",
                         accentColor = CyberCyan,
@@ -455,7 +455,7 @@ fun NeonCyberCockpitDashboard(
                     )
 
                     CyberTelemetryCard(
-                        label = "CHRONO // TOTAL",
+                        label = "CHRONO TOTAL",
                         value = totalTimeDisplay,
                         subtitle = "TOTAL ON RIDE",
                         accentColor = CyberCyan,
@@ -468,7 +468,7 @@ fun NeonCyberCockpitDashboard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
-                        label = "VELOCITY // MOVE AVG",
+                        label = "VELOCITY MOVE AVG",
                         value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                         unit = speedUnit,
                         subtitle = "MOVING AVERAGE",
@@ -477,7 +477,7 @@ fun NeonCyberCockpitDashboard(
                     )
 
                     CyberTelemetryCard(
-                        label = "VELOCITY // TOTAL AVG",
+                        label = "VELOCITY TOTAL AVG",
                         value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
                         unit = speedUnit,
                         subtitle = "OVERALL AVERAGE",

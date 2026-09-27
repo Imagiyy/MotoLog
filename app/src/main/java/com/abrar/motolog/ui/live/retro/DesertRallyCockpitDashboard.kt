@@ -162,8 +162,6 @@ fun DesertRallyCockpitDashboard(
                     RallyRoadbookTripMaster(
                         distance = displayDistance,
                         distanceUnit = distanceUnit,
-                        accuracyMeters = accuracyMeters,
-                        isGpsLost = isGpsLost,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -277,7 +275,7 @@ fun DesertRallyCockpitDashboard(
                                     .height(52.dp)
                             ) {
                                 Text(
-                                    text = "DEPART STAGE // START",
+                                    text = "START STAGE",
                                     color = RallyWhite,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Black,
@@ -400,7 +398,7 @@ fun DesertRallyCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "DAKAR // STANDBY"
+                        badgeText = "DAKAR STANDBY"
                     )
                 } else {
                     Row(
@@ -408,7 +406,7 @@ fun DesertRallyCockpitDashboard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RallyTag(text = "DAKAR RALLY // ${bikeName?.uppercase(Locale.US) ?: "KTM 450 RALLY"}")
+                        RallyTag(text = "DAKAR RALLY - ${bikeName?.uppercase(Locale.US) ?: "KTM 450 RALLY"}")
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -444,8 +442,6 @@ fun DesertRallyCockpitDashboard(
                 RallyRoadbookTripMaster(
                     distance = displayDistance,
                     distanceUnit = distanceUnit,
-                    accuracyMeters = accuracyMeters,
-                    isGpsLost = isGpsLost,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -623,8 +619,6 @@ fun DesertRallyCockpitDashboard(
 private fun RallyRoadbookTripMaster(
     distance: Double,
     distanceUnit: String,
-    accuracyMeters: Float,
-    isGpsLost: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -634,80 +628,42 @@ private fun RallyRoadbookTripMaster(
             .border(2.dp, RallyBorder, RoundedCornerShape(8.dp))
             .padding(10.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        // Giant High-Vis Roadbook Distance Readout
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF0C0B0A))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Roadbook Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (isGpsLost) Color(0xFFFF3333) else RallyHighVisYellow)
-                    )
-                    Text(
-                        text = "ICO TRIP 1 // ROADBOOK",
-                        color = RallyDakarOrange,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
+            Text(
+                text = "KM-TOT",
+                color = RallySandGold,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
 
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = if (isGpsLost) "NO GPS FIX" else "WAYPOINT LOCK ±${accuracyMeters.toInt()}M",
-                    color = if (isGpsLost) Color(0xFFFF3333) else RallyTextMuted,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace
+                    text = String.format(Locale.US, "%05.2f", distance),
+                    color = RallyHighVisYellow,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.sp
                 )
-            }
-
-            // Giant High-Vis Roadbook Distance Readout
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF0C0B0A))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "KM-TOT",
-                    color = RallySandGold,
-                    fontSize = 12.sp,
+                    text = distanceUnit,
+                    color = RallyWhite,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
-
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = String.format(Locale.US, "%05.2f", distance),
-                        color = RallyHighVisYellow,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = distanceUnit,
-                        color = RallyWhite,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                }
             }
         }
     }
