@@ -44,9 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,13 +62,8 @@ import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.ui.garage.RegistrationPlateBadge
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import com.abrar.motolog.shared.domain.engine.UnitConverter
 import com.abrar.motolog.shared.domain.model.RideSplit
 import com.abrar.motolog.shared.domain.model.RouteMapData
@@ -243,39 +236,26 @@ private fun RideDetailContent(
 ) {
     val stoppedTimeMs = (ride.elapsedTimeMs - ride.movingTimeMs).coerceAtLeast(0L)
     val isMapDark = defaultMapTheme == com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
-    var isMapTouching by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        userScrollEnabled = !isMapTouching,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (isVisualsLoading) {
-            item {
+            item(contentType = "visuals_loading") {
                 Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
         } else if (routeMap != null && routeMap.segments.isNotEmpty()) {
-            item {
+            item(contentType = "route_map") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(280.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    val pressed = event.changes.any { it.pressed }
-                                    if (pressed != isMapTouching) {
-                                        isMapTouching = pressed
-                                    }
-                                }
-                            }
-                        }
                 ) {
                     RouteMap(
                         route = routeMap,
@@ -288,7 +268,7 @@ private fun RideDetailContent(
         }
 
         // Date & Status Header
-        item {
+        item(contentType = "date_header") {
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -319,7 +299,7 @@ private fun RideDetailContent(
         }
 
         // Assigned Motorcycle Card
-        item {
+        item(contentType = "motorcycle_card") {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -369,7 +349,7 @@ private fun RideDetailContent(
         }
 
         // Hero Card: Distance
-        item {
+        item(contentType = "hero_distance") {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -406,7 +386,7 @@ private fun RideDetailContent(
         }
 
         // Toggleable Speed & Time Section (Moving vs Overall)
-        item {
+        item(contentType = "metrics_section") {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -454,7 +434,7 @@ private fun RideDetailContent(
         }
 
         // Secondary Stats Grid
-        item {
+        item(contentType = "secondary_stats") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -479,7 +459,7 @@ private fun RideDetailContent(
 
         // Elevation Metrics (Gain, Loss, Sensor Source)
         if (ride.elevationGainMeters > 0.0 || ride.elevationLossMeters > 0.0 || ride.elevationSource.isNotBlank()) {
-            item {
+            item(contentType = "elevation") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -535,7 +515,7 @@ private fun RideDetailContent(
         }
 
         // Splits Header & Interval Selector
-        item {
+        item(contentType = "splits_header") {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -589,7 +569,7 @@ private fun RideDetailContent(
         // Splits Table Content
         when {
             isSplitsLoading -> {
-                item {
+                item(contentType = "splits_loading") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -605,7 +585,7 @@ private fun RideDetailContent(
                 }
             }
             splits.isEmpty() -> {
-                item {
+                item(contentType = "splits_empty") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -626,11 +606,15 @@ private fun RideDetailContent(
                 }
             }
             else -> {
-                item {
+                item(contentType = "splits_table_header") {
                     SplitsTableHeader()
                 }
 
-                items(splits) { split ->
+                items(
+                    items = splits,
+                    key = { it.splitNumber },
+                    contentType = { "split_row" }
+                ) { split ->
                     SplitRow(
                         split = split,
                         splitInterval = selectedSplitInterval,
@@ -640,7 +624,7 @@ private fun RideDetailContent(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item(contentType = "footer_spacer") { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
 
@@ -799,16 +783,27 @@ private fun SplitRow(
 ) {
     val unitSuffix = UnitConverter.distanceUnit(useMetricUnits)
     val multiplier = splitInterval.distanceMultiplier
-    val splitTitle = if (split.isPartial) {
-        "Split ${split.splitNumber} (final)"
-    } else {
-        if (multiplier == 1) {
-            "${split.splitNumber} $unitSuffix"
+    val splitTitle = remember(split.splitNumber, split.isPartial, multiplier, unitSuffix) {
+        if (split.isPartial) {
+            "Split ${split.splitNumber} (final)"
         } else {
-            val startDist = (split.splitNumber - 1) * multiplier
-            val endDist = split.splitNumber * multiplier
-            "$startDist-$endDist $unitSuffix"
+            if (multiplier == 1) {
+                "${split.splitNumber} $unitSuffix"
+            } else {
+                val startDist = (split.splitNumber - 1) * multiplier
+                val endDist = split.splitNumber * multiplier
+                "$startDist-$endDist $unitSuffix"
+            }
         }
+    }
+    val formattedDistance = remember(split.distanceMeters, useMetricUnits) {
+        UnitConverter.formatDistanceWithUnit(split.distanceMeters, useMetricUnits, decimals = 2)
+    }
+    val formattedDuration = remember(split.durationMs) {
+        FormatUtils.formatDuration(split.durationMs)
+    }
+    val formattedSpeed = remember(split.avgSpeedKmh, useMetricUnits) {
+        UnitConverter.formatSpeedWithUnit(split.avgSpeedKmh, useMetricUnits)
     }
 
     Row(
@@ -828,21 +823,21 @@ private fun SplitRow(
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = UnitConverter.formatDistanceWithUnit(split.distanceMeters, useMetricUnits, decimals = 2),
+            text = formattedDistance,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1.2f),
             textAlign = TextAlign.Center
         )
         Text(
-            text = FormatUtils.formatDuration(split.durationMs),
+            text = formattedDuration,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1.2f),
             textAlign = TextAlign.Center
         )
         Text(
-            text = UnitConverter.formatSpeedWithUnit(split.avgSpeedKmh, useMetricUnits),
+            text = formattedSpeed,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,

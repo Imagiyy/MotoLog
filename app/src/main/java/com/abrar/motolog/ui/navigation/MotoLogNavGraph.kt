@@ -98,12 +98,25 @@ fun MotoLogNavGraph() {
                             label = { Text(destination.label) },
                             selected = currentDestination?.hasRoute(destination.route::class) == true,
                             onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                if (destination.route == LiveRoute) {
+                                    val popped = navController.popBackStack(LiveRoute, inclusive = false)
+                                    if (!popped) {
+                                        navController.navigate(LiveRoute) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                } else {
+                                    navController.navigate(destination.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             }
                         )
@@ -123,7 +136,13 @@ fun MotoLogNavGraph() {
                         .fillMaxSize()
                         .statusBarsPadding(),
                     onNavigateToSettings = {
-                        navController.navigate(SettingsRoute)
+                        navController.navigate(SettingsRoute) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }

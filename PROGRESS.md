@@ -774,4 +774,28 @@
 - [x] `./gradlew :app:lintDebug` (0 errors) — VERIFIED
 - [ ] iOS simulator execution and iOS framework link (`link*Framework*`) — DEFERRED TO MACOS HOST
 
+---
+
+## Post-Stage UX & Performance Improvements
+**Status:** COMPLETED
+
+### Built & Optimized
+- [x] **Garage Motorcycle Management & Tab Order**:
+  - Reordered bike detail tabs: Fuel Log is first (index 0), followed by Maintenance (index 1).
+  - Added support for clearing the active motorcycle (allowing 0 active bikes even when bikes exist in Garage).
+  - Added interactive active badge toggling, top app bar star action in bike detail, and 3-dot overflow menu option in Garage list.
+- [x] **Settings to Live Navigation**:
+  - Fixed bottom navigation bar from `SettingsRoute` back to `LiveRoute` by utilizing `navController.popBackStack(LiveRoute, inclusive = false)` when the Live destination is tapped.
+  - Aligned Live dashboard settings icon action with single-top stack behavior.
+- [x] **Ride Detail Distance Splits Fast Scrolling Performance**:
+  - Removed full-gesture touch interceptor (`pointerInput` with `PointerEventPass.Initial`) wrapping `RouteMap` that was flipping `userScrollEnabled` and choking fast flings.
+  - Added explicit `contentType` metadata to all heterogeneous items in `RideDetailScreen`'s `LazyColumn` for optimal view composition recycling.
+  - Added stable `key = { it.splitNumber }` and `contentType = { "split_row" }` to `items(splits)`.
+  - Memoized formatted strings (`splitTitle`, `formattedDistance`, `formattedDuration`, `formattedSpeed`) inside `SplitRow` with `remember` to eliminate allocations and frame drops during high-speed swiping.
+
+### Verified
+- [x] `./gradlew test` (all unit tests pass across :shared and :app) — VERIFIED
+- [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+
+
 
