@@ -121,6 +121,26 @@ class BikeDetailViewModelTest {
     }
 
     @Test
+    fun toggleActiveBike_togglesActiveState() = runTest(testDispatcher) {
+        viewModel = createViewModel(1L)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isCurrentBike)
+
+        viewModel.toggleActiveBike()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isCurrentBike)
+        assertNull(fakeGarageRepository.currentBikeIdFlow.value)
+
+        viewModel.toggleActiveBike()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isCurrentBike)
+        assertEquals(1L, fakeGarageRepository.currentBikeIdFlow.value)
+    }
+
+    @Test
     fun setOdometer_calibratesOdometerViaRepository() = runTest(testDispatcher) {
         viewModel = createViewModel(1L)
         advanceUntilIdle()
@@ -214,9 +234,12 @@ class BikeDetailViewModelTest {
 
         override val activeBikes: Flow<List<BikeEntity>> = MutableStateFlow(listOf(bike))
         override val archivedBikes: Flow<List<BikeEntity>> = MutableStateFlow(emptyList())
-        override val currentBikeId: Flow<Long?> = MutableStateFlow(bike.id)
+        val currentBikeIdFlow = MutableStateFlow<Long?>(bike.id)
+        override val currentBikeId: Flow<Long?> = currentBikeIdFlow
 
-        override suspend fun setCurrentBikeId(bikeId: Long?) {}
+        override suspend fun setCurrentBikeId(bikeId: Long?) {
+            currentBikeIdFlow.value = bikeId
+        }
         override suspend fun getBikeById(bikeId: Long): BikeEntity? = if (bike.id == bikeId) bike else null
         override fun observeBike(bikeId: Long): Flow<BikeEntity?> = bikeFlow
         override fun observeBikeOdometer(bikeId: Long): Flow<Double> = bikeOdoFlow

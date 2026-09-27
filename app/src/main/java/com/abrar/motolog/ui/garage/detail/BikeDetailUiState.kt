@@ -15,7 +15,8 @@ data class BikeDetailUiState(
     val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList(),
     val fuelLogs: List<FuelLogEntity> = emptyList(),
     val fuelStats: FuelMileageStats = FuelMileageStats(),
-    val selectedTab: Int = 0, // 0 = Maintenance, 1 = Fuel
+    val selectedTab: Int = 0, // 0 = Fuel Log, 1 = Maintenance
+    val isCurrentBike: Boolean = false,
     val useMetricUnits: Boolean = true,
     val fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit = com.abrar.motolog.shared.domain.model.FuelUnit.KM_PER_LITER,
     val currencySymbol: String = "$",

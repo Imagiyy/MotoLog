@@ -106,6 +106,45 @@ class GarageViewModelTest {
     }
 
     @Test
+    fun clearCurrentBike_setsCurrentBikeIdToNull() = runTest(testDispatcher) {
+        val bike1 = BikeEntity(id = 1L, name = "Bike 1", initialOdometerKm = 0.0)
+        fakeGarageRepository.activeBikesFlow.value = listOf(bike1)
+        fakeGarageRepository.currentBikeIdFlow.value = 1L
+
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
+        advanceUntilIdle()
+
+        assertEquals(1L, viewModel.uiState.value.currentBikeId)
+
+        viewModel.clearCurrentBike()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.currentBikeId)
+    }
+
+    @Test
+    fun toggleCurrentBike_togglesBetweenActiveAndNull() = runTest(testDispatcher) {
+        val bike1 = BikeEntity(id = 1L, name = "Bike 1", initialOdometerKm = 0.0)
+        fakeGarageRepository.activeBikesFlow.value = listOf(bike1)
+        fakeGarageRepository.currentBikeIdFlow.value = 1L
+
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
+        advanceUntilIdle()
+
+        assertEquals(1L, viewModel.uiState.value.currentBikeId)
+
+        viewModel.toggleCurrentBike(1L)
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.currentBikeId)
+
+        viewModel.toggleCurrentBike(1L)
+        advanceUntilIdle()
+
+        assertEquals(1L, viewModel.uiState.value.currentBikeId)
+    }
+
+    @Test
     fun addBikeDialog_lifecycleAndSubmission() = runTest(testDispatcher) {
         viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
         advanceUntilIdle()

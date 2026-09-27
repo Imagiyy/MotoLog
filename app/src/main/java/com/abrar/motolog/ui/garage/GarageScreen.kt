@@ -24,9 +24,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -136,6 +138,7 @@ fun GarageScreen(
                                 useMetricUnits = uiState.useMetricUnits,
                                 onClick = { onNavigateToBikeDetail(item.bike.id) },
                                 onSelectAsActive = { viewModel.selectCurrentBike(item.bike.id) },
+                                onClearActive = { viewModel.clearCurrentBike() },
                                 onDeleteOrArchive = { viewModel.requestArchiveOrDelete(item.bike) }
                             )
                         }
@@ -171,6 +174,7 @@ private fun BikeCard(
     useMetricUnits: Boolean,
     onClick: () -> Unit,
     onSelectAsActive: () -> Unit,
+    onClearActive: () -> Unit,
     onDeleteOrArchive: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -238,7 +242,16 @@ private fun BikeCard(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
-                        if (!item.isCurrentBike) {
+                        if (item.isCurrentBike) {
+                            DropdownMenuItem(
+                                text = { Text("Remove as Active Bike") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onClearActive()
+                                },
+                                leadingIcon = { Icon(Icons.Default.StarBorder, contentDescription = null) }
+                            )
+                        } else {
                             DropdownMenuItem(
                                 text = { Text("Set as Active Bike") },
                                 onClick = {
@@ -285,15 +298,27 @@ private fun BikeCard(
                 if (item.isCurrentBike) {
                     Surface(
                         color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.clickable(onClick = onClearActive)
                     ) {
-                        Text(
-                            text = "ACTIVE BIKE",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "ACTIVE BIKE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove active bike",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
                 }
             }

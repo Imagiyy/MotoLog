@@ -90,6 +90,22 @@ class GarageViewModel @Inject constructor(
         }
     }
 
+    fun clearCurrentBike() {
+        viewModelScope.launch {
+            garageRepository.setCurrentBikeId(null)
+        }
+    }
+
+    fun toggleCurrentBike(bikeId: Long) {
+        viewModelScope.launch {
+            if (_uiState.value.currentBikeId == bikeId) {
+                garageRepository.setCurrentBikeId(null)
+            } else {
+                garageRepository.setCurrentBikeId(bikeId)
+            }
+        }
+    }
+
     fun openAddBikeDialog() {
         _dialogState.update { it.copy(isAddBikeDialogOpen = true) }
     }

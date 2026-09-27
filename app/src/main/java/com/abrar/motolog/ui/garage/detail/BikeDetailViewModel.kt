@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -69,18 +70,25 @@ class BikeDetailViewModel @Inject constructor(
         BikeData(bike, odo, maintenanceEvals, fuelLogs, fuelStats)
     }
 
+    private val bikeDetailFlow = combine(
+        bikeDataFlow,
+        garageRepository.currentBikeId
+    ) { data, currentBikeId ->
+        data to (currentBikeId == bikeId)
+    }
+
     private val _uiState = MutableStateFlow(BikeDetailUiState())
     val uiState: StateFlow<BikeDetailUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             combine(
-                bikeDataFlow,
+                bikeDetailFlow,
                 settingsRepository.useMetricUnits,
                 settingsRepository.fuelUnit,
                 settingsRepository.currencySymbol,
                 _dialogState
-            ) { data, useMetricUnits, fuelUnit, currencySymbol, dialogState ->
+            ) { (data, isCurrentBike), useMetricUnits, fuelUnit, currencySymbol, dialogState ->
                 val bike = data.bike
                 val rideCount = if (bike != null) bikeDao.getRideCountForBike(bikeId) else 0
                 val totalDistanceMeters = if (bike != null) rideDao.getTotalDistanceMetersForBikeOnce(bikeId) ?: 0.0 else 0.0
@@ -95,6 +103,7 @@ class BikeDetailViewModel @Inject constructor(
                     fuelLogs = data.fuelLogs,
                     fuelStats = data.fuelStats,
                     selectedTab = dialogState.selectedTab,
+                    isCurrentBike = isCurrentBike,
                     useMetricUnits = useMetricUnits,
                     fuelUnit = fuelUnit,
                     currencySymbol = currencySymbol,
@@ -116,6 +125,17 @@ class BikeDetailViewModel @Inject constructor(
 
     fun selectTab(index: Int) {
         _dialogState.update { it.copy(selectedTab = index) }
+    }
+
+    fun toggleActiveBike() {
+        viewModelScope.launch {
+            val currentSelected = garageRepository.currentBikeId.firstOrNull()
+            if (currentSelected == bikeId) {
+                garageRepository.setCurrentBikeId(null)
+            } else {
+                garageRepository.setCurrentBikeId(bikeId)
+            }
+        }
     }
 
     // Odometer

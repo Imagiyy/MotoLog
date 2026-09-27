@@ -370,8 +370,9 @@
   - Detailed stats: Average Mileage, Best Fill, Worst Fill, Latest Fill, Total Spent, Total Litres
 - [x] UI & Navigation:
   - Added `Garage` to bottom navigation bar (`GarageScreen`, `GarageViewModel`)
-  - Bike Detail screen (`BikeDetailScreen`, `BikeDetailViewModel`) with tabbed interface: Overview, Maintenance, Fuel Log
+  - Bike Detail screen (`BikeDetailScreen`, `BikeDetailViewModel`) with Fuel Log default tab (Fuel Log first, then Maintenance)
   - Glove-friendly forms and dialogs usable with keyboard open and surviving configuration rotation
+  - Ability to clear/unset active bike so no motorcycle is active even if bikes exist in garage, accessible via clickable badge and overflow menu on Garage cards and Star toggle on Bike Detail screen
   - Updated Ride Detail screen with motorcycle assignment pill and reassignment dialog
 - [x] Comprehensive Test Suite (98 unit tests passing across the project):
   - `OdometerCalculatorTest`: initial reading, distance accumulation, calibration offsets, deleted rides, bike reassignment

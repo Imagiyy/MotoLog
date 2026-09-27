@@ -27,10 +27,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -107,6 +110,13 @@ fun BikeDetailScreen(
                 },
                 actions = {
                     if (bike != null) {
+                        IconButton(onClick = { viewModel.toggleActiveBike() }) {
+                            Icon(
+                                imageVector = if (uiState.isCurrentBike) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = if (uiState.isCurrentBike) "Remove as active bike" else "Set as active bike",
+                                tint = if (uiState.isCurrentBike) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         IconButton(onClick = { viewModel.openEditBikeDialog() }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit Motorcycle")
                         }
@@ -149,38 +159,40 @@ fun BikeDetailScreen(
                             ridesCount = uiState.recordedRidesCount,
                             ridesDistanceKm = uiState.recordedRidesDistanceKm,
                             useMetricUnits = uiState.useMetricUnits,
+                            isCurrentBike = uiState.isCurrentBike,
+                            onToggleActive = { viewModel.toggleActiveBike() },
                             onAdjustOdometer = { viewModel.openSetOdometerDialog() },
                             modifier = Modifier.padding(16.dp)
                         )
 
-                        // Tabs: Maintenance vs Fuel
+                        // Tabs: Fuel Log vs Maintenance (Fuel Log first)
                         TabRow(selectedTabIndex = uiState.selectedTab) {
                             Tab(
                                 selected = uiState.selectedTab == 0,
                                 onClick = { viewModel.selectTab(0) },
-                                text = { Text("Maintenance (${uiState.maintenanceEvaluations.size})") }
+                                text = { Text("Fuel Log (${uiState.fuelLogs.size})") }
                             )
                             Tab(
                                 selected = uiState.selectedTab == 1,
                                 onClick = { viewModel.selectTab(1) },
-                                text = { Text("Fuel Log (${uiState.fuelLogs.size})") }
+                                text = { Text("Maintenance (${uiState.maintenanceEvaluations.size})") }
                             )
                         }
 
                         when (uiState.selectedTab) {
-                            0 -> MaintenanceTabContent(
+                            0 -> FuelTabContent(
+                                uiState = uiState,
+                                onAddLog = { viewModel.openAddFuelDialog() },
+                                onEditLog = { viewModel.openEditFuelDialog(it) },
+                                onDeleteLog = { viewModel.requestDeleteFuelLog(it) }
+                            )
+                            1 -> MaintenanceTabContent(
                                 evaluations = uiState.maintenanceEvaluations,
                                 useMetricUnits = uiState.useMetricUnits,
                                 onAddItem = { viewModel.openAddMaintenanceDialog() },
                                 onMarkDone = { viewModel.requestMarkDone(it.item.toEntity()) },
                                 onEdit = { viewModel.openEditMaintenanceDialog(it.item.toEntity()) },
                                 onDelete = { viewModel.requestDeleteMaintenanceItem(it.item.toEntity()) }
-                            )
-                            1 -> FuelTabContent(
-                                uiState = uiState,
-                                onAddLog = { viewModel.openAddFuelDialog() },
-                                onEditLog = { viewModel.openEditFuelDialog(it) },
-                                onDeleteLog = { viewModel.requestDeleteFuelLog(it) }
                             )
                         }
                     }
@@ -323,6 +335,8 @@ private fun OdometerHeaderCard(
     ridesCount: Int,
     ridesDistanceKm: Double,
     useMetricUnits: Boolean,
+    isCurrentBike: Boolean = false,
+    onToggleActive: () -> Unit = {},
     onAdjustOdometer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -385,6 +399,41 @@ private fun OdometerHeaderCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
+            }
+
+            if (isCurrentBike) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.clickable(onClick = onToggleActive)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "ACTIVE BIKE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove as active bike",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
     }
