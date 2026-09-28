@@ -800,8 +800,8 @@
   - Maintained the signature dark charcoal / stealth background (`#0B0C0F` / `#0A0A0D`) to showcase the neon cyan, neon magenta, and sunset visor illustration.
   - Fully synced adaptive icon layers (`ic_launcher_background.png`, `ic_launcher_foreground.png`), Google Play store asset (`play_store_512.png`), and all mipmap density variants (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) for standard squircle and circular masks.
 - [x] **Live Cockpit UI Clutter & `//` Cleanup**:
-  - Removed the `ICO TRIP 1 // ROADBOOK` header row and redundant accuracy readout from the top distance card across portrait and landscape Dakar Rally dashboards, leaving a clean `KM-TOT` trip readout.
-  - Purged all `//` stylistic separators across all 5 live cockpit themes (Desert Rally, Superbike Track Day, Neon Cyber, Cafe Racer, Retro Classic).
+  - Removed all `//` stylistic separators across all 8 live cockpit themes (Desert Rally, Superbike Track Day, Neon Cyber, Retro Classic, Stealth HUD, Adventure Touring, Custom Bobber, Night Cruiser), replacing them with clean typography and dashes.
+  - Standardized all 8 cockpit themes to display the complete **6 telemetry metrics** (Moving Time, Elapsed Time, Moving Avg Speed, Overall Avg Speed, Peak Speed, GPS Fix/Accuracy) alongside dedicated odometer/trip distance readouts.
 
 - [x] **Instantaneous Bottom Navigation Tab Switching**:
   - Eliminated navigation transition delay when switching between Live, Garage, History, and Settings by setting `EnterTransition.None` and `ExitTransition.None` on the main navigation graph.

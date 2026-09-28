@@ -109,6 +109,7 @@ fun AdventureTouringCockpitDashboard(
     val movingTimeDisplay = CockpitUtils.formatDurationMs(stats.movingTimeMs)
     val totalTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
     val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val avgOverallSpeedDisplay = if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
 
     val animatedSpeed by animateFloatAsState(
@@ -149,24 +150,67 @@ fun AdventureTouringCockpitDashboard(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        GsMetricCard(
-                            title = "EXPEDITION TRIP",
-                            value = String.format(Locale.US, "%.1f", displayDistance),
-                            unit = distanceUnit,
-                            accentColor = GsExpeditionGold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        GsMetricCard(
-                            title = "MOVING TIME",
-                            value = movingTimeDisplay,
-                            unit = "",
-                            accentColor = GsGlacialCyan,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            GsMetricCard(
+                                title = "EXPEDITION TIME",
+                                value = movingTimeDisplay,
+                                unit = "",
+                                accentColor = GsGlacialCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+                            GsMetricCard(
+                                title = "TOTAL ELAPSED",
+                                value = totalTimeDisplay,
+                                unit = "",
+                                accentColor = GsGlacialCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            GsMetricCard(
+                                title = "MOVING AVG",
+                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                                unit = speedUnit,
+                                accentColor = GsAlpineWhite,
+                                modifier = Modifier.weight(1f)
+                            )
+                            GsMetricCard(
+                                title = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                                unit = speedUnit,
+                                accentColor = GsAlpineWhite,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            GsMetricCard(
+                                title = "PEAK RECORD",
+                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                                unit = speedUnit,
+                                accentColor = GsAlpineWhite,
+                                modifier = Modifier.weight(1f)
+                            )
+                            GsMetricCard(
+                                title = "SAT-LOCK FIX",
+                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                unit = "",
+                                accentColor = if (isGpsLost) GsDanger else GsGlacialCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
 
                     // Tactical Compass Ribbon
@@ -226,6 +270,15 @@ fun AdventureTouringCockpitDashboard(
                                     modifier = Modifier.padding(bottom = 14.dp)
                                 )
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "TRIP ${String.format(Locale.US, "%.1f", displayDistance)} $distanceUnit",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsExpeditionGold,
+                                letterSpacing = 1.sp
+                            )
                         }
                     }
 
@@ -362,7 +415,7 @@ fun AdventureTouringCockpitDashboard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "GS EXPEDITION // ${bikeName?.uppercase(Locale.US) ?: "ADVENTURE"}",
+                                text = "GS EXPEDITION - ${bikeName?.uppercase(Locale.US) ?: "ADVENTURE"}",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -409,7 +462,7 @@ fun AdventureTouringCockpitDashboard(
                     }
                 }
 
-                // Main Speedometer Hero Card
+                // Main Speedometer Hero Card with integrated Expedition Trip Odometer
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -452,6 +505,34 @@ fun AdventureTouringCockpitDashboard(
                                 fontFamily = FontFamily.Monospace
                             )
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "EXPEDITION TRIP",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsTextMuted,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                color = GsExpeditionGold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = distanceUnit,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsGlacialCyan,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                     }
                 }
 
@@ -462,45 +543,70 @@ fun AdventureTouringCockpitDashboard(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Expedition Telemetry Row
-                Row(
+                // Expedition Telemetry - 6 Standard Metrics
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    GsMetricCard(
-                        title = "TOTAL EXPEDITION",
-                        value = String.format(Locale.US, "%.1f", displayDistance),
-                        unit = distanceUnit,
-                        accentColor = GsExpeditionGold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    GsMetricCard(
-                        title = "EXPEDITION TIME",
-                        value = movingTimeDisplay,
-                        unit = "",
-                        accentColor = GsGlacialCyan,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GsMetricCard(
+                            title = "EXPEDITION TIME",
+                            value = movingTimeDisplay,
+                            unit = "",
+                            accentColor = GsGlacialCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GsMetricCard(
+                            title = "TOTAL ELAPSED",
+                            value = totalTimeDisplay,
+                            unit = "",
+                            accentColor = GsGlacialCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    GsMetricCard(
-                        title = "AVG CRUISE",
-                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                        unit = speedUnit,
-                        accentColor = GsAlpineWhite,
-                        modifier = Modifier.weight(1f)
-                    )
-                    GsMetricCard(
-                        title = "PEAK RECORD",
-                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                        unit = speedUnit,
-                        accentColor = GsAlpineWhite,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GsMetricCard(
+                            title = "MOVING AVG",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                            unit = speedUnit,
+                            accentColor = GsAlpineWhite,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GsMetricCard(
+                            title = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            accentColor = GsAlpineWhite,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GsMetricCard(
+                            title = "PEAK RECORD",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            accentColor = GsAlpineWhite,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GsMetricCard(
+                            title = "SAT-LOCK FIX",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
+                            accentColor = if (isGpsLost) GsDanger else GsGlacialCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -616,7 +722,7 @@ private fun GsAltimeterCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "ALTIMETER // CLIMB",
+                        text = "ALTIMETER - CLIMB",
                         fontFamily = FontFamily.Monospace,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,

@@ -105,6 +105,7 @@ fun CustomBobberCockpitDashboard(
     val movingTimeDisplay = CockpitUtils.formatDurationMs(stats.movingTimeMs)
     val totalTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
     val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    val avgOverallSpeedDisplay = if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
 
     BoxWithConstraints(
@@ -151,31 +152,75 @@ fun CustomBobberCockpitDashboard(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = BobberCastIron,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "TRIP ODO",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BobberMuted
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
+                                    fontFamily = FontFamily.Serif,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = BobberParchment
+                                )
+                            }
+                        }
+
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             BobberMetricCard(
-                                label = "TRIP ODO",
-                                value = String.format(Locale.US, "%.1f", displayDistance),
-                                unit = distanceUnit,
+                                label = "RUMBLE TIME",
+                                value = movingTimeDisplay,
+                                unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                             BobberMetricCard(
-                                label = "RIDE TIME",
-                                value = movingTimeDisplay,
+                                label = "TOTAL TIME",
+                                value = totalTimeDisplay,
                                 unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             BobberMetricCard(
-                                label = "PACE AVG",
+                                label = "CRUISE AVG",
                                 value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                                 unit = speedUnit,
                                 modifier = Modifier.weight(1f)
                             )
                             BobberMetricCard(
-                                label = "TOP END",
+                                label = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BobberMetricCard(
+                                label = "TOP MARK",
                                 value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                                 unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            BobberMetricCard(
+                                label = "SAT FIX",
+                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -197,7 +242,7 @@ fun CustomBobberCockpitDashboard(
                                     .height(48.dp)
                             ) {
                                 Text(
-                                    text = "FIRE UP // START",
+                                    text = "FIRE UP - START",
                                     color = BobberCastIron,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black,
@@ -301,7 +346,7 @@ fun CustomBobberCockpitDashboard(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "V-TWIN // ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
+                                text = "V-TWIN - ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
                                 fontFamily = FontFamily.Serif,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -358,7 +403,50 @@ fun CustomBobberCockpitDashboard(
                         .height(210.dp)
                 )
 
-                // Leather-Stitched Telemetry Cards
+                // Classic Stamped Trip Odometer Strip
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = BobberCastIron,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TRIP ODOMETER",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BobberMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                fontFamily = FontFamily.Serif,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = BobberParchment
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = distanceUnit,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BobberBronze,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Leather-Stitched Telemetry Cards - 6 Standard Metrics
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -368,14 +456,14 @@ fun CustomBobberCockpitDashboard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         BobberMetricCard(
-                            label = "TRIP DISTANCE",
-                            value = String.format(Locale.US, "%.1f", displayDistance),
-                            unit = distanceUnit,
+                            label = "RUMBLE TIME",
+                            value = movingTimeDisplay,
+                            unit = "",
                             modifier = Modifier.weight(1f)
                         )
                         BobberMetricCard(
-                            label = "RUMBLE TIME",
-                            value = movingTimeDisplay,
+                            label = "TOTAL TIME",
+                            value = totalTimeDisplay,
                             unit = "",
                             modifier = Modifier.weight(1f)
                         )
@@ -385,15 +473,32 @@ fun CustomBobberCockpitDashboard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         BobberMetricCard(
-                            label = "CRUISE PACE",
+                            label = "CRUISE AVG",
                             value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                             unit = speedUnit,
                             modifier = Modifier.weight(1f)
                         )
                         BobberMetricCard(
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BobberMetricCard(
                             label = "TOP MARK",
                             value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                             unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "SAT FIX",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -412,7 +517,7 @@ fun CustomBobberCockpitDashboard(
                             .height(60.dp)
                     ) {
                         Text(
-                            text = "FIRE UP // START",
+                            text = "FIRE UP - START",
                             color = BobberCastIron,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,

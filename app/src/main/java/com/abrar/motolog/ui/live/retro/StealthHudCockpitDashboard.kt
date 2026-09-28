@@ -165,36 +165,80 @@ fun StealthHudCockpitDashboard(
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Top Telemetry Grid
+                    // Top Telemetry Grid - Distance strip + 6 Telemetry Metrics
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = HudWireframe,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "TAC DIST",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = HudPhosphorGreen.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = HudPhosphorGreen
+                                )
+                            }
+                        }
+
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             HudCard(
-                                label = "DST",
-                                value = String.format(Locale.US, "%.1f", displayDistance),
-                                unit = distanceUnit,
+                                label = "MISSION TIME",
+                                value = movingTimeDisplay,
+                                unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                             HudCard(
-                                label = "TIME",
-                                value = movingTimeDisplay,
+                                label = "TOTAL TIME",
+                                value = totalTimeDisplay,
                                 unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             HudCard(
-                                label = "AVG",
+                                label = "MOVING AVG",
                                 value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                                 unit = speedUnit,
                                 modifier = Modifier.weight(1f)
                             )
                             HudCard(
+                                label = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            HudCard(
                                 label = "PEAK",
                                 value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                                 unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            HudCard(
+                                label = "SAT FIX",
+                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                unit = "",
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -336,7 +380,7 @@ fun StealthHudCockpitDashboard(
                                     .background(if (isGpsLost) HudRed else HudPhosphorGreen)
                             )
                             Text(
-                                text = "HUD // ${bikeName?.uppercase(Locale.US) ?: "STEALTH"}",
+                                text = "HUD - ${bikeName?.uppercase(Locale.US) ?: "STEALTH"}",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -419,7 +463,50 @@ fun StealthHudCockpitDashboard(
                     )
                 }
 
-                // Tactical Telemetry Cards Grid
+                // Tactical Mission Distance Strip
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = HudWireframe,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TAC MISSION DISTANCE",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HudPhosphorGreen.copy(alpha = 0.8f),
+                            letterSpacing = 1.sp
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = HudPhosphorGreen
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = distanceUnit,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HudCyan,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Tactical Telemetry Cards Grid - 6 Standard Metrics
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -429,14 +516,14 @@ fun StealthHudCockpitDashboard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         HudCard(
-                            label = "DISTANCE",
-                            value = String.format(Locale.US, "%.1f", displayDistance),
-                            unit = distanceUnit,
+                            label = "MISSION TIME",
+                            value = movingTimeDisplay,
+                            unit = "",
                             modifier = Modifier.weight(1f)
                         )
                         HudCard(
-                            label = "MOVING TIME",
-                            value = movingTimeDisplay,
+                            label = "TOTAL TIME",
+                            value = totalTimeDisplay,
                             unit = "",
                             modifier = Modifier.weight(1f)
                         )
@@ -446,15 +533,32 @@ fun StealthHudCockpitDashboard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         HudCard(
-                            label = "AVG SPEED",
+                            label = "MOVING AVG",
                             value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                             unit = speedUnit,
                             modifier = Modifier.weight(1f)
                         )
                         HudCard(
-                            label = "MAX SPEED",
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        HudCard(
+                            label = "PEAK VELOCITY",
                             value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                             unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "GPS ACCURACY",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -473,7 +577,7 @@ fun StealthHudCockpitDashboard(
                             .height(60.dp)
                     ) {
                         Text(
-                            text = "ENGAGE HUD // START",
+                            text = "ENGAGE HUD - START",
                             color = HudBlack,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
