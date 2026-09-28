@@ -16,13 +16,16 @@ MotoLog uses a **Kotlin Multiplatform (KMP)** architecture where 100% of the mat
 
 - **Kotlin Multiplatform Core:** Pure Kotlin domain engine (`:shared`) shared across Android and iOS with zero platform lock-in.
 - **Glanceable Telemetry:** Ultra-high contrast, large typography designed for fast visual scanning while riding at speed.
-- **5 Custom Themed Cockpits:** Dynamic instruments tailored to your motorcycle's personality:
+- **8 Custom Themed Cockpits:** Dynamic instruments tailored to your motorcycle's personality:
   - 🏁 **Track Day:** Superbike TFT display inspired by MotoGP/WorldSBK instrumentation (Ducati Panigale / Yamaha R1) featuring dynamic LED shift-light strip and race telemetry.
-  - ⚡ **Neon Cyber:** High-tech digital HUD with glowing hexagonal tachometer dial and neon cyan/magenta styling.
-  - 🏜️ **Desert Rally:** Dakar-style navigation roadbook and digital rally tripmaster with desert gold accents.
-  - ☕ **Cafe Racer:** Twin Smiths chronometric analog chrome instruments with warm vintage illumination.
-  - 🕰️ **Vintage Retro:** Classic 1970s analog speedometer dial with mechanical rolling odometer drum and incandescent jewel indicator lamps.
-- **Immediate Theme Preview:** Cockpit dashboards render instantly in the idle/standby state before starting a ride.
+  - 🏜️ **Desert Rally:** Dakar-style navigation roadbook and digital rally tripmaster with desert gold accents and dual trip odometers.
+  - ⚡ **Neon Cyber:** High-tech digital HUD with glowing hexagonal tachometer dial and neon cyan/magenta cyberpunk styling.
+  - 🕰️ **Vintage Retro:** Classic 1960s/1970s British Smiths chronometer with mechanical rolling odometer drum and incandescent jewel indicator lamps.
+  - 🎯 **Stealth HUD:** Fighter jet collimator head-up display with pitch ladder, airspeed/altitude tapes, and pure OLED black background.
+  - 🏔️ **Adventure Touring:** Rugged dual-pane overland cockpit inspired by BMW GS TFT consoles, featuring live altimeter and stage trip readouts.
+  - ⚙️ **Custom Bobber:** Machined billet aluminum 180° radial arc speedometer with warm parchment dial face and mechanical trip drum.
+  - 🌌 **Night Cruiser:** Sweeping American V-twin highway dashboard with deep indigo ambient glow, horizon road perspective, and night-glare suppression.
+- **Immediate Theme Preview:** Cockpit dashboards render instantly in the idle/standby state before starting a ride, complete with glove-friendly Start controls and quick access to settings.
 - **Immersive Full-Screen Landscape Mode:** When mounted horizontally on handlebars, navigation clutter is hidden to maximize speedometer gauge size. Swiping down or tapping the pull tab reveals an animated telemetry drawer with detailed numerical statistics and controls.
 - **Glove-Friendly Ergonomics:** Minimum 56dp touch targets, high contrast, and a **2-second Hold-to-Stop** gesture with an animated progress ring to prevent accidental cancellation from road bumps or vibration.
 - **Foreground Tracking Engine:** Continuous background tracking with persistent notification controls (Pause / Resume / Stop), crash/kill recovery on reboot, and batch persistence to Room.
@@ -44,10 +47,13 @@ MotoLog uses a **Kotlin Multiplatform (KMP)** architecture where 100% of the mat
 | Theme | Inspiration | Distinct Features |
 |---|---|---|
 | **Track Day** | WorldSBK / MotoGP TFT | Dynamic RPM-style shift light bar, session time, top speed peak, circuit map switcher |
-| **Neon Cyber** | Cyberpunk HUD | Hexagonal angular tachometer dial, pulsing boost meters, grid accents |
 | **Desert Rally** | Dakar Rally Tripmaster | Dual digital tripmeters, stage waypoint progress, compass bearing ribbon |
-| **Cafe Racer** | 1960s British Twin Smiths | Dual chrome-bezeled dials (Speed + Tachometer), mechanical needle smoothing |
-| **Vintage Retro** | 1970s Classic Analog | Brass-rimmed dial, mechanical rolling odometer drum, jewel indicator lamps |
+| **Neon Cyber** | Cyberpunk HUD | Hexagonal angular tachometer dial, pulsing boost meters, grid accents |
+| **Vintage Retro** | 1960s/70s Classic Analog | Smiths chronometer styling, mechanical rolling odometer drum, jewel indicator lamps |
+| **Stealth HUD** | Fighter Jet Collimator | Pitch reticle, dual airspeed & altitude tapes, high-G warning aesthetics, OLED black |
+| **Adventure Touring** | BMW GS Alpine Cockpit | Dual-pane layout, integrated live altimeter & elevation gain, waypoint ETA card |
+| **Custom Bobber** | American V-Twin Billet | 180° radial swept needle arc, parchment textured face, vintage mechanical counter |
+| **Night Cruiser** | Midnight Boulevard Highway | Deep indigo glow, low-glare horizon road guide, ambient low-light night cruising |
 
 ---
 
