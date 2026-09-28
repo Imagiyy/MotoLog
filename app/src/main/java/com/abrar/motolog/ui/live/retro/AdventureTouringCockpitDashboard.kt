@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Landscape
@@ -229,29 +232,62 @@ fun AdventureTouringCockpitDashboard(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Controls Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onSwitchToMap,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = GsPanelBg,
-                                contentColor = GsGlacialCyan
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp)
-                                .border(1.dp, GsBorder, RoundedCornerShape(8.dp))
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("MAP", fontWeight = FontWeight.Bold)
-                        }
+                            Button(
+                                onClick = onStartClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "START EXPEDITION",
+                                    color = Color(0xFF1A1300),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+                            }
 
-                        if (!isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "EXPEDITION",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = onSwitchToMap,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GsPanelBg,
+                                    contentColor = GsGlacialCyan
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .weight(0.9f)
+                                    .height(46.dp)
+                                    .border(1.dp, GsBorder, RoundedCornerShape(8.dp))
+                            ) {
+                                Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("MAP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+
                             Button(
                                 onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -267,17 +303,25 @@ fun AdventureTouringCockpitDashboard(
                                 Icon(
                                     imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = if (pauseState.isPaused) "RESUME" else "PAUSE",
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
                                 )
                             }
 
-                            RetroHoldToStopButton(
+                            ThemedHoldToStopButton(
                                 onStopConfirmed = onStopConfirmed,
+                                label = "END",
+                                progressLabel = "OFF",
+                                borderColor = GsDanger,
+                                gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
+                                progressFillColor = GsDanger.copy(alpha = 0.6f),
+                                textColor = GsAlpineWhite,
+                                cornerRadius = 8.dp,
                                 modifier = Modifier.weight(1.2f)
                             )
                         }
@@ -289,62 +333,100 @@ fun AdventureTouringCockpitDashboard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Expedition Banner
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(GsCordobaBlue)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "ADVENTURE TOURING // ${bikeName?.uppercase(Locale.US) ?: "EXPEDITION"}",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GsGlacialCyan,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    Text(
-                        text = if (isGpsLost) "GPS LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isGpsLost) GsDanger else GsTextMuted,
-                        fontFamily = FontFamily.Monospace
+                // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "EXPEDITION STANDBY"
                     )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isGpsLost) GsDanger else GsCordobaBlue)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "GS EXPEDITION // ${bikeName?.uppercase(Locale.US) ?: "ADVENTURE"}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsGlacialCyan,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isGpsLost) GsDanger else GsTextMuted,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Surface(
+                            onClick = onSwitchToMap,
+                            shape = RoundedCornerShape(8.dp),
+                            color = GsPanelBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = "Expedition Map",
+                                    tint = GsGlacialCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "MAP",
+                                    color = GsGlacialCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Main Speedometer Hero Card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
+                        .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+                    shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = GsPanelBg)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 20.dp),
+                            .padding(vertical = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = "CRUISE SPEED",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = GsGlacialCyan,
                             letterSpacing = 2.sp
@@ -355,7 +437,7 @@ fun AdventureTouringCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 84.sp,
+                                fontSize = 76.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
                                 letterSpacing = (-2).sp
@@ -363,10 +445,10 @@ fun AdventureTouringCockpitDashboard(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GsGlacialCyan,
-                                modifier = Modifier.padding(bottom = 16.dp),
+                                modifier = Modifier.padding(bottom = 12.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -421,59 +503,76 @@ fun AdventureTouringCockpitDashboard(
                     )
                 }
 
-                // Action Controls
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onSwitchToMap,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = GsPanelBg,
-                            contentColor = GsGlacialCyan
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .border(1.dp, GsBorder, RoundedCornerShape(8.dp))
-                    ) {
-                        Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("MAP", fontWeight = FontWeight.Bold)
-                    }
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    if (!isIdle) {
-                        Button(
-                            onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = GsPanelBg,
-                                contentColor = if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
-                            ),
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                    ) {
+                        Text(
+                            text = "START EXPEDITION",
+                            color = Color(0xFF1A1300),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
                             shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
+                            ),
                             modifier = Modifier
-                                .weight(1.2f)
-                                .height(48.dp)
-                                .border(1.dp, (if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                .weight(1f)
+                                .heightIn(min = 56.dp)
                         ) {
-                            Icon(
-                                imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (pauseState.isPaused) "RESUME" else "PAUSE",
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
+                                    color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
                         }
 
-                        RetroHoldToStopButton(
+                        ThemedHoldToStopButton(
                             onStopConfirmed = onStopConfirmed,
-                            modifier = Modifier.weight(1.4f)
+                            label = "END EXPEDITION",
+                            progressLabel = "CONCLUDING",
+                            borderColor = GsDanger,
+                            gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
+                            progressFillColor = GsDanger.copy(alpha = 0.6f),
+                            textColor = GsAlpineWhite,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier.weight(1.3f)
                         )
                     }
                 }

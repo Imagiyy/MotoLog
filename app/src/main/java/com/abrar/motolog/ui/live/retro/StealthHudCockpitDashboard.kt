@@ -99,6 +99,7 @@ fun StealthHudCockpitDashboard(
     keepScreenOn: Boolean = false,
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    elevationGainMeters: Double = 0.0,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.STEALTH_HUD)
 ) {
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
@@ -200,29 +201,64 @@ fun StealthHudCockpitDashboard(
                     }
 
                     // Tactical Control Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onSwitchToMap,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = HudWireframe,
-                                contentColor = HudPhosphorGreen
-                            ),
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .border(1.dp, HudPhosphorGreen.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Map, contentDescription = "Map", modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("MAP", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
+                            Button(
+                                onClick = onStartClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = HudPhosphorGreen,
+                                    contentColor = HudBlack
+                                ),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "ENGAGE HUD",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 13.sp,
+                                    letterSpacing = 1.sp
+                                )
+                            }
 
-                        if (!isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "STEALTH",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = onSwitchToMap,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = HudWireframe,
+                                    contentColor = HudPhosphorGreen
+                                ),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier
+                                    .weight(0.9f)
+                                    .height(48.dp)
+                                    .border(1.dp, HudPhosphorGreen.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                            ) {
+                                Icon(Icons.Default.Map, contentDescription = "Map", modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("MAP", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+
                             Button(
                                 onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -232,25 +268,32 @@ fun StealthHudCockpitDashboard(
                                 shape = RoundedCornerShape(4.dp),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(44.dp)
+                                    .height(48.dp)
                                     .border(1.dp, (if (pauseState.isPaused) HudAmber else HudCyan).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                             ) {
                                 Icon(
                                     imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = if (pauseState.isPaused) "RESUME" else "PAUSE",
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = 11.sp
                                 )
                             }
 
-                            RetroHoldToStopButton(
+                            ThemedHoldToStopButton(
                                 onStopConfirmed = onStopConfirmed,
+                                label = "DISARM",
+                                progressLabel = "OFF",
+                                borderColor = HudRed,
+                                gradientColors = listOf(Color(0xFF5E0B0B), Color(0xFF260505)),
+                                progressFillColor = HudRed.copy(alpha = 0.6f),
+                                textColor = Color.White,
+                                cornerRadius = 4.dp,
                                 modifier = Modifier.weight(1.2f)
                             )
                         }
@@ -262,52 +305,88 @@ fun StealthHudCockpitDashboard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Status Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "HUD // ${bikeName?.uppercase(Locale.US) ?: "STEALTH"}",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = HudPhosphorGreen.copy(alpha = 0.8f),
-                        letterSpacing = 2.sp
+                // Header (ThemedIdleTopBar in Idle, or Tactical Header + Map Button when tracking)
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "STEALTH STANDBY"
                     )
-
+                } else {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = if (isGpsLost) "GPS LOST" else String.format(Locale.US, "FIX ±%.0fm", accuracyMeters),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            color = if (isGpsLost) HudRed else HudCyan,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (isGpsLost) HudRed else HudPhosphorGreen)
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isGpsLost) HudRed else HudPhosphorGreen)
+                            )
+                            Text(
+                                text = "HUD // ${bikeName?.uppercase(Locale.US) ?: "STEALTH"}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HudPhosphorGreen.copy(alpha = 0.9f),
+                                letterSpacing = 2.sp
+                            )
+                            Text(
+                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                color = if (isGpsLost) HudRed else HudCyan,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Surface(
+                            onClick = onSwitchToMap,
+                            shape = RoundedCornerShape(4.dp),
+                            color = HudWireframe,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.7f)),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = "Tactical Map",
+                                    tint = HudPhosphorGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "TAC MAP",
+                                    color = HudPhosphorGreen,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Center Main Reticle & Side Ladder
+                // Center Symmetrical HUD: Airspeed Tape on Left, Collimator Reticle in Center, Altitude Tape on Right
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .height(240.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -315,23 +394,32 @@ fun StealthHudCockpitDashboard(
                         currentSpeed = displaySpeed,
                         isMetric = isMetric,
                         modifier = Modifier
-                            .width(64.dp)
-                            .height(260.dp)
+                            .width(54.dp)
+                            .fillMaxHeight()
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
-                    val reticleSize = (screenWidth * 0.72f).coerceAtMost(screenHeight * 0.38f)
                     HudCollimatorReticle(
                         speed = displaySpeed,
                         speedUnit = speedUnit,
                         isSpeedAlert = isSpeedAlert,
                         isGpsLost = isGpsLost,
-                        modifier = Modifier.size(reticleSize)
+                        modifier = Modifier.size(230.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    HudAltitudeLadder(
+                        elevationGain = elevationGainMeters,
+                        isMetric = isMetric,
+                        modifier = Modifier
+                            .width(54.dp)
+                            .fillMaxHeight()
                     )
                 }
 
-                // Bottom Tactical Telemetry Cards Grid
+                // Tactical Telemetry Cards Grid
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -370,64 +458,79 @@ fun StealthHudCockpitDashboard(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    // Action Controls
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HudPhosphorGreen),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                    ) {
+                        Text(
+                            text = "ENGAGE HUD // START",
+                            color = HudBlack,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Button(
-                            onClick = onSwitchToMap,
+                            onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = HudWireframe,
-                                contentColor = HudPhosphorGreen
+                                containerColor = if (pauseState.isPaused) HudAmber.copy(alpha = 0.2f) else HudWireframe,
+                                contentColor = if (pauseState.isPaused) HudAmber else HudCyan
                             ),
                             shape = RoundedCornerShape(4.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(48.dp)
-                                .border(1.dp, HudPhosphorGreen.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .heightIn(min = 56.dp)
+                                .border(1.dp, (if (pauseState.isPaused) HudAmber else HudCyan).copy(alpha = 0.6f), RoundedCornerShape(4.dp))
                         ) {
-                            Icon(Icons.Default.Map, contentDescription = "Map", modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("MAP", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-
-                        if (!isIdle) {
-                            Button(
-                                onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (pauseState.isPaused) HudAmber.copy(alpha = 0.2f) else HudWireframe,
-                                    contentColor = if (pauseState.isPaused) HudAmber else HudCyan
-                                ),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier
-                                    .weight(1.2f)
-                                    .height(48.dp)
-                                    .border(1.dp, (if (pauseState.isPaused) HudAmber else HudCyan).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = if (pauseState.isPaused) HudAmber else HudCyan,
+                                    modifier = Modifier.size(22.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "PAUSE",
+                                    text = if (pauseState.isPaused) "RESUME" else "STAND DOWN",
+                                    color = if (pauseState.isPaused) HudAmber else HudCyan,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
                             }
-
-                            RetroHoldToStopButton(
-                                onStopConfirmed = onStopConfirmed,
-                                modifier = Modifier.weight(1.4f)
-                            )
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "DISARM HUD",
+                            progressLabel = "DISARMING",
+                            borderColor = HudRed,
+                            gradientColors = listOf(Color(0xFF5E0B0B), Color(0xFF260505)),
+                            progressFillColor = HudRed.copy(alpha = 0.6f),
+                            textColor = Color.White,
+                            cornerRadius = 4.dp,
+                            modifier = Modifier.weight(1.3f)
+                        )
                     }
                 }
             }
@@ -628,6 +731,79 @@ private fun HudAirspeedLadder(
             }
             drawPath(pointerPath, color = HudCyan)
         }
+    }
+}
+
+/**
+ * Vertical Altitude Tape Ladder showing climbing elevation notches on the right.
+ */
+@Composable
+private fun HudAltitudeLadder(
+    elevationGain: Double,
+    isMetric: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val displayAlt = if (isMetric) elevationGain else elevationGain * 3.28084
+    Box(
+        modifier = modifier
+            .border(1.dp, HudWireframe, RoundedCornerShape(4.dp))
+            .background(HudBlack.copy(alpha = 0.7f), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val h = size.height
+            val midY = h / 2f
+            val axisX = 12.dp.toPx()
+
+            // Vertical axis line on left side of tape
+            drawLine(
+                color = HudCyan.copy(alpha = 0.4f),
+                start = Offset(axisX, 0f),
+                end = Offset(axisX, h),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // Draw elevation tick notches
+            val pixelsPerUnit = h / 60f
+            val roundedBase = (displayAlt / 10).toInt() * 10
+
+            for (alt in (roundedBase - 30)..(roundedBase + 30) step 5) {
+                if (alt < 0) continue
+                val diff = (alt - displayAlt).toFloat()
+                val y = midY - (diff * pixelsPerUnit)
+                if (y in 0f..h) {
+                    val isMajor = alt % 10 == 0
+                    val tickLen = if (isMajor) 14.dp.toPx() else 7.dp.toPx()
+                    drawLine(
+                        color = if (isMajor) HudCyan else HudCyan.copy(alpha = 0.4f),
+                        start = Offset(axisX, y),
+                        end = Offset(axisX + tickLen, y),
+                        strokeWidth = if (isMajor) 1.5.dp.toPx() else 1.dp.toPx()
+                    )
+                }
+            }
+
+            // Current Altitude Pointer Arrow: <
+            val pointerPath = Path().apply {
+                moveTo(axisX - 4.dp.toPx(), midY)
+                lineTo(axisX - 11.dp.toPx(), midY - 6.dp.toPx())
+                lineTo(axisX - 11.dp.toPx(), midY + 6.dp.toPx())
+                close()
+            }
+            drawPath(pointerPath, color = HudPhosphorGreen)
+        }
+
+        // Mini Label
+        Text(
+            text = "ALT",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = HudCyan.copy(alpha = 0.6f),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 4.dp)
+        )
     }
 }
 

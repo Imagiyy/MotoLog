@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Pause
@@ -29,6 +32,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -178,29 +182,62 @@ fun CustomBobberCockpitDashboard(
                     }
 
                     // Controls
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onSwitchToMap,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BobberCastIron,
-                                contentColor = BobberBronze
-                            ),
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .border(1.dp, BobberBorder, RoundedCornerShape(6.dp))
+                    if (isIdle) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("MAP", fontWeight = FontWeight.Bold)
-                        }
+                            Button(
+                                onClick = onStartClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "FIRE UP // START",
+                                    color = BobberCastIron,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+                            }
 
-                        if (!isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "V-TWIN",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = onSwitchToMap,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BobberCastIron,
+                                    contentColor = BobberBronze
+                                ),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .weight(0.9f)
+                                    .height(44.dp)
+                                    .border(1.dp, BobberBorder, RoundedCornerShape(6.dp))
+                            ) {
+                                Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("MAP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+
                             Button(
                                 onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -216,14 +253,21 @@ fun CustomBobberCockpitDashboard(
                                 Icon(
                                     imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (pauseState.isPaused) "RESUME" else "PAUSE", fontWeight = FontWeight.Bold)
+                                Text(if (pauseState.isPaused) "RESUME" else "PAUSE", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
 
-                            RetroHoldToStopButton(
+                            ThemedHoldToStopButton(
                                 onStopConfirmed = onStopConfirmed,
+                                label = "KILL",
+                                progressLabel = "OFF",
+                                borderColor = BobberFlameOrange,
+                                gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
+                                progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
+                                textColor = BobberParchment,
+                                cornerRadius = 6.dp,
                                 modifier = Modifier.weight(1.2f)
                             )
                         }
@@ -235,44 +279,86 @@ fun CustomBobberCockpitDashboard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Custom Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "V-TWIN // ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
-                        fontFamily = FontFamily.Serif,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BobberBronze,
-                        letterSpacing = 1.sp
+                // Header (ThemedIdleTopBar in Idle, or Custom Header + Map Button when tracking)
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "V-TWIN STANDBY"
                     )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "V-TWIN // ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
+                                fontFamily = FontFamily.Serif,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BobberBronze,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isGpsLost) BobberFlameOrange else BobberRawSteel,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
 
-                    Text(
-                        text = if (isGpsLost) "GPS LOST" else String.format(Locale.US, "FIX ±%.0fm", accuracyMeters),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isGpsLost) BobberFlameOrange else BobberRawSteel,
-                        fontFamily = FontFamily.Monospace
-                    )
+                        Surface(
+                            onClick = onSwitchToMap,
+                            shape = RoundedCornerShape(8.dp),
+                            color = BobberCastIron,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = "Cruiser Map",
+                                    tint = BobberBronze,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "ROAD MAP",
+                                    color = BobberBronze,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Center 180° Billet Arc Gauge
-                val arcSize = (screenWidth * 0.92f).coerceAtMost(screenHeight * 0.42f)
                 BobberBilletArcGauge(
                     speed = displaySpeed,
                     speedUnit = speedUnit,
                     isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier.size(arcSize)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp)
                 )
 
-                // Bottom Leather-Stitched Telemetry Cards
+                // Leather-Stitched Telemetry Cards
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -311,59 +397,79 @@ fun CustomBobberCockpitDashboard(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    // Action Controls
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                    ) {
+                        Text(
+                            text = "FIRE UP // START",
+                            color = BobberCastIron,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Button(
-                            onClick = onSwitchToMap,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BobberCastIron,
-                                contentColor = BobberBronze
-                            ),
+                        Surface(
+                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
                             shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) BobberFlameOrange.copy(alpha = 0.2f) else BobberCastIron,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) BobberFlameOrange else BobberBronze
+                            ),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(48.dp)
-                                .border(1.dp, BobberBorder, RoundedCornerShape(8.dp))
+                                .heightIn(min = 56.dp)
                         ) {
-                            Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("MAP", fontWeight = FontWeight.Bold)
-                        }
-
-                        if (!isIdle) {
-                            Button(
-                                onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = BobberCastIron,
-                                    contentColor = if (pauseState.isPaused) BobberFlameOrange else BobberBronze
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .weight(1.2f)
-                                    .height(48.dp)
-                                    .border(1.dp, (if (pauseState.isPaused) BobberFlameOrange else BobberBronze).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = if (pauseState.isPaused) BobberFlameOrange else BobberBronze,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (pauseState.isPaused) "RESUME" else "PAUSE", fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "IDLE",
+                                    color = if (pauseState.isPaused) BobberFlameOrange else BobberParchment,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
-
-                            RetroHoldToStopButton(
-                                onStopConfirmed = onStopConfirmed,
-                                modifier = Modifier.weight(1.4f)
-                            )
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "KILL MOTOR",
+                            progressLabel = "SHUTTING DOWN",
+                            borderColor = BobberFlameOrange,
+                            gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
+                            progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
+                            textColor = BobberParchment,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier.weight(1.3f)
+                        )
                     }
                 }
             }
@@ -389,8 +495,8 @@ private fun BobberBilletArcGauge(
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height * 0.62f)
-            val radius = size.minDimension * 0.48f
+            val center = Offset(size.width / 2f, size.height * 0.72f)
+            val radius = (size.width * 0.44f).coerceAtMost(size.height * 0.65f)
 
             // Outer Billet Arc Track (180° sweep from 180° to 360°)
             drawArc(
@@ -476,7 +582,7 @@ private fun BobberBilletArcGauge(
 
         // Center Stamped Speed Readout
         Column(
-            modifier = Modifier.padding(bottom = 24.dp),
+            modifier = Modifier.padding(bottom = 36.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
