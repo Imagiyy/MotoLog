@@ -173,6 +173,14 @@ fun NeonCyberCockpitDashboard(
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
 
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "GRID"
+                )
+
                 // Slide-down drawer with numerical values and controls
                 LandscapeTelemetryDrawer(
                     visible = showLandscapeTelemetrySheet,
@@ -273,6 +281,7 @@ fun NeonCyberCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "NEO-CYBER",
                                 modifier = Modifier.weight(1f)
@@ -383,7 +392,8 @@ fun NeonCyberCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "CYBER STANDBY"
+                        badgeText = "CYBER STANDBY",
+                        onSwitchToMap = onSwitchToMap
                     )
                 } else {
                     Row(

@@ -181,6 +181,14 @@ fun RetroClassicCockpitDashboard(
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
 
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "MAP"
+                )
+
                 // Slide-down drawer with numerical values and controls
                 LandscapeTelemetryDrawer(
                     visible = showLandscapeTelemetrySheet,
@@ -282,6 +290,7 @@ fun RetroClassicCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "CAFE RACER",
                                 modifier = Modifier.weight(1f)
@@ -394,7 +403,8 @@ fun RetroClassicCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "CAFE RACER STANDBY"
+                        badgeText = "CAFE RACER STANDBY",
+                        onSwitchToMap = onSwitchToMap
                     )
                 } else {
                     Row(

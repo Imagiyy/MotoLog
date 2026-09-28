@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,8 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -117,7 +120,9 @@ fun RetroLiveMap(
     onSwitchToCockpit: () -> Unit,
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC),
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {}
 ) {
     val isNativeSupported = remember { MapSupport.isNativeSupported }
     if (!isNativeSupported) {
@@ -134,6 +139,8 @@ fun RetroLiveMap(
             onStopProgressChange = onStopProgressChange,
             onSwitchToCockpit = onSwitchToCockpit,
             palette = palette,
+            isIdle = isIdle,
+            onStartClick = onStartClick,
             modifier = modifier
         )
         return
@@ -385,12 +392,21 @@ fun RetroLiveMap(
             }
         }
 
-        // Floating Retro Mini-Cockpit HUD Card at Bottom
+        // Floating Retro Mini-Cockpit HUD Card at Bottom with vertical slide gesture
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(12.dp)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { _, dragAmount ->
+                        if (dragAmount > 20) {
+                            isHudMinimized = true
+                        } else if (dragAmount < -20) {
+                            isHudMinimized = false
+                        }
+                    }
+                },
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Attribution link & Minimize/Maximize HUD Button
@@ -404,7 +420,7 @@ fun RetroLiveMap(
                     mapUnavailable = mapUnavailable
                 )
 
-                // Minimize / Maximize HUD Toggle Button
+                // Minimize / Maximize HUD Toggle Button (Hide / Show Telemetry Values)
                 Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
@@ -413,18 +429,18 @@ fun RetroLiveMap(
                     color = palette.surface.copy(alpha = 0.92f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = if (isHudMinimized) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = if (isHudMinimized) "Maximize HUD" else "Minimize HUD",
+                            contentDescription = if (isHudMinimized) "Show Telemetry Values" else "Hide Telemetry Values",
                             tint = palette.primaryAccent,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (isHudMinimized) "EXPAND HUD" else "MINIMIZE HUD",
+                            text = if (isHudMinimized) "SHOW VALUES" else "HIDE VALUES",
                             color = palette.dialText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -435,7 +451,7 @@ fun RetroLiveMap(
                 }
             }
 
-            // Full Mini Cockpit Cluster
+            // Full Mini Cockpit Cluster with Telemetry Values
             AnimatedVisibility(
                 visible = !isHudMinimized,
                 enter = fadeIn() + expandVertically(),
@@ -451,11 +467,13 @@ fun RetroLiveMap(
                     onPauseClick = onPauseClick,
                     onResumeClick = onResumeClick,
                     onStopProgressChange = onStopProgressChange,
-                    palette = palette
+                    palette = palette,
+                    isIdle = isIdle,
+                    onStartClick = onStartClick
                 )
             }
 
-            // Compact Minimized HUD Pill
+            // Compact Minimized HUD Pill (Telemetry Values Hidden)
             AnimatedVisibility(
                 visible = isHudMinimized,
                 enter = fadeIn() + expandVertically(),
@@ -470,7 +488,9 @@ fun RetroLiveMap(
                     onPauseClick = onPauseClick,
                     onResumeClick = onResumeClick,
                     onStopProgressChange = onStopProgressChange,
-                    palette = palette
+                    palette = palette,
+                    isIdle = isIdle,
+                    onStartClick = onStartClick
                 )
             }
         }
@@ -491,6 +511,8 @@ private fun RetroMapUnavailableFallback(
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
     palette: CockpitThemePalette,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.background(RetroBackground)) {
@@ -593,7 +615,9 @@ private fun RetroMapUnavailableFallback(
                 onPauseClick = onPauseClick,
                 onResumeClick = onResumeClick,
                 onStopProgressChange = onStopProgressChange,
-                palette = palette
+                palette = palette,
+                isIdle = isIdle,
+                onStartClick = onStartClick
             )
         }
     }
@@ -611,6 +635,8 @@ private fun RetroMiniCockpitCluster(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     palette: CockpitThemePalette,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -785,53 +811,73 @@ private fun RetroMiniCockpitCluster(
                 }
             }
 
-            // Row 3: Glove-friendly Pause & Stop Controls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Pause / Resume Button (56dp min height)
-                val isPaused = pauseState.isPaused
-                Box(
+            // Row 3: Glove-friendly Pause & Stop Controls (or START in Idle)
+            if (isIdle) {
+                Button(
+                    onClick = onStartClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = palette.primaryAccent),
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .height(56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isPaused) {
-                                Brush.verticalGradient(listOf(JewelGreen, Color(0xFF1A5228)))
-                            } else {
-                                Brush.verticalGradient(
-                                    listOf(
-                                        palette.secondaryAccent.copy(alpha = 0.7f),
-                                        palette.surface
-                                    )
-                                )
-                            }
-                        )
-                        .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            if (isPaused) onResumeClick() else onPauseClick()
-                        },
-                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isPaused) "RESUME" else "PAUSE",
-                        color = palette.dialText,
+                        text = "START RIDE",
+                        color = Color.Black,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         letterSpacing = 1.sp
                     )
                 }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Pause / Resume Button (56dp min height)
+                    val isPaused = pauseState.isPaused
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isPaused) {
+                                    Brush.verticalGradient(listOf(JewelGreen, Color(0xFF1A5228)))
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            palette.secondaryAccent.copy(alpha = 0.7f),
+                                            palette.surface
+                                        )
+                                    )
+                                }
+                            )
+                            .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(8.dp))
+                            .clickable {
+                                if (isPaused) onResumeClick() else onPauseClick()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isPaused) "RESUME" else "PAUSE",
+                            color = palette.dialText,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    }
 
-                // Hold-to-Stop Button (56dp min height)
-                RetroHoldToStopButton(
-                    onStopConfirmed = { onStopProgressChange(1f) },
-                    modifier = Modifier
-                        .weight(1.2f)
-                        .height(56.dp)
-                )
+                    // Hold-to-Stop Button (56dp min height)
+                    RetroHoldToStopButton(
+                        onStopConfirmed = { onStopProgressChange(1f) },
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(56.dp)
+                    )
+                }
             }
         }
     }
@@ -896,6 +942,8 @@ private fun RetroCompactMinimizedHudPill(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     palette: CockpitThemePalette,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
@@ -949,46 +997,63 @@ private fun RetroCompactMinimizedHudPill(
                 }
             }
 
-            // Right: Pause/Resume + Hold to Stop
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    onClick = {
-                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                    },
+            // Right: Pause/Resume + Hold to Stop (or START in Idle)
+            if (isIdle) {
+                Button(
+                    onClick = onStartClick,
                     shape = RoundedCornerShape(8.dp),
-                    color = if (pauseState.isPaused) JewelAmber.copy(alpha = 0.2f) else palette.surfaceBorder.copy(alpha = 0.4f),
-                    border = BorderStroke(1.dp, if (pauseState.isPaused) JewelAmber else palette.primaryAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = palette.primaryAccent),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = null,
-                            tint = if (pauseState.isPaused) JewelAmber else palette.primaryAccent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = if (pauseState.isPaused) "RESUME" else "PAUSE",
-                            color = if (pauseState.isPaused) JewelAmber else palette.dialText,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
+                    Text(
+                        text = "START RIDE",
+                        color = Color.Black,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
                 }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        onClick = {
+                            if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (pauseState.isPaused) JewelAmber.copy(alpha = 0.2f) else palette.surfaceBorder.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, if (pauseState.isPaused) JewelAmber else palette.primaryAccent)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = null,
+                                tint = if (pauseState.isPaused) JewelAmber else palette.primaryAccent,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = if (pauseState.isPaused) "RESUME" else "PAUSE",
+                                color = if (pauseState.isPaused) JewelAmber else palette.dialText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
 
-                RetroHoldToStopButton(
-                    onStopConfirmed = { onStopProgressChange(1f) },
-                    modifier = Modifier
-                        .width(110.dp)
-                        .height(36.dp)
-                )
+                    RetroHoldToStopButton(
+                        onStopConfirmed = { onStopProgressChange(1f) },
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(36.dp)
+                    )
+                }
             }
         }
     }

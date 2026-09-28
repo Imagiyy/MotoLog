@@ -25,8 +25,10 @@ MotoLog uses a **Kotlin Multiplatform (KMP)** architecture where 100% of the mat
   - 🏔️ **Adventure Touring:** Rugged dual-pane overland cockpit inspired by BMW GS TFT consoles, featuring live altimeter and stage trip readouts.
   - ⚙️ **Custom Bobber:** Machined billet aluminum 180° radial arc speedometer with warm parchment dial face and mechanical trip drum.
   - 🌌 **Night Cruiser:** Sweeping American V-twin highway dashboard with deep indigo ambient glow, horizon road perspective, and night-glare suppression.
-- **Immediate Theme Preview:** Cockpit dashboards render instantly in the idle/standby state before starting a ride, complete with glove-friendly Start controls and quick access to settings.
-- **Immersive Full-Screen Landscape Mode:** When mounted horizontally on handlebars, navigation clutter is hidden to maximize speedometer gauge size. Swiping down or tapping the pull tab reveals an animated telemetry drawer with detailed numerical statistics and controls.
+- **Immediate Theme Preview & Idle Map Support:** Cockpit dashboards and the live map render instantly in the idle/standby state before starting a ride, complete with glove-friendly Start controls and quick access to settings.
+- **Immersive Full-Screen Landscape Mode:** When mounted horizontally on handlebars, the speedometer instrument is fully dominant across all 8 cockpit themes. Swiping down or tapping the pull tab reveals an animated telemetry drawer containing the 6 primary metrics and controls.
+- **Top-Right Quick Map Access:** Dedicated glove-friendly Map buttons situated on the top-right corner across all themes in portrait (standby & active) and landscape mode.
+- **Toggleable Map Telemetry:** Full swipe gestures and dedicated "SHOW VALUES" / "HIDE VALUES" controls on the live map view allow riders to collapse metrics into a sleek compact HUD pill or expand into full telemetry.
 - **Glove-Friendly Ergonomics:** Minimum 56dp touch targets, high contrast, and a **2-second Hold-to-Stop** gesture with an animated progress ring to prevent accidental cancellation from road bumps or vibration.
 - **Foreground Tracking Engine:** Continuous background tracking with persistent notification controls (Pause / Resume / Stop), crash/kill recovery on reboot, and batch persistence to Room.
 - **High-Precision GPS Engine:** Pure domain math engine:

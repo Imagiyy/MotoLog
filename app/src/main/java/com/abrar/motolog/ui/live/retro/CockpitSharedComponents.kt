@@ -22,11 +22,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -182,7 +184,8 @@ fun ThemedIdleTopBar(
     onNavigateToSettings: () -> Unit,
     palette: CockpitThemePalette,
     badgeText: String = "READY TO RIDE",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSwitchToMap: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -206,7 +209,10 @@ fun ThemedIdleTopBar(
             )
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             IconButton(
                 onClick = onToggleKeepScreenOn,
                 modifier = Modifier.size(44.dp)
@@ -227,6 +233,78 @@ fun ThemedIdleTopBar(
                     tint = palette.secondaryAccent
                 )
             }
+            if (onSwitchToMap != null) {
+                Surface(
+                    modifier = Modifier
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .border(1.2.dp, palette.primaryAccent.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+                        .clickable { onSwitchToMap() },
+                    color = palette.surface
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Map,
+                            contentDescription = "Open Map",
+                            tint = palette.primaryAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "MAP",
+                            color = palette.dialText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dedicated top-right Map button for landscape and active cockpit headers.
+ */
+@Composable
+fun ThemedTopRightMapButton(
+    onClick: () -> Unit,
+    palette: CockpitThemePalette,
+    modifier: Modifier = Modifier,
+    label: String = "MAP"
+) {
+    Surface(
+        modifier = modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.2.dp, palette.primaryAccent.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+            .clickable { onClick() },
+        color = palette.surface.copy(alpha = 0.92f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Map,
+                contentDescription = "Open Map",
+                tint = palette.primaryAccent,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = label,
+                color = palette.dialText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
+            )
         }
     }
 }

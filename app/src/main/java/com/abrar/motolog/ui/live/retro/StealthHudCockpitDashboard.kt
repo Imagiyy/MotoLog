@@ -124,31 +124,39 @@ fun StealthHudCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Tactical Collimator Layout
-            Row(
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left: Airspeed Ladder Tape
-                HudAirspeedLadder(
-                    currentSpeed = displaySpeed,
-                    isMetric = isMetric,
-                    modifier = Modifier
-                        .width(90.dp)
-                        .fillMaxHeight()
-                )
-
-                // Center: Collimator Reticle
-                Box(
-                    modifier = Modifier
-                        .weight(1.3f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
+                // Fullscreen Dominant Tactical HUD
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val reticleSize = (screenHeight * 0.85f).coerceAtMost(screenWidth * 0.45f)
+                    HudAirspeedLadder(
+                        currentSpeed = displaySpeed,
+                        isMetric = isMetric,
+                        modifier = Modifier
+                            .width(85.dp)
+                            .fillMaxHeight()
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    val reticleSize = (screenHeight * 0.88f).coerceAtMost(screenWidth * 0.52f)
                     HudCollimatorReticle(
                         speed = displaySpeed,
                         speedUnit = speedUnit,
@@ -156,95 +164,125 @@ fun StealthHudCockpitDashboard(
                         isGpsLost = isGpsLost,
                         modifier = Modifier.size(reticleSize)
                     )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    HudAltitudeLadder(
+                        elevationGain = elevationGainMeters,
+                        isMetric = isMetric,
+                        modifier = Modifier
+                            .width(85.dp)
+                            .fillMaxHeight()
+                    )
                 }
 
-                // Right: Minimal Tactical Cards & Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = HudPhosphorGreen,
+                    backgroundColor = HudBlack,
+                    borderColor = HudCyan,
+                    label = "TACTICAL TELEMETRY",
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "TAC MAP"
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = HudBlack.copy(alpha = 0.96f),
+                    borderColor = HudPhosphorGreen,
+                    accentColor = HudCyan,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Top Telemetry Grid - Distance strip + 6 Telemetry Metrics
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    // Tactical Distance Strip
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = HudWireframe,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = HudWireframe,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "TAC DIST",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = HudPhosphorGreen.copy(alpha = 0.8f)
-                                )
-                                Text(
-                                    text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = HudPhosphorGreen
-                                )
-                            }
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            HudCard(
-                                label = "MISSION TIME",
-                                value = movingTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                            Text(
+                                text = "TAC TRIP DIST",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HudPhosphorGreen.copy(alpha = 0.8f)
                             )
-                            HudCard(
-                                label = "TOTAL TIME",
-                                value = totalTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            HudCard(
-                                label = "MOVING AVG",
-                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            HudCard(
-                                label = "OVERALL AVG",
-                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            HudCard(
-                                label = "PEAK",
-                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            HudCard(
-                                label = "SAT FIX",
-                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                            Text(
+                                text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = HudPhosphorGreen
                             )
                         }
                     }
 
-                    // Tactical Control Row
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 6 Telemetry Cards Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        HudCard(
+                            label = "MISSION",
+                            value = movingTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "TOTAL TIME",
+                            value = totalTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "MOVING AVG",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "PEAK SPEED",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        HudCard(
+                            label = "SAT FIX",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Tactical Control Row inside Drawer
                     if (isIdle) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -252,7 +290,10 @@ fun StealthHudCockpitDashboard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
-                                onClick = onStartClick,
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = HudPhosphorGreen,
                                     contentColor = HudBlack
@@ -277,7 +318,8 @@ fun StealthHudCockpitDashboard(
                                 onNavigateToSettings = onNavigateToSettings,
                                 palette = palette,
                                 badgeText = "STEALTH",
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                onSwitchToMap = onSwitchToMap
                             )
                         }
                     } else {
@@ -338,7 +380,9 @@ fun StealthHudCockpitDashboard(
                                 progressFillColor = HudRed.copy(alpha = 0.6f),
                                 textColor = Color.White,
                                 cornerRadius = 4.dp,
-                                modifier = Modifier.weight(1.2f)
+                                modifier = Modifier
+                                    .weight(1.1f)
+                                    .height(48.dp)
                             )
                         }
                     }
@@ -361,7 +405,8 @@ fun StealthHudCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "STEALTH STANDBY"
+                        badgeText = "STEALTH STANDBY",
+                        onSwitchToMap = onSwitchToMap
                     )
                 } else {
                     Row(

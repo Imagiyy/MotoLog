@@ -188,6 +188,14 @@ fun DesertRallyCockpitDashboard(
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
 
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "MAP"
+                )
+
                 // Slide-down drawer with numerical values and controls
                 LandscapeTelemetryDrawer(
                     visible = showLandscapeTelemetrySheet,
@@ -288,6 +296,7 @@ fun DesertRallyCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "DAKAR RALLY",
                                 modifier = Modifier.weight(1f)
@@ -398,7 +407,8 @@ fun DesertRallyCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "DAKAR STANDBY"
+                        badgeText = "DAKAR STANDBY",
+                        onSwitchToMap = onSwitchToMap
                     )
                 } else {
                     Row(

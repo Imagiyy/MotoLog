@@ -821,6 +821,14 @@
     8. **Midnight Highway Cruiser (`NIGHT_CRUISER`)**: Anti-glare midnight interstate dashboard with glowing horizon speed beam, floating starlight blue numerals, and low-fatigue night riding ergonomics.
   - Every theme features full portrait and landscape responsiveness, 56dp glove-friendly controls, 2-second hold-to-stop safety rings, and custom Material 3 color schemes.
 
+- [x] **Top-Right Map Button & Dominant Landscape Speedometer with Sliding Telemetry**:
+  - **Top-Right Map Placement**: Positioned the Map button in the top-right corner across all 8 live cockpit themes (in portrait idle top bar, portrait active header, and full-screen landscape view via `ThemedTopRightMapButton`).
+  - **Even Portrait Spacing**: Ensured the speedometer and all six standard telemetry metrics (Moving Time, Elapsed Time, Moving Avg Speed, Overall Avg Speed, Top Speed, Sat Fix/Accuracy) are evenly and properly spaced with dedicated trip odometer readouts and glove-friendly controls.
+  - **Dominant Landscape Speedometer**: Refactored all themes in landscape orientation to prioritize a full-screen, dominant speedometer instrument; numerical telemetry values are kept off-screen until the user slides down or taps the top pull tab (`LandscapeTelemetryPullTab` and `LandscapeTelemetryDrawer` with vertical drag gestures).
+  - **Map View Telemetry Hide & Unhide**: Added swipe-to-hide / swipe-to-unhide gestures (`detectVerticalDragGestures`) and a dedicated "SHOW VALUES" / "HIDE VALUES" toggle button in `RetroLiveMap`, allowing riders to toggle between a compact floating HUD pill and full telemetry cards.
+  - **Idle Map Start Support**: Wired `isIdle = true` support into `RetroLiveMap` with a prominent "START RIDE" button, enabling riders to preview the map and start tracking directly from the map screen.
+
 ### Verified
 - [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+

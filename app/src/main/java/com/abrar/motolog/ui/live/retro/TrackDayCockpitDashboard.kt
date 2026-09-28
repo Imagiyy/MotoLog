@@ -191,6 +191,14 @@ fun TrackDayCockpitDashboard(
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
 
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "MAP"
+                )
+
                 // Slide-down drawer with numerical values and controls
                 LandscapeTelemetryDrawer(
                     visible = showLandscapeTelemetrySheet,
@@ -291,6 +299,7 @@ fun TrackDayCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "SUPERBIKE",
                                 modifier = Modifier.weight(1f)
@@ -408,7 +417,8 @@ fun TrackDayCockpitDashboard(
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
                         palette = palette,
-                        badgeText = "SUPERBIKE STANDBY"
+                        badgeText = "SUPERBIKE STANDBY",
+                        onSwitchToMap = onSwitchToMap
                     )
                 } else {
                     Row(

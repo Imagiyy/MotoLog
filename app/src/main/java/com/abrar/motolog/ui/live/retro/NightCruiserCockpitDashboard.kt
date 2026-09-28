@@ -33,12 +33,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -123,23 +128,29 @@ fun NightCruiserCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Horizon Cruiser Layout
-            Row(
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Left Speed & Ambient Horizon
+                // Fullscreen Dominant Midnight Horizon Speedometer
                 Column(
-                    modifier = Modifier
-                        .weight(1.2f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    NightHorizonBeam(speed = displaySpeed, modifier = Modifier.fillMaxWidth().height(24.dp))
+                    NightHorizonBeam(speed = displaySpeed, modifier = Modifier.fillMaxWidth(0.7f).height(24.dp))
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -149,7 +160,7 @@ fun NightCruiserCockpitDashboard(
                     ) {
                         Text(
                             text = String.format(Locale.US, "%.0f", animatedSpeed),
-                            fontSize = 76.sp,
+                            fontSize = 82.sp,
                             fontWeight = FontWeight.Black,
                             color = if (isSpeedAlert) NightWarning else NightPearl,
                             fontFamily = FontFamily.SansSerif,
@@ -158,7 +169,7 @@ fun NightCruiserCockpitDashboard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = speedUnit,
-                            fontSize = 16.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = NightSkyIce,
                             fontFamily = FontFamily.Monospace,
@@ -170,7 +181,7 @@ fun NightCruiserCockpitDashboard(
                     Text(
                         text = "TRIP ${String.format(Locale.US, "%.1f", displayDistance)} $distanceUnit",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = NightStarlightBlue,
                         letterSpacing = 1.sp
@@ -187,59 +198,80 @@ fun NightCruiserCockpitDashboard(
                     )
                 }
 
-                // Right Telemetry & Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = NightStarlightBlue,
+                    backgroundColor = NightCardBg,
+                    borderColor = NightBorder,
+                    label = "CRUISE TELEMETRY",
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "MAP"
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = NightNavyBg.copy(alpha = 0.96f),
+                    borderColor = NightBorder,
+                    accentColor = NightStarlightBlue,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            NightMetricCard(
-                                label = "MOVING TIME",
-                                value = movingTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                            NightMetricCard(
-                                label = "TOTAL TIME",
-                                value = totalTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            NightMetricCard(
-                                label = "CRUISE AVG",
-                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            NightMetricCard(
-                                label = "OVERALL AVG",
-                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            NightMetricCard(
-                                label = "MAX VELOCITY",
-                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            NightMetricCard(
-                                label = "GPS FIX",
-                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                    // 6 Night Metric Cards Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        NightMetricCard(
+                            label = "MOVING TIME",
+                            value = movingTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        NightMetricCard(
+                            label = "TOTAL TIME",
+                            value = totalTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        NightMetricCard(
+                            label = "CRUISE AVG",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        NightMetricCard(
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        NightMetricCard(
+                            label = "MAX VELOCITY",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        NightMetricCard(
+                            label = "GPS FIX",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
-                    // Action Controls
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
                     if (isIdle) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -247,7 +279,10 @@ fun NightCruiserCockpitDashboard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
-                                onClick = onStartClick,
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = NightStarlightBlue),
                                 modifier = Modifier
@@ -268,6 +303,7 @@ fun NightCruiserCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "NIGHT CRUISE",
                                 modifier = Modifier.weight(1f)
@@ -348,6 +384,7 @@ fun NightCruiserCockpitDashboard(
                         keepScreenOn = keepScreenOn,
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
+                        onSwitchToMap = onSwitchToMap,
                         palette = palette,
                         badgeText = "MIDNIGHT STANDBY"
                     )

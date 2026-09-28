@@ -32,12 +32,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -120,113 +125,153 @@ fun CustomBobberCockpitDashboard(
         val isLandscape = screenWidth > screenHeight
 
         if (isLandscape) {
-            // Landscape Bobber Arc Layout
-            Row(
+            var showLandscapeTelemetrySheet by remember { mutableStateOf(false) }
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 20) {
+                                showLandscapeTelemetrySheet = true
+                            } else if (dragAmount < -20) {
+                                showLandscapeTelemetrySheet = false
+                            }
+                        }
+                    }
+                    .padding(8.dp)
             ) {
-                // Center 180° Arc Speedometer
-                Box(
-                    modifier = Modifier
-                        .weight(1.3f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
+                // Dominant Fullscreen 180° Billet Arc Speedometer
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    val arcSize = (screenHeight * 0.9f).coerceAtMost(screenWidth * 0.45f)
+                    val arcSize = (screenHeight * 0.82f).coerceAtMost(screenWidth * 0.65f)
                     BobberBilletArcGauge(
                         speed = displaySpeed,
                         speedUnit = speedUnit,
                         isSpeedAlert = isSpeedAlert,
                         modifier = Modifier.size(arcSize)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "TRIP ${String.format(Locale.US, "%.1f", displayDistance)} $distanceUnit",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BobberBronze,
+                        letterSpacing = 1.sp
+                    )
                 }
 
-                // Right Telemetry & Controls
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = BobberCastIron,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.4f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "TRIP ODO",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BobberMuted
-                                )
-                                Text(
-                                    text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
-                                    fontFamily = FontFamily.Serif,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = BobberParchment
-                                )
-                            }
-                        }
+                // Subtle Top Pull Tab indicator
+                LandscapeTelemetryPullTab(
+                    visible = !showLandscapeTelemetrySheet,
+                    onClick = { showLandscapeTelemetrySheet = true },
+                    accentColor = BobberBronze,
+                    backgroundColor = BobberCastIron,
+                    borderColor = BobberBorder,
+                    label = "BOBBER TELEMETRY",
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            BobberMetricCard(
-                                label = "RUMBLE TIME",
-                                value = movingTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                // Top Right Map Button
+                ThemedTopRightMapButton(
+                    onClick = onSwitchToMap,
+                    palette = palette,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    label = "ROAD MAP"
+                )
+
+                // Slide-down drawer with numerical values and controls
+                LandscapeTelemetryDrawer(
+                    visible = showLandscapeTelemetrySheet,
+                    onDismiss = { showLandscapeTelemetrySheet = false },
+                    backgroundColor = BobberBlack.copy(alpha = 0.96f),
+                    borderColor = BobberBorder,
+                    accentColor = BobberBronze,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                ) {
+                    // Stamped Trip Odometer Strip
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = BobberCastIron,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "TRIP ODOMETER",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BobberMuted
                             )
-                            BobberMetricCard(
-                                label = "TOTAL TIME",
-                                value = totalTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            BobberMetricCard(
-                                label = "CRUISE AVG",
-                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            BobberMetricCard(
-                                label = "OVERALL AVG",
-                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            BobberMetricCard(
-                                label = "TOP MARK",
-                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            BobberMetricCard(
-                                label = "SAT FIX",
-                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                            Text(
+                                text = String.format(Locale.US, "%.1f %s", displayDistance, distanceUnit),
+                                fontFamily = FontFamily.Serif,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = BobberParchment
                             )
                         }
                     }
 
-                    // Controls
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 6 Bobber Metric Cards Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        BobberMetricCard(
+                            label = "RUMBLE TIME",
+                            value = movingTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "TOTAL TIME",
+                            value = totalTimeDisplay,
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "CRUISE AVG",
+                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "OVERALL AVG",
+                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "TOP MARK",
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            modifier = Modifier.weight(1f)
+                        )
+                        BobberMetricCard(
+                            label = "SAT FIX",
+                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                            unit = "",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Controls Row inside Drawer
                     if (isIdle) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -234,7 +279,10 @@ fun CustomBobberCockpitDashboard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
-                                onClick = onStartClick,
+                                onClick = {
+                                    showLandscapeTelemetrySheet = false
+                                    onStartClick()
+                                },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
                                 modifier = Modifier
@@ -255,6 +303,7 @@ fun CustomBobberCockpitDashboard(
                                 keepScreenOn = keepScreenOn,
                                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                                 onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
                                 palette = palette,
                                 badgeText = "V-TWIN",
                                 modifier = Modifier.weight(1f)
@@ -280,7 +329,7 @@ fun CustomBobberCockpitDashboard(
                             ) {
                                 Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("MAP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("ROAD MAP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
 
                             Button(
@@ -335,6 +384,7 @@ fun CustomBobberCockpitDashboard(
                         keepScreenOn = keepScreenOn,
                         onToggleKeepScreenOn = onToggleKeepScreenOn,
                         onNavigateToSettings = onNavigateToSettings,
+                        onSwitchToMap = onSwitchToMap,
                         palette = palette,
                         badgeText = "V-TWIN STANDBY"
                     )
