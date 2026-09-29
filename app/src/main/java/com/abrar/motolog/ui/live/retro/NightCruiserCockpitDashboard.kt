@@ -367,296 +367,344 @@ fun NightCruiserCockpitDashboard(
                         }
                     }
                 }
-            }
-        } else {
-            // Portrait Horizon Cruiser Layout
-            Column(
+            }        } else {
+            // Portrait Night Cruiser Layout
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
-                // Header (ThemedIdleTopBar in Idle, or Night Header + Map Button when tracking)
-                if (isIdle) {
-                    ThemedIdleTopBar(
-                        keepScreenOn = keepScreenOn,
-                        onToggleKeepScreenOn = onToggleKeepScreenOn,
-                        onNavigateToSettings = onNavigateToSettings,
-                        onSwitchToMap = onSwitchToMap,
-                        palette = palette,
-                        badgeText = "MIDNIGHT STANDBY"
-                    )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.NightlightRound,
-                                contentDescription = "Night Cruiser",
-                                tint = NightStarlightBlue,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "NIGHT CRUISER - ${bikeName?.uppercase(Locale.US) ?: "HIGHWAY"}",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightStarlightBlue,
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isGpsLost) NightWarning else NightMuted,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        Surface(
-                            onClick = onSwitchToMap,
-                            shape = RoundedCornerShape(8.dp),
-                            color = NightCardBg,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NightStarlightBlue),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Map,
-                                    contentDescription = "Night Map",
-                                    tint = NightStarlightBlue,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "MAP",
-                                    color = NightStarlightBlue,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Ambient Horizon Light Beam
-                NightHorizonBeam(speed = displaySpeed, modifier = Modifier.fillMaxWidth().height(24.dp))
-
-                // Floating Speedometer Hero Card with integrated Cruise Trip Odometer
-                Card(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, NightBorder, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = NightCardBg)
+                        .heightIn(min = screenHeight - 24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Top Section: Header + Horizon Light Beam + BIG Floating Speedometer & Odometer Card
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "HIGHWAY SPEED",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NightSkyIce,
-                            letterSpacing = 2.sp
-                        )
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 76.sp,
-                                fontWeight = FontWeight.Black,
-                                color = if (isSpeedAlert) NightWarning else NightPearl,
-                                fontFamily = FontFamily.SansSerif,
-                                letterSpacing = (-2).sp
+                        // Header (ThemedIdleTopBar in Idle, or Night Header + Map Button when tracking)
+                        if (isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
+                                palette = palette,
+                                badgeText = "MIDNIGHT STANDBY"
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = speedUnit,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightSkyIce,
-                                modifier = Modifier.padding(bottom = 12.dp),
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "CRUISE TRIP",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightMuted,
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = String.format(Locale.US, "%.1f", displayDistance),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Black,
-                                color = NightStarlightBlue,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(
-                                text = distanceUnit,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightSkyIce,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-
-                // Low-Glare Night Telemetry Cards - 6 Standard Metrics
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        NightMetricCard(
-                            label = "MOVING TIME",
-                            value = movingTimeDisplay,
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                        NightMetricCard(
-                            label = "TOTAL TIME",
-                            value = totalTimeDisplay,
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        NightMetricCard(
-                            label = "CRUISE AVG",
-                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                        NightMetricCard(
-                            label = "OVERALL AVG",
-                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        NightMetricCard(
-                            label = "MAX VELOCITY",
-                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                        NightMetricCard(
-                            label = "GPS FIX",
-                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Action Controls
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NightStarlightBlue),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                    ) {
-                        Text(
-                            text = "START NIGHT CRUISE",
-                            color = Color(0xFF030712),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) NightHorizonMint.copy(alpha = 0.2f) else NightCardBg,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) NightHorizonMint else NightBorder
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
+                        } else {
                             Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) NightHorizonMint else NightSkyIce,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "REST STOP",
-                                    color = if (pauseState.isPaused) NightHorizonMint else NightPearl,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.NightlightRound,
+                                        contentDescription = "Night Cruiser",
+                                        tint = NightStarlightBlue,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "NIGHT CRUISER - ${bikeName?.uppercase(Locale.US) ?: "HIGHWAY"}",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NightStarlightBlue,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isGpsLost) NightWarning else NightMuted,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+
+                                Surface(
+                                    onClick = onSwitchToMap,
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = NightCardBg,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NightStarlightBlue),
+                                    modifier = Modifier.height(34.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Map,
+                                            contentDescription = "Night Map",
+                                            tint = NightStarlightBlue,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "MAP",
+                                            color = NightStarlightBlue,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "END CRUISE",
-                            progressLabel = "CONCLUDING",
-                            borderColor = NightWarning,
-                            gradientColors = listOf(Color(0xFF501018), Color(0xFF1E050A)),
-                            progressFillColor = NightWarning.copy(alpha = 0.6f),
-                            textColor = NightPearl,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
+                        // Ambient Horizon Light Beam
+                        NightHorizonBeam(speed = displaySpeed, modifier = Modifier.fillMaxWidth().height(26.dp))
+
+                        // Floating Speedometer Hero Card with integrated Cruise Trip Odometer (BIGGER)
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, NightBorder, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = NightCardBg)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp, horizontal = 14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "HIGHWAY SPEED",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NightSkyIce,
+                                    letterSpacing = 2.sp
+                                )
+
+                                Row(
+                                    verticalAlignment = Alignment.Bottom,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = String.format(Locale.US, "%.0f", animatedSpeed),
+                                        fontSize = 92.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = if (isSpeedAlert) NightWarning else NightPearl,
+                                        fontFamily = FontFamily.SansSerif,
+                                        letterSpacing = (-2).sp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = speedUnit,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NightSkyIce,
+                                        modifier = Modifier.padding(bottom = 16.dp),
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                // Prominent Cruise Trip Odometer Bar
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF040A17),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NightBorder.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "CRUISE ODOMETER",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = NightMuted,
+                                                letterSpacing = 1.sp
+                                            )
+                                            Row(verticalAlignment = Alignment.Bottom) {
+                                                Text(
+                                                    text = String.format(Locale.US, "%.1f", displayDistance),
+                                                    fontSize = 24.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = NightStarlightBlue,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = distanceUnit,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = NightSkyIce,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    modifier = Modifier.padding(bottom = 2.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "MOVING CLOCK",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = NightMuted,
+                                                letterSpacing = 1.sp
+                                            )
+                                            Text(
+                                                text = movingTimeDisplay,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = NightSkyIce,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Middle Section: Low-Glare Night Telemetry Cards - 6 Standard Metrics
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NightMetricCard(
+                                label = "MOVING TIME",
+                                value = movingTimeDisplay,
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                            NightMetricCard(
+                                label = "TOTAL TIME",
+                                value = totalTimeDisplay,
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NightMetricCard(
+                                label = "CRUISE AVG",
+                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            NightMetricCard(
+                                label = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NightMetricCard(
+                                label = "MAX VELOCITY",
+                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            NightMetricCard(
+                                label = "GPS FIX",
+                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Bottom Section: Action Controls
+                    if (isIdle) {
+                        Button(
+                            onClick = onStartClick,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NightStarlightBlue),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                        ) {
+                            Text(
+                                text = "START NIGHT CRUISE",
+                                color = Color(0xFF030712),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 2.sp
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (pauseState.isPaused) NightHorizonMint.copy(alpha = 0.2f) else NightCardBg,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.5.dp,
+                                    if (pauseState.isPaused) NightHorizonMint else NightBorder
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 56.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null,
+                                        tint = if (pauseState.isPaused) NightHorizonMint else NightSkyIce,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (pauseState.isPaused) "RESUME" else "REST STOP",
+                                        color = if (pauseState.isPaused) NightHorizonMint else NightPearl,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            ThemedHoldToStopButton(
+                                onStopConfirmed = onStopConfirmed,
+                                label = "END CRUISE",
+                                progressLabel = "CONCLUDING",
+                                borderColor = NightWarning,
+                                gradientColors = listOf(Color(0xFF501018), Color(0xFF1E050A)),
+                                progressFillColor = NightWarning.copy(alpha = 0.6f),
+                                textColor = NightPearl,
+                                cornerRadius = 8.dp,
+                                modifier = Modifier.weight(1.3f)
+                            )
+                        }
                     }
                 }
             }

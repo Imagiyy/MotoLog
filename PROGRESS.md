@@ -828,7 +828,18 @@
   - **Map View Telemetry Hide & Unhide**: Added swipe-to-hide / swipe-to-unhide gestures (`detectVerticalDragGestures`) and a dedicated "SHOW VALUES" / "HIDE VALUES" toggle button in `RetroLiveMap`, allowing riders to toggle between a compact floating HUD pill and full telemetry cards.
   - **Idle Map Start Support**: Wired `isIdle = true` support into `RetroLiveMap` with a prominent "START RIDE" button, enabling riders to preview the map and start tracking directly from the map screen.
 
+- [x] **Enlarged Speedometer & Odometer Hero Clusters with Screen-Fit Layout for Modern Cockpits**:
+  - Addressed empty dead space and small instrument scaling across modern cockpits (`STEALTH_HUD`, `ADVENTURE_TOURING`, `CUSTOM_BOBBER`, `NIGHT_CRUISER`).
+  - Implemented an adaptive portrait layout using `BoxWithConstraints` and `Column(Modifier.fillMaxWidth().heightIn(min = screenHeight - 24.dp), verticalArrangement = Arrangement.SpaceBetween)` that fills the entire vertical screen cleanly, keeping the large odometer and speedometer on top, telemetry in the middle, and Start/Stop actions anchored at the bottom.
+  - Scaled up top odometer and speedometer instruments:
+    - **Stealth HUD**: Collimator reticle enlarged to `(screenWidth * 0.70f).coerceIn(255.dp, 305.dp)` with 70sp HUD digits and a prominent `TAC MISSION DISTANCE` strip with 24sp gold/cyan readout.
+    - **Adventure Touring**: Transformed into a BMW GS TFT cluster featuring 92sp speedometer digits, a dynamic `GsSpeedPowerBand` tachometer arc, and a dedicated `EXPEDITION TRIP` console bar with 24sp gold distance readout.
+    - **Custom Bobber**: Billet arc gauge enlarged to `(screenWidth * 0.70f).coerceIn(255.dp, 290.dp)` with 82sp stamped digits, dynamic 12-segment engine rumble spectrum bar, and a stamped steel `TRIP ODOMETER` strip with 24sp serif digits.
+    - **Night Cruiser**: Floating speed hero card scaled with 92sp starlight digits, horizon light beam, and a dedicated `CRUISE ODOMETER` console bar with 24sp starlight blue digits.
+  - Standardized 6-card telemetry grids with refined padding and typography, ensuring responsive fitting across standard and compact viewports while retaining vertical scrolling for small screens or split-window multitasking.
+
 ### Verified
 - [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+
 

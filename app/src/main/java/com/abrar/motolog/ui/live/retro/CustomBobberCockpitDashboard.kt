@@ -370,261 +370,280 @@ fun CustomBobberCockpitDashboard(
             }
         } else {
             // Portrait Bobber Layout
-            Column(
+            val gaugeHeight = (screenWidth * 0.70f).coerceIn(255.dp, 290.dp)
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
-                // Header (ThemedIdleTopBar in Idle, or Custom Header + Map Button when tracking)
-                if (isIdle) {
-                    ThemedIdleTopBar(
-                        keepScreenOn = keepScreenOn,
-                        onToggleKeepScreenOn = onToggleKeepScreenOn,
-                        onNavigateToSettings = onNavigateToSettings,
-                        onSwitchToMap = onSwitchToMap,
-                        palette = palette,
-                        badgeText = "V-TWIN STANDBY"
-                    )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "V-TWIN - ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BobberBronze,
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isGpsLost) BobberFlameOrange else BobberRawSteel,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        Surface(
-                            onClick = onSwitchToMap,
-                            shape = RoundedCornerShape(8.dp),
-                            color = BobberCastIron,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Map,
-                                    contentDescription = "Cruiser Map",
-                                    tint = BobberBronze,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "ROAD MAP",
-                                    color = BobberBronze,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Center 180° Billet Arc Gauge
-                BobberBilletArcGauge(
-                    speed = displaySpeed,
-                    speedUnit = speedUnit,
-                    isSpeedAlert = isSpeedAlert,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
-                )
-
-                // Classic Stamped Trip Odometer Strip
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = BobberCastIron,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                        .heightIn(min = screenHeight - 24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Top Section: Header + BIG Billet Arc Gauge + Stamped Trip Odometer + Engine Rumble Bar
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "TRIP ODOMETER",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BobberMuted,
-                            letterSpacing = 1.sp
-                        )
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = String.format(Locale.US, "%.1f", displayDistance),
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black,
-                                color = BobberParchment
+                        // Header (ThemedIdleTopBar in Idle, or Custom Header + Map Button when tracking)
+                        if (isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                onSwitchToMap = onSwitchToMap,
+                                palette = palette,
+                                badgeText = "V-TWIN STANDBY"
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = distanceUnit,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BobberBronze,
-                                modifier = Modifier.padding(bottom = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Leather-Stitched Telemetry Cards - 6 Standard Metrics
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BobberMetricCard(
-                            label = "RUMBLE TIME",
-                            value = movingTimeDisplay,
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                        BobberMetricCard(
-                            label = "TOTAL TIME",
-                            value = totalTimeDisplay,
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BobberMetricCard(
-                            label = "CRUISE AVG",
-                            value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                        BobberMetricCard(
-                            label = "OVERALL AVG",
-                            value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BobberMetricCard(
-                            label = "TOP MARK",
-                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                            unit = speedUnit,
-                            modifier = Modifier.weight(1f)
-                        )
-                        BobberMetricCard(
-                            label = "SAT FIX",
-                            value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                            unit = "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Action Controls
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                    ) {
-                        Text(
-                            text = "FIRE UP - START",
-                            color = BobberCastIron,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) BobberFlameOrange.copy(alpha = 0.2f) else BobberCastIron,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) BobberFlameOrange else BobberBronze
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
+                        } else {
                             Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) BobberFlameOrange else BobberBronze,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "IDLE",
-                                    color = if (pauseState.isPaused) BobberFlameOrange else BobberParchment,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "V-TWIN - ${bikeName?.uppercase(Locale.US) ?: "CUSTOM BOBBER"}",
+                                        fontFamily = FontFamily.Serif,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BobberBronze,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isGpsLost) BobberFlameOrange else BobberRawSteel,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+
+                                Surface(
+                                    onClick = onSwitchToMap,
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = BobberCastIron,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze),
+                                    modifier = Modifier.height(34.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Map,
+                                            contentDescription = "Cruiser Map",
+                                            tint = BobberBronze,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "ROAD MAP",
+                                            color = BobberBronze,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "KILL MOTOR",
-                            progressLabel = "SHUTTING DOWN",
-                            borderColor = BobberFlameOrange,
-                            gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
-                            progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
-                            textColor = BobberParchment,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
+                        // Center 180° Billet Arc Gauge (BIGGER)
+                        BobberBilletArcGauge(
+                            speed = displaySpeed,
+                            speedUnit = speedUnit,
+                            isSpeedAlert = isSpeedAlert,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(gaugeHeight)
                         )
+
+                        // Classic Stamped Trip Odometer Strip
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = BobberCastIron,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "TRIP ODOMETER",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BobberMuted,
+                                    letterSpacing = 1.sp
+                                )
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text(
+                                        text = String.format(Locale.US, "%.1f", displayDistance),
+                                        fontFamily = FontFamily.Serif,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = BobberParchment
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = distanceUnit,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BobberBronze,
+                                        modifier = Modifier.padding(bottom = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // V-Twin Engine Rumble Vibration Bar
+                        BobberEngineRumbleBar(
+                            speed = displaySpeed,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Middle Section: Leather-Stitched Telemetry Cards - 6 Standard Metrics
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            BobberMetricCard(
+                                label = "RUMBLE TIME",
+                                value = movingTimeDisplay,
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                            BobberMetricCard(
+                                label = "TOTAL TIME",
+                                value = totalTimeDisplay,
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            BobberMetricCard(
+                                label = "CRUISE AVG",
+                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            BobberMetricCard(
+                                label = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            BobberMetricCard(
+                                label = "TOP MARK",
+                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                                unit = speedUnit,
+                                modifier = Modifier.weight(1f)
+                            )
+                            BobberMetricCard(
+                                label = "SAT FIX",
+                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                unit = "",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Bottom Section: Action Controls
+                    if (isIdle) {
+                        Button(
+                            onClick = onStartClick,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                        ) {
+                            Text(
+                                text = "FIRE UP - START",
+                                color = BobberCastIron,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 2.sp
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (pauseState.isPaused) BobberFlameOrange.copy(alpha = 0.2f) else BobberCastIron,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.5.dp,
+                                    if (pauseState.isPaused) BobberFlameOrange else BobberBronze
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 56.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null,
+                                        tint = if (pauseState.isPaused) BobberFlameOrange else BobberBronze,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (pauseState.isPaused) "RESUME" else "IDLE",
+                                        color = if (pauseState.isPaused) BobberFlameOrange else BobberParchment,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            ThemedHoldToStopButton(
+                                onStopConfirmed = onStopConfirmed,
+                                label = "KILL MOTOR",
+                                progressLabel = "SHUTTING DOWN",
+                                borderColor = BobberFlameOrange,
+                                gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
+                                progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
+                                textColor = BobberParchment,
+                                cornerRadius = 8.dp,
+                                modifier = Modifier.weight(1.3f)
+                            )
+                        }
                     }
                 }
             }
@@ -737,12 +756,12 @@ private fun BobberBilletArcGauge(
 
         // Center Stamped Speed Readout
         Column(
-            modifier = Modifier.padding(bottom = 36.dp),
+            modifier = Modifier.padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                fontSize = 68.sp,
+                fontSize = 82.sp,
                 fontWeight = FontWeight.Black,
                 color = if (isSpeedAlert) BobberFlameOrange else BobberParchment,
                 fontFamily = FontFamily.Serif,
@@ -750,11 +769,45 @@ private fun BobberBilletArcGauge(
             )
             Text(
                 text = speedUnit,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = BobberBronze,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 2.sp
+            )
+        }
+    }
+}
+
+/**
+ * V-Twin Engine Rumble Vibration Spectrum Bar.
+ */
+@Composable
+private fun BobberEngineRumbleBar(
+    speed: Double,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(18.dp)
+            .border(1.dp, BobberBorder, RoundedCornerShape(4.dp))
+            .background(BobberCastIron, RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val activeBars = ((speed / 140.0) * 12).toInt().coerceIn(1, 12)
+        for (i in 0 until 12) {
+            val isActive = i < activeBars
+            val barColor = if (!isActive) BobberDarkBronze.copy(alpha = 0.3f)
+                           else if (i > 9) BobberFlameOrange
+                           else BobberBronze
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(barColor, RoundedCornerShape(2.dp))
             )
         }
     }
@@ -777,12 +830,12 @@ private fun BobberMetricCard(
         colors = CardDefaults.cardColors(containerColor = BobberCastIron)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
         ) {
             Text(
                 text = label,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = BobberMuted,
                 letterSpacing = 1.sp
@@ -794,7 +847,7 @@ private fun BobberMetricCard(
             ) {
                 Text(
                     text = value,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     color = BobberParchment,
                     fontFamily = FontFamily.Serif
