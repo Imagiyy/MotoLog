@@ -838,8 +838,18 @@
     - **Night Cruiser**: Floating speed hero card scaled with 92sp starlight digits, horizon light beam, and a dedicated `CRUISE ODOMETER` console bar with 24sp starlight blue digits.
   - Standardized 6-card telemetry grids with refined padding and typography, ensuring responsive fitting across standard and compact viewports while retaining vertical scrolling for small screens or split-window multitasking.
 
+- [x] **Harmonized Sizing & Screen-Fit Ergonomics for Cockpit Themes**:
+  - Replaced artificial minHeight and SpaceBetween constraints with natural flowing `Column(verticalArrangement = Arrangement.spacedBy(10.dp))` across modern cockpits (`STEALTH_HUD`, `ADVENTURE_TOURING`, `CUSTOM_BOBBER`, `NIGHT_CRUISER`) to eliminate awkward spacing stretching and vertical overflow.
+  - **Adventure Touring (`ADVENTURE_TOURING`)**: Unified into an authentic **GS Alpine Expedition TFT Console** integrating the power band tachometer, bold 76sp speed digits, and a dual-gauge console bar featuring both `EXPEDITION TRIP` (24sp gold odometer) and live `ALTIMETER GAIN` (+20sp elevation readout) without redundant card bloat.
+  - **Custom Bobber (`CUSTOM_BOBBER`)**: Rebalanced the 180° machined billet arc gauge to `(screenWidth * 0.65f).coerceIn(240.dp, 275.dp)` with thick 10dp billet tracks, 76sp serif stamped speed digits, a bold 24sp stamped trip odometer plate, 12-segment engine rumble spectrum, and 20sp telemetry cards.
+  - **Night Cruiser (`NIGHT_CRUISER`)**: Elevated into a majestic **Midnight Horizon Cockpit Console** integrating the ambient horizon light beam directly into the canopy, bold 76sp starlight numerals, a dedicated 24sp cruise odometer with an 18sp moving clock, and 20sp telemetry cards.
+  - **Stealth HUD (`STEALTH_HUD`)**: Harmonized collimator reticle to `(screenWidth * 0.62f).coerceIn(220.dp, 255.dp)` with 70sp laser speed digits, 24sp tactical mission distance strip, and 56dp action buttons.
+  - Sizing is now fully consistent, bold, and glove-glanceable across all 8 themes without clipping or dead space.
+
 ### Verified
+- [x] `./gradlew compileDebugKotlin` (compilation passes cleanly) — VERIFIED
 - [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+
 
 

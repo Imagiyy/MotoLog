@@ -390,29 +390,18 @@ fun StealthHudCockpitDashboard(
             }
         } else {
             // Portrait Tactical Collimator Layout
-            val reticleSize = (screenWidth * 0.70f).coerceIn(255.dp, 305.dp)
-            val hudRowHeight = reticleSize + 14.dp
+            val reticleSize = (screenWidth * 0.62f).coerceIn(220.dp, 255.dp)
+            val hudRowHeight = reticleSize + 8.dp
 
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = screenHeight - 24.dp),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Top Section: Header + BIG Collimator HUD + Mission Distance Strip
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Header (ThemedIdleTopBar in Idle, or Tactical Header + Map Button when tracking)
+                // Header (ThemedIdleTopBar in Idle, or Tactical Header + Map Button when tracking)
                         if (isIdle) {
                             ThemedIdleTopBar(
                                 keepScreenOn = keepScreenOn,
@@ -564,9 +553,8 @@ fun StealthHudCockpitDashboard(
                                 }
                             }
                         }
-                    }
 
-                    // Middle Section: Tactical Telemetry Cards Grid - 6 Standard Metrics
+                        // Middle Section: Tactical Telemetry Cards Grid - 6 Standard Metrics
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -632,12 +620,12 @@ fun StealthHudCockpitDashboard(
                             colors = ButtonDefaults.buttonColors(containerColor = HudPhosphorGreen),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(60.dp)
+                                .height(56.dp)
                         ) {
                             Text(
                                 text = "ENGAGE HUD - START",
                                 color = HudBlack,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
                                 letterSpacing = 2.sp
@@ -695,7 +683,6 @@ fun StealthHudCockpitDashboard(
                             )
                         }
                     }
-                }
             }
         }
     }

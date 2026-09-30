@@ -394,365 +394,363 @@ fun AdventureTouringCockpitDashboard(
             }
         } else {
             // Portrait GS Overland Cockpit
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
+                if (isIdle) {
+                    ThemedIdleTopBar(
+                        keepScreenOn = keepScreenOn,
+                        onToggleKeepScreenOn = onToggleKeepScreenOn,
+                        onNavigateToSettings = onNavigateToSettings,
+                        palette = palette,
+                        badgeText = "EXPEDITION STANDBY",
+                        onSwitchToMap = onSwitchToMap
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isGpsLost) GsDanger else GsCordobaBlue)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "GS EXPEDITION - ${bikeName?.uppercase(Locale.US) ?: "ADVENTURE"}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsGlacialCyan,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isGpsLost) GsDanger else GsTextMuted,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Surface(
+                            onClick = onSwitchToMap,
+                            shape = RoundedCornerShape(8.dp),
+                            color = GsPanelBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = "Expedition Map",
+                                    tint = GsGlacialCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "MAP",
+                                    color = GsGlacialCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // GS Alpine TFT Cockpit Console (Speed + Tachometer + Expedition Odometer & Altimeter Bar)
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = screenHeight - 24.dp),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = GsPanelBg)
                 ) {
-                    // Top Section: Header + BIG GS Speedometer Hero Card + Altimeter Card
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp, horizontal = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
-                        if (isIdle) {
-                            ThemedIdleTopBar(
-                                keepScreenOn = keepScreenOn,
-                                onToggleKeepScreenOn = onToggleKeepScreenOn,
-                                onNavigateToSettings = onNavigateToSettings,
-                                palette = palette,
-                                badgeText = "EXPEDITION STANDBY",
-                                onSwitchToMap = onSwitchToMap
+                        // GS Tachometer Power Arc / Progress Track
+                        GsSpeedPowerBand(
+                            speed = animatedSpeed,
+                            maxScale = 160f,
+                            isSpeedAlert = isSpeedAlert,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "CRUISE SPEED",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GsGlacialCyan,
+                            letterSpacing = 2.sp
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = String.format(Locale.US, "%.0f", animatedSpeed),
+                                fontSize = 76.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
+                                letterSpacing = (-2).sp
                             )
-                        } else {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = speedUnit,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsGlacialCyan,
+                                modifier = Modifier.padding(bottom = 12.dp),
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Dual Expedition Console Bar: Expedition Odometer on Left, Altimeter Elevation on Right
+                        val displayGain = if (isMetric) elevationGainMeters else elevationGainMeters * 3.28084
+                        val gainUnit = if (isMetric) "m" else "ft"
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF0F1A24),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue.copy(alpha = 0.45f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 7.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isGpsLost) GsDanger else GsCordobaBlue)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                Column {
                                     Text(
-                                        text = "GS EXPEDITION - ${bikeName?.uppercase(Locale.US) ?: "ADVENTURE"}",
+                                        text = "EXPEDITION TRIP",
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.sp,
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = GsGlacialCyan,
+                                        color = GsTextMuted,
                                         letterSpacing = 1.sp
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isGpsLost) GsDanger else GsTextMuted,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-
-                                Surface(
-                                    onClick = onSwitchToMap,
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = GsPanelBg,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue),
-                                    modifier = Modifier.height(34.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Map,
-                                            contentDescription = "Expedition Map",
-                                            tint = GsGlacialCyan,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                                    Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
-                                            text = "MAP",
-                                            color = GsGlacialCyan,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
+                                            text = String.format(Locale.US, "%.1f", displayDistance),
+                                            fontSize = 24.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = GsExpeditionGold,
                                             fontFamily = FontFamily.Monospace
                                         )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = distanceUnit,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GsGlacialCyan,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier.padding(bottom = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Landscape,
+                                            contentDescription = null,
+                                            tint = GsGlacialCyan,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "ALTIMETER GAIN",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GsTextMuted,
+                                            letterSpacing = 1.sp
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.Bottom) {
+                                        Text(
+                                            text = String.format(Locale.US, "+%.0f", displayGain),
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = GsAlpineWhite,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = gainUnit,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GsGlacialCyan,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier.padding(bottom = 2.dp)
+                                        )
                                     }
                                 }
                             }
                         }
+                    }
+                }
 
-                        // Main Speedometer Hero Card with integrated Expedition Trip Odometer
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = GsPanelBg)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp, horizontal = 14.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                // GS Tachometer Power Arc / Progress Track
-                                GsSpeedPowerBand(
-                                    speed = animatedSpeed,
-                                    maxScale = 160f,
-                                    isSpeedAlert = isSpeedAlert,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(16.dp)
-                                )
+                // Expedition Telemetry - 6 Standard Metrics
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GsMetricCard(
+                        title = "EXPEDITION TIME",
+                        value = movingTimeDisplay,
+                        unit = "",
+                        accentColor = GsGlacialCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                    GsMetricCard(
+                        title = "TOTAL ELAPSED",
+                        value = totalTimeDisplay,
+                        unit = "",
+                        accentColor = GsGlacialCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GsMetricCard(
+                        title = "MOVING AVG",
+                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                        unit = speedUnit,
+                        accentColor = GsAlpineWhite,
+                        modifier = Modifier.weight(1f)
+                    )
+                    GsMetricCard(
+                        title = "OVERALL AVG",
+                        value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                        unit = speedUnit,
+                        accentColor = GsAlpineWhite,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                                Text(
-                                    text = "CRUISE SPEED",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = GsGlacialCyan,
-                                    letterSpacing = 2.sp
-                                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GsMetricCard(
+                        title = "PEAK RECORD",
+                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                        unit = speedUnit,
+                        accentColor = GsAlpineWhite,
+                        modifier = Modifier.weight(1f)
+                    )
+                    GsMetricCard(
+                        title = "SAT-LOCK FIX",
+                        value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                        unit = "",
+                        accentColor = if (isGpsLost) GsDanger else GsGlacialCyan,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                                Row(
-                                    verticalAlignment = Alignment.Bottom,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                        fontSize = 92.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
-                                        letterSpacing = (-2).sp
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = speedUnit,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = GsGlacialCyan,
-                                        modifier = Modifier.padding(bottom = 16.dp),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                // Prominent Expedition Trip Console Bar
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFF0F1A24),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue.copy(alpha = 0.45f)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "EXPEDITION TRIP",
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = GsTextMuted,
-                                                letterSpacing = 1.sp
-                                            )
-                                            Row(verticalAlignment = Alignment.Bottom) {
-                                                Text(
-                                                    text = String.format(Locale.US, "%.1f", displayDistance),
-                                                    fontSize = 24.sp,
-                                                    fontWeight = FontWeight.Black,
-                                                    color = GsExpeditionGold,
-                                                    fontFamily = FontFamily.Monospace
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = distanceUnit,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = GsGlacialCyan,
-                                                    fontFamily = FontFamily.Monospace,
-                                                    modifier = Modifier.padding(bottom = 2.dp)
-                                                )
-                                            }
-                                        }
-
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text(
-                                                text = "MOVING CLOCK",
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = GsTextMuted,
-                                                letterSpacing = 1.sp
-                                            )
-                                            Text(
-                                                text = movingTimeDisplay,
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = GsGlacialCyan,
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Altimeter & Climb Profile Card
-                        GsAltimeterCard(
-                            elevationGain = elevationGainMeters,
-                            isMetric = isMetric,
-                            modifier = Modifier.fillMaxWidth()
+                // Bottom Section: Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text(
+                            text = "START EXPEDITION",
+                            color = Color(0xFF1A1300),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
                         )
                     }
-
-                    // Middle Section: Expedition Telemetry - 6 Standard Metrics
-                    Column(
+                } else {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            GsMetricCard(
-                                title = "EXPEDITION TIME",
-                                value = movingTimeDisplay,
-                                unit = "",
-                                accentColor = GsGlacialCyan,
-                                modifier = Modifier.weight(1f)
-                            )
-                            GsMetricCard(
-                                title = "TOTAL ELAPSED",
-                                value = totalTimeDisplay,
-                                unit = "",
-                                accentColor = GsGlacialCyan,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            GsMetricCard(
-                                title = "MOVING AVG",
-                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                                unit = speedUnit,
-                                accentColor = GsAlpineWhite,
-                                modifier = Modifier.weight(1f)
-                            )
-                            GsMetricCard(
-                                title = "OVERALL AVG",
-                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                                unit = speedUnit,
-                                accentColor = GsAlpineWhite,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            GsMetricCard(
-                                title = "PEAK RECORD",
-                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                                unit = speedUnit,
-                                accentColor = GsAlpineWhite,
-                                modifier = Modifier.weight(1f)
-                            )
-                            GsMetricCard(
-                                title = "SAT-LOCK FIX",
-                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                unit = "",
-                                accentColor = if (isGpsLost) GsDanger else GsGlacialCyan,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    // Bottom Section: Action Controls
-                    if (isIdle) {
-                        Button(
-                            onClick = onStartClick,
+                        Surface(
+                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                            color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
+                            ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
+                                .weight(1f)
+                                .heightIn(min = 56.dp)
                         ) {
-                            Text(
-                                text = "START EXPEDITION",
-                                color = Color(0xFF1A1300),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 2.sp
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.5.dp,
-                                    if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .heightIn(min = 56.dp)
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                        contentDescription = null,
-                                        tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
-                                        color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
+                                    color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
-
-                            ThemedHoldToStopButton(
-                                onStopConfirmed = onStopConfirmed,
-                                label = "END EXPEDITION",
-                                progressLabel = "CONCLUDING",
-                                borderColor = GsDanger,
-                                gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
-                                progressFillColor = GsDanger.copy(alpha = 0.6f),
-                                textColor = GsAlpineWhite,
-                                cornerRadius = 8.dp,
-                                modifier = Modifier.weight(1.3f)
-                            )
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "END EXPEDITION",
+                            progressLabel = "CONCLUDING",
+                            borderColor = GsDanger,
+                            gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
+                            progressFillColor = GsDanger.copy(alpha = 0.6f),
+                            textColor = GsAlpineWhite,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier.weight(1.3f)
+                        )
                     }
                 }
             }
