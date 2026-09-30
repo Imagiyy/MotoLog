@@ -488,26 +488,26 @@ fun NightCruiserCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 76.sp,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) NightWarning else NightPearl,
                                 fontFamily = FontFamily.SansSerif,
-                                letterSpacing = (-2).sp
+                                letterSpacing = (-1).sp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 16.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NightSkyIce,
-                                modifier = Modifier.padding(bottom = 12.dp),
+                                modifier = Modifier.padding(bottom = 6.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Cruise Trip Odometer & Clock Bar
+                        // Cruise Trip Odometer & Clock Bar (Fits cleanly on screen)
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF040A17),
@@ -533,7 +533,7 @@ fun NightCruiserCockpitDashboard(
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = String.format(Locale.US, "%.1f", displayDistance),
-                                            fontSize = 24.sp,
+                                            fontSize = 20.sp,
                                             fontWeight = FontWeight.Black,
                                             color = NightStarlightBlue,
                                             fontFamily = FontFamily.Monospace
@@ -541,7 +541,7 @@ fun NightCruiserCockpitDashboard(
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = distanceUnit,
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = NightSkyIce,
                                             fontFamily = FontFamily.Monospace,
@@ -561,7 +561,7 @@ fun NightCruiserCockpitDashboard(
                                     )
                                     Text(
                                         text = movingTimeDisplay,
-                                        fontSize = 18.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.Black,
                                         color = NightSkyIce,
                                         fontFamily = FontFamily.Monospace

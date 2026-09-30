@@ -467,7 +467,7 @@ fun TrackDayCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(230.dp)
+                        .height(195.dp)
                 )
 
                 // Track Status Banner
@@ -771,7 +771,7 @@ private fun SuperbikeSpeedCluster(
                 )
             }
 
-            // Giant Superbike Speed Digits
+            // Superbike Speed Digits
             Row(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.Center
@@ -779,18 +779,18 @@ private fun SuperbikeSpeedCluster(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) RaceRedGlow else RaceWhite,
-                    fontSize = 72.sp,
+                    fontSize = 44.sp,
                     fontWeight = FontWeight.Black,
                     fontStyle = FontStyle.Italic,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-2).sp
+                    letterSpacing = (-1).sp
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                Column(modifier = Modifier.padding(bottom = 6.dp)) {
                     Text(
                         text = unit,
                         color = RaceRed,
-                        fontSize = 18.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         fontStyle = FontStyle.Italic
@@ -857,16 +857,28 @@ private fun SuperbikeSpeedCluster(
                     color = RaceGray,
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
                 )
 
-                Text(
-                    text = String.format(Locale.US, "%.2f %s", distance, distanceUnit),
-                    color = RaceWhite,
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Black
-                )
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = String.format(Locale.US, "%.1f", distance),
+                        color = RaceWhite,
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = distanceUnit,
+                        color = RaceCyan,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
             }
         }
     }

@@ -370,7 +370,7 @@ fun CustomBobberCockpitDashboard(
             }
         } else {
             // Portrait Bobber Layout
-            val gaugeHeight = (screenWidth * 0.65f).coerceIn(240.dp, 275.dp)
+            val gaugeHeight = (screenWidth * 0.52f).coerceIn(190.dp, 215.dp)
 
             Column(
                 modifier = Modifier
@@ -481,7 +481,7 @@ fun CustomBobberCockpitDashboard(
                             Text(
                                 text = String.format(Locale.US, "%.1f", displayDistance),
                                 fontFamily = FontFamily.Serif,
-                                fontSize = 24.sp,
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
                                 color = BobberParchment
                             )
@@ -489,7 +489,7 @@ fun CustomBobberCockpitDashboard(
                             Text(
                                 text = distanceUnit,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BobberBronze,
                                 modifier = Modifier.padding(bottom = 2.dp)
@@ -738,20 +738,20 @@ private fun BobberBilletArcGauge(
 
         // Center Stamped Speed Readout
         Column(
-            modifier = Modifier.padding(bottom = 30.dp),
+            modifier = Modifier.padding(bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                fontSize = 76.sp,
+                fontSize = 44.sp,
                 fontWeight = FontWeight.Black,
                 color = if (isSpeedAlert) BobberFlameOrange else BobberParchment,
                 fontFamily = FontFamily.Serif,
-                letterSpacing = (-2).sp
+                letterSpacing = (-1).sp
             )
             Text(
                 text = speedUnit,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = BobberBronze,
                 fontFamily = FontFamily.Monospace,

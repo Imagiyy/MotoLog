@@ -442,7 +442,7 @@ fun NeonCyberCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp)
+                        .height(215.dp)
                 )
 
                 // Neon Equalizer Spectrum
@@ -733,7 +733,7 @@ private fun CyberHexTachometerDial(
             Text(
                 text = String.format(Locale.US, "%.0f", speed),
                 color = if (isSpeedAlert) CyberMagenta else CyberWhite,
-                fontSize = 58.sp,
+                fontSize = 44.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = (-1).sp
@@ -742,27 +742,49 @@ private fun CyberHexTachometerDial(
             Text(
                 text = unit,
                 color = CyberCyan,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Sub-trip ticker
+            // Sub-trip ticker odometer
             Surface(
                 color = CyberBg.copy(alpha = 0.8f),
                 shape = CutCornerShape(4.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, CyberPurple.copy(alpha = 0.6f))
             ) {
-                Text(
-                    text = String.format(Locale.US, "WARP: %.2f %s", distance, distanceUnit),
-                    color = CyberTextMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "WARP DIST ",
+                        color = CyberTextMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                    Text(
+                        text = String.format(Locale.US, "%.1f", distance),
+                        color = CyberCyan,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = distanceUnit,
+                        color = CyberTextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
             }
         }
     }

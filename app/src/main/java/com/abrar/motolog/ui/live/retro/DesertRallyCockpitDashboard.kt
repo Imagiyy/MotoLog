@@ -462,7 +462,7 @@ fun DesertRallyCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(230.dp)
+                        .height(195.dp)
                 )
 
                 // Rally Status Bar
@@ -635,10 +635,10 @@ private fun RallyRoadbookTripMaster(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(RallyTowerDark)
-            .border(2.dp, RallyBorder, RoundedCornerShape(8.dp))
-            .padding(10.dp)
+            .border(1.5.dp, RallyBorder, RoundedCornerShape(8.dp))
+            .padding(6.dp)
     ) {
-        // Giant High-Vis Roadbook Distance Readout
+        // High-Vis Roadbook Distance Readout (Fits properly on screen)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -651,16 +651,17 @@ private fun RallyRoadbookTripMaster(
             Text(
                 text = "KM-TOT",
                 color = RallySandGold,
-                fontSize = 12.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
             )
 
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = String.format(Locale.US, "%05.2f", distance),
+                    text = String.format(Locale.US, "%05.1f", distance),
                     color = RallyHighVisYellow,
-                    fontSize = 32.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.sp
@@ -669,10 +670,10 @@ private fun RallyRoadbookTripMaster(
                 Text(
                     text = distanceUnit,
                     color = RallyWhite,
-                    fontSize = 14.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 2.dp)
                 )
             }
         }
@@ -740,19 +741,19 @@ private fun RallySpeedDisplay(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) Color(0xFFFF3300) else RallyWhite,
-                    fontSize = 68.sp,
+                    fontSize = 44.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-2).sp
+                    letterSpacing = (-1).sp
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = unit,
                     color = RallyDakarOrange,
-                    fontSize = 18.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
         }

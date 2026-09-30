@@ -515,18 +515,18 @@ fun AdventureTouringCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 76.sp,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
-                                letterSpacing = (-2).sp
+                                letterSpacing = (-1).sp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 16.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GsGlacialCyan,
-                                modifier = Modifier.padding(bottom = 12.dp),
+                                modifier = Modifier.padding(bottom = 6.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -562,7 +562,7 @@ fun AdventureTouringCockpitDashboard(
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = String.format(Locale.US, "%.1f", displayDistance),
-                                            fontSize = 24.sp,
+                                            fontSize = 20.sp,
                                             fontWeight = FontWeight.Black,
                                             color = GsExpeditionGold,
                                             fontFamily = FontFamily.Monospace
@@ -570,7 +570,7 @@ fun AdventureTouringCockpitDashboard(
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = distanceUnit,
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = GsGlacialCyan,
                                             fontFamily = FontFamily.Monospace,

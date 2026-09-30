@@ -521,14 +521,14 @@ fun StealthHudCockpitDashboard(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = "TAC MISSION DISTANCE",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = HudPhosphorGreen.copy(alpha = 0.85f),
                                     letterSpacing = 1.sp
@@ -537,7 +537,7 @@ fun StealthHudCockpitDashboard(
                                     Text(
                                         text = String.format(Locale.US, "%.1f", displayDistance),
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 24.sp,
+                                        fontSize = 20.sp,
                                         fontWeight = FontWeight.Black,
                                         color = HudPhosphorGreen
                                     )
@@ -545,7 +545,7 @@ fun StealthHudCockpitDashboard(
                                     Text(
                                         text = distanceUnit,
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = HudCyan,
                                         modifier = Modifier.padding(bottom = 2.dp)
@@ -806,15 +806,15 @@ private fun HudCollimatorReticle(
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
                 fontFamily = FontFamily.Monospace,
-                fontSize = 70.sp,
+                fontSize = 44.sp,
                 fontWeight = FontWeight.Black,
                 color = speedColor,
-                letterSpacing = (-2).sp
+                letterSpacing = (-1).sp
             )
             Text(
                 text = speedUnit,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = HudCyan,
                 letterSpacing = 2.sp
