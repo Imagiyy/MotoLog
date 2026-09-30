@@ -78,6 +78,11 @@ class BackupManager @Inject constructor(
         const val CURRENT_FORMAT_VERSION: Int = 1
         const val APP_VERSION: String = "1.0.0"
 
+        /** Maximum size of a single entry in the backup ZIP (256 MB) */
+        private const val MAX_ENTRY_SIZE_BYTES: Long = 256L * 1024 * 1024
+        /** Maximum total decompressed size of the backup (512 MB) */
+        private const val MAX_TOTAL_SIZE_BYTES: Long = 512L * 1024 * 1024
+
         private val json = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true
@@ -190,7 +195,7 @@ class BackupManager @Inject constructor(
             throw IllegalStateException("Cannot restore data while a ride is active or recording.")
         }
 
-        // 2. Read entries from ZIP
+        // 2. Read entries from ZIP with size safety checks
         var manifest: BackupManifest? = null
         var settings: BackupSettings? = null
         var bikes: List<BikeEntity>? = null
@@ -198,11 +203,30 @@ class BackupManager @Inject constructor(
         var points: List<RidePointEntity>? = null
         var maintenance: List<MaintenanceItemEntity>? = null
         var fuel: List<FuelLogEntity>? = null
+        var totalBytesRead = 0L
 
         ZipInputStream(inputStream).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
-                val content = String(zip.readBytes(), StandardCharsets.UTF_8)
+                // Size safety: reject entries larger than MAX_ENTRY_SIZE
+                val entrySize = entry.size
+                if (entrySize > MAX_ENTRY_SIZE_BYTES) {
+                    throw IllegalArgumentException(
+                        "Backup entry '${entry.name}' exceeds maximum allowed size (${MAX_ENTRY_SIZE_BYTES / (1024 * 1024)} MB)."
+                    )
+                }
+
+                val rawBytes = zip.readBytes()
+                totalBytesRead += rawBytes.size
+
+                // Total size safety: reject backup if total decompressed exceeds limit
+                if (totalBytesRead > MAX_TOTAL_SIZE_BYTES) {
+                    throw IllegalArgumentException(
+                        "Backup total decompressed size exceeds maximum allowed (${MAX_TOTAL_SIZE_BYTES / (1024 * 1024)} MB). File may be corrupted."
+                    )
+                }
+
+                val content = String(rawBytes, StandardCharsets.UTF_8)
                 when (entry.name) {
                     "manifest.json" -> manifest = json.decodeFromString(content)
                     "settings.json" -> settings = json.decodeFromString(content)
@@ -242,7 +266,7 @@ class BackupManager @Inject constructor(
             executeRestore()
         }
 
-        // 4. Restore settings
+        // 4. Restore settings (with reference validation)
         settings?.let { s ->
             settingsRepository.setUseMetricUnits(s.useMetricUnits)
             try { settingsRepository.setFuelUnit(FuelUnit.valueOf(s.fuelUnit)) } catch (_: Exception) {}
@@ -255,7 +279,15 @@ class BackupManager @Inject constructor(
             try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (_: Exception) {}
             settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
             settingsRepository.setKeepScreenOn(s.keepScreenOn)
-            settingsRepository.setCurrentBikeId(s.currentBikeId)
+
+            // Validate currentBikeId references an actual restored bike
+            val restoredBikeIds = bikes?.map { it.id }?.toSet() ?: emptySet()
+            val validBikeId = if (s.currentBikeId != null && s.currentBikeId in restoredBikeIds) {
+                s.currentBikeId
+            } else {
+                null // Clear dangling reference
+            }
+            settingsRepository.setCurrentBikeId(validBikeId)
         }
 
         parsedManifest

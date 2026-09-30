@@ -2,6 +2,7 @@ package com.abrar.motolog.data.location
 
 import android.annotation.SuppressLint
 import android.os.Looper
+import android.os.SystemClock
 import com.abrar.motolog.shared.domain.TrackingConstants
 import com.abrar.motolog.shared.domain.location.LocationSource
 import com.abrar.motolog.shared.domain.model.LocationPoint
@@ -65,7 +66,8 @@ class FusedLocationSource @Inject constructor(
                         speedMps = if (location.hasSpeed()) location.speed else null,
                         accuracyMeters = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE,
                         timestamp = if (location.time > 0L) location.time else System.currentTimeMillis(),
-                        altitudeMeters = if (location.hasAltitude()) location.altitude else null
+                        altitudeMeters = if (location.hasAltitude()) location.altitude else null,
+                        elapsedTimestampMs = location.elapsedRealtimeNanos / 1_000_000L
                     )
                     trySend(point)
                 }

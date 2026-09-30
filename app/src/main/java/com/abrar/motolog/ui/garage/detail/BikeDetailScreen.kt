@@ -628,7 +628,9 @@ private fun FuelTabContent(
         item {
             FuelSummaryCard(
                 stats = uiState.fuelStats,
-                fuelUnit = uiState.fuelUnit
+                fuelUnit = uiState.fuelUnit,
+                currencySymbol = uiState.currencySymbol,
+                useMetricUnits = uiState.useMetricUnits
             )
         }
 
@@ -682,7 +684,9 @@ private fun FuelTabContent(
 @Composable
 private fun FuelSummaryCard(
     stats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
-    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit
+    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
+    currencySymbol: String = "$",
+    useMetricUnits: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -690,12 +694,36 @@ private fun FuelSummaryCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "FUEL MILEAGE (FULL-TANK METHOD)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "FUEL MILEAGE (FULL-TANK METHOD)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (stats.totalCost > 0.0 && stats.totalRecordedDistanceKm > 0.0) {
+                    val dist = if (useMetricUnits) stats.totalRecordedDistanceKm else stats.totalRecordedDistanceKm * 0.621371
+                    val costPerDist = stats.totalCost / dist
+                    val distUnit = if (useMetricUnits) "km" else "mi"
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "$currencySymbol${String.format(Locale.US, "%.2f", costPerDist)} / $distUnit",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(10.dp))
 
             Row(
@@ -721,9 +749,17 @@ private fun FuelSummaryCard(
                     )
                 }
                 Column {
-                    Text("TOTAL LITRES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        text = String.format(Locale.US, "%.1f L", stats.totalLitres),
+                        text = if (stats.totalCost > 0.0) "TOTAL SPENT" else "TOTAL LITRES",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (stats.totalCost > 0.0) {
+                            "$currencySymbol${String.format(Locale.US, "%.1f", stats.totalCost)}"
+                        } else {
+                            String.format(Locale.US, "%.1f L", stats.totalLitres)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -911,7 +947,7 @@ private fun SetOdometerDialog(
             TextButton(
                 onClick = {
                     if (isValid) {
-                        val odoKm = UnitConverter.userDistanceToKm(newOdo!!, useMetricUnits)
+                        val odoKm = UnitConverter.userDistanceToKm(newOdo, useMetricUnits)
                         onConfirm(odoKm)
                     }
                 },
@@ -1153,7 +1189,7 @@ private fun MarkDoneDialog(
             TextButton(
                 onClick = {
                     if (isValid) {
-                        val odoKm = UnitConverter.userDistanceToKm(odo!!, useMetricUnits)
+                        val odoKm = UnitConverter.userDistanceToKm(odo, useMetricUnits)
                         onConfirm(odoKm)
                     }
                 },
@@ -1241,11 +1277,11 @@ private fun AddEditFuelLogDialog(
             TextButton(
                 onClick = {
                     if (isValid) {
-                        val odoKm = UnitConverter.userDistanceToKm(odo!!, useMetricUnits)
+                        val odoKm = UnitConverter.userDistanceToKm(odo, useMetricUnits)
                         onConfirm(
                             odoKm,
-                            litres!!,
-                            cost!!,
+                            litres,
+                            cost,
                             isFullTank,
                             notes,
                             log?.timestampEpochMs ?: System.currentTimeMillis()

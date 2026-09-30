@@ -521,7 +521,7 @@ private fun AddBikeDialog(
             TextButton(
                 onClick = {
                     if (isNameValid && isOdoValid) {
-                        val odoKm = UnitConverter.userDistanceToKm(initialOdo!!, useMetricUnits)
+                        val odoKm = UnitConverter.userDistanceToKm(initialOdo, useMetricUnits)
                         onConfirm(name, makeModel, odoKm, registrationNumber)
                     }
                 },

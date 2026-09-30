@@ -261,8 +261,14 @@ class TrackingService : Service() {
                     lastKnownLatitude = locationPoint.latitude
                     lastKnownLongitude = locationPoint.longitude
 
+                    // Use monotonic elapsed-realtime for the engine to avoid
+                    // NTP/timezone jumps causing false gaps or speed spikes.
+                    // Fall back to wall-clock if unavailable.
+                    val engineTimestamp = locationPoint.elapsedTimestampMs
+                        ?: locationPoint.timestamp
+
                     val gpsPoint = GpsPoint(
-                        timestampEpochMs = locationPoint.timestamp,
+                        timestampEpochMs = engineTimestamp,
                         latitude = locationPoint.latitude,
                         longitude = locationPoint.longitude,
                         speedMps = locationPoint.speedMps,
@@ -282,7 +288,7 @@ class TrackingService : Service() {
                         currentSpeedKmh = speedKmh,
                         thresholdKmh = speedAlertThresholdKmh,
                         isEnabled = speedAlertEnabled,
-                        currentTimeMs = locationPoint.timestamp
+                        currentTimeMs = engineTimestamp
                     )
                     if (alertFired) {
                         triggerSpeedAlertFeedback(speedAlertStyle)
@@ -566,7 +572,12 @@ class TrackingService : Service() {
                 isMetric = isMetricUnits
             )
 
-            // 7. Tear down foreground service and dismiss notification
+            // 7. Release audio resources and tear down foreground service
+            try {
+                toneGenerator?.release()
+                toneGenerator = null
+            } catch (_: Exception) {}
+
             withContext(Dispatchers.Main) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()

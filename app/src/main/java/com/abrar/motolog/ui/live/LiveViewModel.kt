@@ -137,8 +137,8 @@ class LiveViewModel @Inject constructor(
                             if (coords.isEmpty() || coords.last() != newPoint) {
                                 coords.add(newPoint)
                                 if (coords.size > 2000) {
-                                    val thinned = coords.filterIndexed { index, _ -> index % 2 == 0 || index == coords.size - 1 }.toMutableList()
-                                    _routePoints.value = thinned
+                                    // Use simplified Douglas-Peucker to preserve route shape
+                                    _routePoints.value = simplifyRoute(coords, 0.00005)
                                 } else {
                                     _routePoints.value = coords
                                 }
@@ -252,5 +252,65 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setBatteryGuidanceSeen(seen)
         }
+    }
+
+    /**
+     * Simplified iterative Douglas-Peucker for live route display thinning.
+     * Operates in degree space (sufficient for display-only visual accuracy).
+     */
+    private fun simplifyRoute(
+        points: List<Pair<Double, Double>>,
+        epsilon: Double
+    ): List<Pair<Double, Double>> {
+        if (points.size <= 2) return points
+        val keep = BooleanArray(points.size) { false }
+        keep[0] = true
+        keep[points.lastIndex] = true
+
+        // Iterative stack-based RDP
+        val stack = ArrayDeque<Pair<Int, Int>>()
+        stack.addLast(0 to points.lastIndex)
+
+        while (stack.isNotEmpty()) {
+            val (startIdx, endIdx) = stack.removeLast()
+            if (endIdx - startIdx < 2) continue
+
+            var maxDist = 0.0
+            var maxIdx = startIdx
+            val s = points[startIdx]
+            val e = points[endIdx]
+            val dx = e.first - s.first
+            val dy = e.second - s.second
+            val lineLenSq = dx * dx + dy * dy
+
+            for (i in (startIdx + 1) until endIdx) {
+                val p = points[i]
+                val dist = if (lineLenSq == 0.0) {
+                    val px = p.first - s.first
+                    val py = p.second - s.second
+                    kotlin.math.sqrt(px * px + py * py)
+                } else {
+                    val t = ((p.first - s.first) * dx + (p.second - s.second) * dy) / lineLenSq
+                    val tc = t.coerceIn(0.0, 1.0)
+                    val projX = s.first + tc * dx
+                    val projY = s.second + tc * dy
+                    val px = p.first - projX
+                    val py = p.second - projY
+                    kotlin.math.sqrt(px * px + py * py)
+                }
+                if (dist > maxDist) {
+                    maxDist = dist
+                    maxIdx = i
+                }
+            }
+
+            if (maxDist > epsilon) {
+                keep[maxIdx] = true
+                stack.addLast(startIdx to maxIdx)
+                stack.addLast(maxIdx to endIdx)
+            }
+        }
+
+        return points.filterIndexed { index, _ -> keep[index] }
     }
 }

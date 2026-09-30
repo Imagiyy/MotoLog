@@ -41,6 +41,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 @Serializable
 data object LiveRoute
@@ -86,6 +88,7 @@ fun MotoLogNavGraph() {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val isLiveScreen = currentDestination?.hasRoute(LiveRoute::class) == true
+    val hapticFeedback = LocalHapticFeedback.current
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -105,6 +108,7 @@ fun MotoLogNavGraph() {
                             selected = isSelected,
                             onClick = {
                                 if (isSelected) return@NavigationBarItem
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
 
                                 if (destination.route == LiveRoute) {
                                     val popped = navController.popBackStack(LiveRoute, inclusive = false, saveState = true)
@@ -188,13 +192,13 @@ fun MotoLogNavGraph() {
                 },
                 exitTransition = {
                     slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
                         animationSpec = tween(250)
                     )
                 },
                 popEnterTransition = {
                     slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
                         animationSpec = tween(250)
                     )
                 },
@@ -220,13 +224,13 @@ fun MotoLogNavGraph() {
                 },
                 exitTransition = {
                     slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
                         animationSpec = tween(250)
                     )
                 },
                 popEnterTransition = {
                     slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
                         animationSpec = tween(250)
                     )
                 },
