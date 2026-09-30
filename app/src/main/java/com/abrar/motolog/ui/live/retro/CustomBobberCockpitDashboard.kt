@@ -370,7 +370,7 @@ fun CustomBobberCockpitDashboard(
             }
         } else {
             // Portrait Bobber Layout
-            val gaugeHeight = (screenWidth * 0.52f).coerceIn(190.dp, 215.dp)
+            val gaugeHeight = (screenWidth * 0.65f).coerceIn(240.dp, 270.dp)
 
             Column(
                 modifier = Modifier
@@ -445,7 +445,7 @@ fun CustomBobberCockpitDashboard(
                     }
                 }
 
-                // Center 180° Billet Arc Gauge (Harmoniously Proportioned)
+                // Center 180° Billet Arc Gauge (Harmoniously Proportioned like Retro Classic)
                 BobberBilletArcGauge(
                     speed = displaySpeed,
                     speedUnit = speedUnit,
@@ -465,7 +465,7 @@ fun CustomBobberCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -498,11 +498,64 @@ fun CustomBobberCockpitDashboard(
                     }
                 }
 
-                // V-Twin Engine Rumble Vibration Bar
-                BobberEngineRumbleBar(
-                    speed = displaySpeed,
+                // V-Twin Engine Rumble & Pilot Lamp Status Bar (Matching Retro Pilot Lamps)
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = BobberCastIron,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        BobberEngineRumbleBar(
+                            speed = displaySpeed,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                RetroJewelLamp(
+                                    label = "IGN",
+                                    isActive = !isGpsLost,
+                                    color = JewelColor.GREEN,
+                                    size = 22.dp
+                                )
+                                RetroJewelLamp(
+                                    label = "IDL",
+                                    isActive = pauseState.isPaused,
+                                    color = JewelColor.AMBER,
+                                    size = 22.dp
+                                )
+                                RetroJewelLamp(
+                                    label = "ALT",
+                                    isActive = isSpeedAlert,
+                                    color = JewelColor.RED,
+                                    size = 22.dp,
+                                    shouldBlink = isSpeedAlert
+                                )
+                            }
+
+                            Text(
+                                text = if (isGpsLost) "GNSS LOST" else "V-TWIN GNSS ±${accuracyMeters.toInt()}M",
+                                color = BobberRawSteel,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
 
                 // Leather-Stitched Telemetry Cards - 6 Standard Metrics
                 Row(
@@ -557,6 +610,8 @@ fun CustomBobberCockpitDashboard(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 // Bottom Section: Action Controls
                 if (isIdle) {
                     Button(
@@ -565,7 +620,7 @@ fun CustomBobberCockpitDashboard(
                         colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(60.dp)
                     ) {
                         Text(
                             text = "FIRE UP - START",
@@ -743,15 +798,15 @@ private fun BobberBilletArcGauge(
         ) {
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                fontSize = 44.sp,
+                fontSize = 68.sp,
                 fontWeight = FontWeight.Black,
                 color = if (isSpeedAlert) BobberFlameOrange else BobberParchment,
                 fontFamily = FontFamily.Serif,
-                letterSpacing = (-1).sp
+                letterSpacing = (-2).sp
             )
             Text(
                 text = speedUnit,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = BobberBronze,
                 fontFamily = FontFamily.Monospace,

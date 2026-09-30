@@ -390,7 +390,7 @@ fun StealthHudCockpitDashboard(
             }
         } else {
             // Portrait Tactical Collimator Layout
-            val reticleSize = (screenWidth * 0.62f).coerceIn(220.dp, 255.dp)
+            val reticleSize = (screenWidth * 0.65f).coerceIn(230.dp, 265.dp)
             val hudRowHeight = reticleSize + 8.dp
 
             Column(
@@ -554,6 +554,55 @@ fun StealthHudCockpitDashboard(
                             }
                         }
 
+                        // Tactical Avionics Status Bar (Matching Retro Pilot Lamps)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFF040A06),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    RetroJewelLamp(
+                                        label = "TAC",
+                                        isActive = !isGpsLost,
+                                        color = JewelColor.GREEN,
+                                        size = 24.dp
+                                    )
+                                    RetroJewelLamp(
+                                        label = "IDL",
+                                        isActive = pauseState.isPaused,
+                                        color = JewelColor.AMBER,
+                                        size = 24.dp
+                                    )
+                                    RetroJewelLamp(
+                                        label = "ALT",
+                                        isActive = isSpeedAlert,
+                                        color = JewelColor.RED,
+                                        size = 24.dp,
+                                        shouldBlink = isSpeedAlert
+                                    )
+                                }
+
+                                Text(
+                                    text = if (isGpsLost) "RADAR LOST" else "RADAR LOCK ±${accuracyMeters.toInt()}M",
+                                    color = HudCyan,
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
                         // Middle Section: Tactical Telemetry Cards Grid - 6 Standard Metrics
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -620,7 +669,7 @@ fun StealthHudCockpitDashboard(
                             colors = ButtonDefaults.buttonColors(containerColor = HudPhosphorGreen),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp)
+                                .height(60.dp)
                         ) {
                             Text(
                                 text = "ENGAGE HUD - START",
@@ -806,15 +855,15 @@ private fun HudCollimatorReticle(
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
                 fontFamily = FontFamily.Monospace,
-                fontSize = 44.sp,
+                fontSize = 68.sp,
                 fontWeight = FontWeight.Black,
                 color = speedColor,
-                letterSpacing = (-1).sp
+                letterSpacing = (-2).sp
             )
             Text(
                 text = speedUnit,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = HudCyan,
                 letterSpacing = 2.sp

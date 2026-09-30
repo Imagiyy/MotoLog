@@ -448,24 +448,24 @@ fun DesertRallyCockpitDashboard(
                     }
                 }
 
-                // Upper Navigation Tower: Roadbook Trip Master
-                RallyRoadbookTripMaster(
-                    distance = displayDistance,
-                    distanceUnit = distanceUnit,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Lower Navigation Tower: Speedometer
+                // Upper Navigation Tower: Dakar Stage Speedometer (Prominent like Retro Classic)
                 RallySpeedDisplay(
                     speed = displaySpeed,
                     unit = speedUnit,
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(195.dp)
+                        .height(210.dp)
                 )
 
-                // Rally Status Bar
+                // Dedicated Roadbook Trip Master (ICO Racing style)
+                RallyRoadbookTripMaster(
+                    distance = displayDistance,
+                    distanceUnit = distanceUnit,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Dedicated Rally Status Bar
                 RallyStatusBar(
                     bikeName = bikeName,
                     pauseState = pauseState,
@@ -741,19 +741,19 @@ private fun RallySpeedDisplay(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) Color(0xFFFF3300) else RallyWhite,
-                    fontSize = 44.sp,
+                    fontSize = 68.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-1).sp
+                    letterSpacing = (-2).sp
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = unit,
                     color = RallyDakarOrange,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    modifier = Modifier.padding(bottom = 10.dp)
                 )
             }
         }

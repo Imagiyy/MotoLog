@@ -449,36 +449,36 @@ fun NightCruiserCockpitDashboard(
                     }
                 }
 
-                // Midnight Horizon Cockpit Console (Speed + Horizon Light Beam + Cruise Odometer & Clock)
+                // Midnight Horizon Cockpit Console (Speed + Horizon Light Beam)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(210.dp)
                         .border(1.2.dp, NightBorder.copy(alpha = 0.7f), RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = NightCardBg)
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .fillMaxSize()
+                            .padding(vertical = 14.dp, horizontal = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly
                     ) {
                         // Ambient Horizon Light Beam integrated into Console Top
                         NightHorizonBeam(
                             speed = displaySpeed,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(14.dp)
+                                .height(16.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
                         Text(
-                            text = "HIGHWAY SPEED",
+                            text = if (isSpeedAlert) "! SPEED ALERT !" else "HIGHWAY CRUISE SPEED",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NightSkyIce,
+                            color = if (isSpeedAlert) NightWarning else NightSkyIce,
                             letterSpacing = 2.sp
                         )
 
@@ -488,87 +488,142 @@ fun NightCruiserCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 44.sp,
+                                fontSize = 68.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) NightWarning else NightPearl,
                                 fontFamily = FontFamily.SansSerif,
-                                letterSpacing = (-1).sp
+                                letterSpacing = (-2).sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NightSkyIce,
-                                modifier = Modifier.padding(bottom = 6.dp),
+                                modifier = Modifier.padding(bottom = 10.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (displaySpeed > 5.0) "MIDNIGHT CRUISING HORIZON" else "STANDBY ON HIGHWAY",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.5.sp,
+                            color = NightMuted,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
 
-                        // Cruise Trip Odometer & Clock Bar (Fits cleanly on screen)
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF040A17),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NightBorder.copy(alpha = 0.5f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "CRUISE ODOMETER",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NightMuted,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Row(verticalAlignment = Alignment.Bottom) {
-                                        Text(
-                                            text = String.format(Locale.US, "%.1f", displayDistance),
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = NightStarlightBlue,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = distanceUnit,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = NightSkyIce,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.padding(bottom = 2.dp)
-                                        )
-                                    }
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "MOVING CLOCK",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NightMuted,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Text(
-                                        text = movingTimeDisplay,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = NightSkyIce,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
+                // Dedicated Cruise Trip Odometer & Clock Bar (Fits cleanly on screen, styled like Retro Drum)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF040A17),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, NightBorder.copy(alpha = 0.65f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "CRUISE ODOMETER",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NightMuted,
+                                letterSpacing = 1.sp
+                            )
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = String.format(Locale.US, "%.1f", displayDistance),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = NightStarlightBlue,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = distanceUnit,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NightSkyIce,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
                             }
                         }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "MOVING CLOCK",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NightMuted,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = movingTimeDisplay,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NightSkyIce,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+
+                // Dedicated Night Beacon Status Bar (Matching Retro Pilot Lamps)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF060D1E),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NightBorder.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RetroJewelLamp(
+                                label = "NAV",
+                                isActive = !isGpsLost,
+                                color = JewelColor.BLUE,
+                                size = 26.dp
+                            )
+                            RetroJewelLamp(
+                                label = "IDL",
+                                isActive = pauseState.isPaused,
+                                color = JewelColor.AMBER,
+                                size = 26.dp
+                            )
+                            RetroJewelLamp(
+                                label = "ALT",
+                                isActive = isSpeedAlert,
+                                color = JewelColor.RED,
+                                size = 26.dp,
+                                shouldBlink = isSpeedAlert
+                            )
+                        }
+
+                        Text(
+                            text = if (isGpsLost) "GNSS SIGNAL LOST" else "STARLIGHT GNSS ±${accuracyMeters.toInt()}M",
+                            color = NightSkyIce.copy(alpha = 0.85f),
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
@@ -625,6 +680,8 @@ fun NightCruiserCockpitDashboard(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 // Bottom Section: Action Controls
                 if (isIdle) {
                     Button(
@@ -633,7 +690,7 @@ fun NightCruiserCockpitDashboard(
                         colors = ButtonDefaults.buttonColors(containerColor = NightStarlightBlue),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(60.dp)
                     ) {
                         Text(
                             text = "START NIGHT CRUISE",

@@ -467,7 +467,7 @@ fun TrackDayCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(195.dp)
+                        .height(215.dp)
                 )
 
                 // Track Status Banner
@@ -779,18 +779,18 @@ private fun SuperbikeSpeedCluster(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) RaceRedGlow else RaceWhite,
-                    fontSize = 44.sp,
+                    fontSize = 68.sp,
                     fontWeight = FontWeight.Black,
                     fontStyle = FontStyle.Italic,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-1).sp
+                    letterSpacing = (-2).sp
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.padding(bottom = 10.dp)) {
                     Text(
                         text = unit,
                         color = RaceRed,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         fontStyle = FontStyle.Italic

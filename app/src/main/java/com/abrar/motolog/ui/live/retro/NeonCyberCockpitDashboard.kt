@@ -442,8 +442,57 @@ fun NeonCyberCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(215.dp)
+                        .height(235.dp)
                 )
+
+                // Dedicated Cyber Matrix Status Bar (Matching Retro Pilot Lamps)
+                Surface(
+                    shape = CutCornerShape(4.dp),
+                    color = Color(0xFF07040E),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CyberPurple.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RetroJewelLamp(
+                                label = "SYS",
+                                isActive = !isGpsLost,
+                                color = JewelColor.BLUE,
+                                size = 24.dp
+                            )
+                            RetroJewelLamp(
+                                label = "IDL",
+                                isActive = pauseState.isPaused,
+                                color = JewelColor.AMBER,
+                                size = 24.dp
+                            )
+                            RetroJewelLamp(
+                                label = "ALT",
+                                isActive = isSpeedAlert,
+                                color = JewelColor.RED,
+                                size = 24.dp,
+                                shouldBlink = isSpeedAlert
+                            )
+                        }
+
+                        Text(
+                            text = if (isGpsLost) "GNSS LINK LOST" else "MATRIX GNSS SYNC ±${accuracyMeters.toInt()}M",
+                            color = CyberCyan,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
                 // Neon Equalizer Spectrum
                 CyberEqualizerBar(
@@ -733,16 +782,16 @@ private fun CyberHexTachometerDial(
             Text(
                 text = String.format(Locale.US, "%.0f", speed),
                 color = if (isSpeedAlert) CyberMagenta else CyberWhite,
-                fontSize = 44.sp,
+                fontSize = 68.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
-                letterSpacing = (-1).sp
+                letterSpacing = (-2).sp
             )
 
             Text(
                 text = unit,
                 color = CyberCyan,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace
             )

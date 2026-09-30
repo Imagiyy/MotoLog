@@ -474,19 +474,21 @@ fun AdventureTouringCockpitDashboard(
                     }
                 }
 
-                // GS Alpine TFT Cockpit Console (Speed + Tachometer + Expedition Odometer & Altimeter Bar)
+                // GS Alpine TFT Cockpit Console (Speed + Tachometer Power Band)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(210.dp)
                         .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = GsPanelBg)
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .fillMaxSize()
+                            .padding(vertical = 14.dp, horizontal = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly
                     ) {
                         // GS Tachometer Power Arc / Progress Track
                         GsSpeedPowerBand(
@@ -495,17 +497,15 @@ fun AdventureTouringCockpitDashboard(
                             isSpeedAlert = isSpeedAlert,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(12.dp)
+                                .height(14.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
                         Text(
-                            text = "CRUISE SPEED",
+                            text = if (isSpeedAlert) "! SPEED WARNING !" else "ALPINE CRUISE SPEED",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = GsGlacialCyan,
+                            color = if (isSpeedAlert) GsDanger else GsGlacialCyan,
                             letterSpacing = 2.sp
                         )
 
@@ -515,109 +515,164 @@ fun AdventureTouringCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 44.sp,
+                                fontSize = 68.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
-                                letterSpacing = (-1).sp
+                                letterSpacing = (-2).sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GsGlacialCyan,
-                                modifier = Modifier.padding(bottom = 6.dp),
+                                modifier = Modifier.padding(bottom = 10.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (displaySpeed > 5.0) "HIGHWAY EXPEDITION CRUISE" else "ALPINE SADDLE STANDBY",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.5.sp,
+                            color = GsTextMuted,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
 
-                        // Dual Expedition Console Bar: Expedition Odometer on Left, Altimeter Elevation on Right
-                        val displayGain = if (isMetric) elevationGainMeters else elevationGainMeters * 3.28084
-                        val gainUnit = if (isMetric) "m" else "ft"
+                // Dual Expedition Console Bar: Expedition Odometer on Left, Altimeter Elevation on Right
+                val displayGain = if (isMetric) elevationGainMeters else elevationGainMeters * 3.28084
+                val gainUnit = if (isMetric) "m" else "ft"
 
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF0F1A24),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue.copy(alpha = 0.45f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "EXPEDITION TRIP",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = GsTextMuted,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Row(verticalAlignment = Alignment.Bottom) {
-                                        Text(
-                                            text = String.format(Locale.US, "%.1f", displayDistance),
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = GsExpeditionGold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = distanceUnit,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = GsGlacialCyan,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.padding(bottom = 2.dp)
-                                        )
-                                    }
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Landscape,
-                                            contentDescription = null,
-                                            tint = GsGlacialCyan,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "ALTIMETER GAIN",
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = GsTextMuted,
-                                            letterSpacing = 1.sp
-                                        )
-                                    }
-                                    Row(verticalAlignment = Alignment.Bottom) {
-                                        Text(
-                                            text = String.format(Locale.US, "+%.0f", displayGain),
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = GsAlpineWhite,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Text(
-                                            text = gainUnit,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = GsGlacialCyan,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.padding(bottom = 2.dp)
-                                        )
-                                    }
-                                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF0F1A24),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, GsCordobaBlue.copy(alpha = 0.65f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "EXPEDITION TRIP",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GsTextMuted,
+                                letterSpacing = 1.sp
+                            )
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = String.format(Locale.US, "%.1f", displayDistance),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = GsExpeditionGold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = distanceUnit,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GsGlacialCyan,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
                             }
                         }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Landscape,
+                                    contentDescription = null,
+                                    tint = GsGlacialCyan,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "ALTIMETER GAIN",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GsTextMuted,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = String.format(Locale.US, "+%.0f", displayGain),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = GsAlpineWhite,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = gainUnit,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GsGlacialCyan,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Dedicated GS Satellite Status Bar (Matching Retro Pilot Lamps)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF0A141E),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RetroJewelLamp(
+                                label = "GNSS",
+                                isActive = !isGpsLost,
+                                color = JewelColor.BLUE,
+                                size = 26.dp
+                            )
+                            RetroJewelLamp(
+                                label = "IDL",
+                                isActive = pauseState.isPaused,
+                                color = JewelColor.AMBER,
+                                size = 26.dp
+                            )
+                            RetroJewelLamp(
+                                label = "ALT",
+                                isActive = isSpeedAlert,
+                                color = JewelColor.RED,
+                                size = 26.dp,
+                                shouldBlink = isSpeedAlert
+                            )
+                        }
+
+                        Text(
+                            text = if (isGpsLost) "GNSS SIGNAL LOST" else "ALPINE GNSS SYNC ±${accuracyMeters.toInt()}M",
+                            color = GsGlacialCyan,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
@@ -682,6 +737,8 @@ fun AdventureTouringCockpitDashboard(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 // Bottom Section: Action Controls
                 if (isIdle) {
                     Button(
@@ -690,7 +747,7 @@ fun AdventureTouringCockpitDashboard(
                         colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(60.dp)
                     ) {
                         Text(
                             text = "START EXPEDITION",
