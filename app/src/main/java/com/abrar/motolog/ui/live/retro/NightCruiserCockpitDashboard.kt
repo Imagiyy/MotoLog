@@ -373,8 +373,8 @@ fun NightCruiserCockpitDashboard(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header (ThemedIdleTopBar in Idle, or Night Header + Map Button when tracking)
@@ -453,7 +453,7 @@ fun NightCruiserCockpitDashboard(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
+                        .height(180.dp)
                         .border(1.2.dp, NightBorder.copy(alpha = 0.7f), RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = NightCardBg)
@@ -461,7 +461,7 @@ fun NightCruiserCockpitDashboard(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = 14.dp, horizontal = 14.dp),
+                            .padding(vertical = 12.dp, horizontal = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
@@ -488,19 +488,19 @@ fun NightCruiserCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 68.sp,
+                                fontSize = 58.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) NightWarning else NightPearl,
                                 fontFamily = FontFamily.SansSerif,
-                                letterSpacing = (-2).sp
+                                letterSpacing = (-1.5).sp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NightSkyIce,
-                                modifier = Modifier.padding(bottom = 10.dp),
+                                modifier = Modifier.padding(bottom = 8.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -515,7 +515,7 @@ fun NightCruiserCockpitDashboard(
                     }
                 }
 
-                // Dedicated Cruise Trip Odometer & Clock Bar (Fits cleanly on screen, styled like Retro Drum)
+                // Dedicated Cruise Trip Odometer Bar (Fits cleanly on screen, styled like Retro Drum)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = Color(0xFF040A17),
@@ -525,54 +525,34 @@ fun NightCruiserCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Text(
+                            text = "CRUISE ODOMETER",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NightMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "CRUISE ODOMETER",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightMuted,
-                                letterSpacing = 1.sp
-                            )
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = String.format(Locale.US, "%.1f", displayDistance),
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = NightStarlightBlue,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = distanceUnit,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NightSkyIce,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                )
-                            }
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "MOVING CLOCK",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NightMuted,
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = movingTimeDisplay,
-                                fontSize = 16.sp,
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Black,
-                                color = NightSkyIce,
+                                color = NightStarlightBlue,
                                 fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = distanceUnit,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NightSkyIce,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(bottom = 2.dp)
                             )
                         }
                     }
@@ -838,7 +818,7 @@ private fun NightMetricCard(
             ) {
                 Text(
                     text = value,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     color = NightPearl
                 )

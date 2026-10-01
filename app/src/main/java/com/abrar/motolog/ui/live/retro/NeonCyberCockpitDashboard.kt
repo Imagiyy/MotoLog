@@ -381,8 +381,8 @@ fun NeonCyberCockpitDashboard(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -442,7 +442,7 @@ fun NeonCyberCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(235.dp)
+                        .height(205.dp)
                 )
 
                 // Dedicated Cyber Matrix Status Bar (Matching Retro Pilot Lamps)
@@ -782,16 +782,16 @@ private fun CyberHexTachometerDial(
             Text(
                 text = String.format(Locale.US, "%.0f", speed),
                 color = if (isSpeedAlert) CyberMagenta else CyberWhite,
-                fontSize = 68.sp,
+                fontSize = 58.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
-                letterSpacing = (-2).sp
+                letterSpacing = (-1.5).sp
             )
 
             Text(
                 text = unit,
                 color = CyberCyan,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace
             )
@@ -820,7 +820,7 @@ private fun CyberHexTachometerDial(
                     Text(
                         text = String.format(Locale.US, "%.1f", distance),
                         color = CyberCyan,
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace
                     )
@@ -924,7 +924,7 @@ private fun CyberTelemetryCard(
                 Text(
                     text = value,
                     color = accentColor,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace
                 )

@@ -398,8 +398,8 @@ fun AdventureTouringCockpitDashboard(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
@@ -478,7 +478,7 @@ fun AdventureTouringCockpitDashboard(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
+                        .height(180.dp)
                         .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = GsPanelBg)
@@ -486,7 +486,7 @@ fun AdventureTouringCockpitDashboard(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = 14.dp, horizontal = 14.dp),
+                            .padding(vertical = 12.dp, horizontal = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
@@ -515,18 +515,18 @@ fun AdventureTouringCockpitDashboard(
                         ) {
                             Text(
                                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                                fontSize = 68.sp,
+                                fontSize = 58.sp,
                                 fontWeight = FontWeight.Black,
                                 color = if (isSpeedAlert) GsDanger else GsAlpineWhite,
-                                letterSpacing = (-2).sp
+                                letterSpacing = (-1.5).sp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = speedUnit,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GsGlacialCyan,
-                                modifier = Modifier.padding(bottom = 10.dp),
+                                modifier = Modifier.padding(bottom = 8.dp),
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -554,7 +554,7 @@ fun AdventureTouringCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -570,7 +570,7 @@ fun AdventureTouringCockpitDashboard(
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
                                     text = String.format(Locale.US, "%.1f", displayDistance),
-                                    fontSize = 20.sp,
+                                    fontSize = 22.sp,
                                     fontWeight = FontWeight.Black,
                                     color = GsExpeditionGold,
                                     fontFamily = FontFamily.Monospace
@@ -608,7 +608,7 @@ fun AdventureTouringCockpitDashboard(
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
                                     text = String.format(Locale.US, "+%.0f", displayGain),
-                                    fontSize = 20.sp,
+                                    fontSize = 22.sp,
                                     fontWeight = FontWeight.Black,
                                     color = GsAlpineWhite,
                                     fontFamily = FontFamily.Monospace
@@ -862,7 +862,7 @@ private fun GsAltimeterCard(
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = String.format(Locale.US, "+%.0f", displayGain),
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
                         color = GsAlpineWhite
                     )
@@ -1010,7 +1010,7 @@ private fun GsMetricCard(
             ) {
                 Text(
                     text = value,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     color = accentColor
                 )

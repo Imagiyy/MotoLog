@@ -390,15 +390,15 @@ fun StealthHudCockpitDashboard(
             }
         } else {
             // Portrait Tactical Collimator Layout
-            val reticleSize = (screenWidth * 0.65f).coerceIn(230.dp, 265.dp)
-            val hudRowHeight = reticleSize + 8.dp
+            val reticleSize = (screenWidth * 0.52f).coerceIn(185.dp, 215.dp)
+            val hudRowHeight = reticleSize + 6.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header (ThemedIdleTopBar in Idle, or Tactical Header + Map Button when tracking)
@@ -486,11 +486,11 @@ fun StealthHudCockpitDashboard(
                                 currentSpeed = displaySpeed,
                                 isMetric = isMetric,
                                 modifier = Modifier
-                                    .width(52.dp)
+                                    .width(42.dp)
                                     .fillMaxHeight()
                             )
 
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
                             HudCollimatorReticle(
                                 speed = displaySpeed,
@@ -500,13 +500,13 @@ fun StealthHudCockpitDashboard(
                                 modifier = Modifier.size(reticleSize)
                             )
 
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
                             HudAltitudeLadder(
                                 elevationGain = elevationGainMeters,
                                 isMetric = isMetric,
                                 modifier = Modifier
-                                    .width(52.dp)
+                                    .width(42.dp)
                                     .fillMaxHeight()
                             )
                         }
@@ -537,7 +537,7 @@ fun StealthHudCockpitDashboard(
                                     Text(
                                         text = String.format(Locale.US, "%.1f", displayDistance),
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 20.sp,
+                                        fontSize = 22.sp,
                                         fontWeight = FontWeight.Black,
                                         color = HudPhosphorGreen
                                     )
@@ -855,15 +855,15 @@ private fun HudCollimatorReticle(
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
                 fontFamily = FontFamily.Monospace,
-                fontSize = 68.sp,
+                fontSize = 56.sp,
                 fontWeight = FontWeight.Black,
                 color = speedColor,
-                letterSpacing = (-2).sp
+                letterSpacing = (-1.5).sp
             )
             Text(
                 text = speedUnit,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = HudCyan,
                 letterSpacing = 2.sp
@@ -1041,7 +1041,7 @@ private fun HudCard(
                 Text(
                     text = value,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     color = HudPhosphorGreen
                 )

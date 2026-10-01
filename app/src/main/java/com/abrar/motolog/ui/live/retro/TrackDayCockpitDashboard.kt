@@ -399,8 +399,8 @@ fun TrackDayCockpitDashboard(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Top Shift Light Strip
@@ -467,7 +467,7 @@ fun TrackDayCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(215.dp)
+                        .height(190.dp)
                 )
 
                 // Track Status Banner
@@ -779,18 +779,18 @@ private fun SuperbikeSpeedCluster(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) RaceRedGlow else RaceWhite,
-                    fontSize = 68.sp,
+                    fontSize = 58.sp,
                     fontWeight = FontWeight.Black,
                     fontStyle = FontStyle.Italic,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-2).sp
+                    letterSpacing = (-1.5).sp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(bottom = 8.dp)) {
                     Text(
                         text = unit,
                         color = RaceRed,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         fontStyle = FontStyle.Italic
@@ -865,7 +865,7 @@ private fun SuperbikeSpeedCluster(
                     Text(
                         text = String.format(Locale.US, "%.1f", distance),
                         color = RaceWhite,
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Black
                     )
@@ -929,7 +929,7 @@ private fun TrackTelemetryCard(
                 Text(
                     text = value,
                     color = accentColor,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace
                 )

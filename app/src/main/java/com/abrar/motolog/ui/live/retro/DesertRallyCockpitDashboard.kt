@@ -396,8 +396,8 @@ fun DesertRallyCockpitDashboard(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -455,7 +455,7 @@ fun DesertRallyCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
+                        .height(180.dp)
                 )
 
                 // Dedicated Roadbook Trip Master (ICO Racing style)
@@ -661,7 +661,7 @@ private fun RallyRoadbookTripMaster(
                 Text(
                     text = String.format(Locale.US, "%05.1f", distance),
                     color = RallyHighVisYellow,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.sp
@@ -741,19 +741,19 @@ private fun RallySpeedDisplay(
                 Text(
                     text = String.format(Locale.US, "%.0f", speed),
                     color = if (isSpeedAlert) Color(0xFFFF3300) else RallyWhite,
-                    fontSize = 68.sp,
+                    fontSize = 58.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-2).sp
+                    letterSpacing = (-1.5).sp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = unit,
                     color = RallyDakarOrange,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
         }
@@ -805,7 +805,7 @@ private fun RallyTelemetryCard(
                 Text(
                     text = value,
                     color = accentColor,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace
                 )

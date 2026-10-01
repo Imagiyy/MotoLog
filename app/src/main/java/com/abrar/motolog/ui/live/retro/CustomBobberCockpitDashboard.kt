@@ -370,14 +370,14 @@ fun CustomBobberCockpitDashboard(
             }
         } else {
             // Portrait Bobber Layout
-            val gaugeHeight = (screenWidth * 0.65f).coerceIn(240.dp, 270.dp)
+            val gaugeHeight = (screenWidth * 0.52f).coerceIn(185.dp, 215.dp)
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header (ThemedIdleTopBar in Idle, or Custom Header + Map Button when tracking)
@@ -481,7 +481,7 @@ fun CustomBobberCockpitDashboard(
                             Text(
                                 text = String.format(Locale.US, "%.1f", displayDistance),
                                 fontFamily = FontFamily.Serif,
-                                fontSize = 20.sp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Black,
                                 color = BobberParchment
                             )
@@ -798,15 +798,15 @@ private fun BobberBilletArcGauge(
         ) {
             Text(
                 text = String.format(Locale.US, "%.0f", animatedSpeed),
-                fontSize = 68.sp,
+                fontSize = 58.sp,
                 fontWeight = FontWeight.Black,
                 color = if (isSpeedAlert) BobberFlameOrange else BobberParchment,
                 fontFamily = FontFamily.Serif,
-                letterSpacing = (-2).sp
+                letterSpacing = (-1.5).sp
             )
             Text(
                 text = speedUnit,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = BobberBronze,
                 fontFamily = FontFamily.Monospace,
@@ -884,7 +884,7 @@ private fun BobberMetricCard(
             ) {
                 Text(
                     text = value,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     color = BobberParchment,
                     fontFamily = FontFamily.Serif
