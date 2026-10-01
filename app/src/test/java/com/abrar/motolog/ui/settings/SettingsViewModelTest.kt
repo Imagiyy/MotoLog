@@ -297,6 +297,7 @@ class SettingsViewModelTest {
         override suspend fun update(log: FuelLogEntity) {}
         override suspend fun delete(log: FuelLogEntity) { logs.remove(log) }
         override fun getLogsForBike(bikeId: Long): Flow<List<FuelLogEntity>> = MutableStateFlow(logs.filter { it.bikeId == bikeId })
+        override fun getAllFuelLogsFlow(): Flow<List<FuelLogEntity>> = MutableStateFlow(logs.toList())
         override suspend fun getLogsForBikeAscending(bikeId: Long): List<FuelLogEntity> = logs.filter { it.bikeId == bikeId }
         override suspend fun getLogById(id: Long): FuelLogEntity? = logs.find { it.id == id }
         override suspend fun getLatestLogForBike(bikeId: Long): FuelLogEntity? = logs.lastOrNull { it.bikeId == bikeId }

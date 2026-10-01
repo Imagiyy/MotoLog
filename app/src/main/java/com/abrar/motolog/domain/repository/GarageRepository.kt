@@ -40,6 +40,7 @@ interface GarageRepository {
     suspend fun markMaintenanceDone(itemId: Long, odometerKm: Double, dateEpochMs: Long = System.currentTimeMillis())
 
     // Fuel
+    fun observeAllFuelLogs(): Flow<List<FuelLogEntity>>
     fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>>
     fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats>
     suspend fun addFuelLog(

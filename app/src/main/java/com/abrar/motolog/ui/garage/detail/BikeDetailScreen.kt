@@ -658,7 +658,7 @@ private fun FuelTabContent(
                 EmptySectionView(
                     icon = Icons.Default.LocalGasStation,
                     title = "No fuel records",
-                    subtitle = "Log consecutive full-tank fills to compute accurate fuel mileage (${uiState.fuelUnit.unitLabel})."
+                    subtitle = "Log fuel fills with odometer readings to calculate distance/litre and distance/cost (${uiState.fuelUnit.unitLabel})."
                 )
             }
         } else {
@@ -669,7 +669,7 @@ private fun FuelTabContent(
                 val intervalResult = intervalMap[log.id]
                 FuelLogCard(
                     log = log,
-                    intervalKml = intervalResult?.mileageKml,
+                    interval = intervalResult,
                     useMetricUnits = uiState.useMetricUnits,
                     fuelUnit = uiState.fuelUnit,
                     currencySymbol = uiState.currencySymbol,
@@ -700,13 +700,26 @@ private fun FuelSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "FUEL MILEAGE (FULL-TANK METHOD)",
+                    text = "FUEL MILEAGE & EFFICIENCY",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
 
-                if (stats.totalCost > 0.0 && stats.totalRecordedDistanceKm > 0.0) {
+                if (stats.averageCostPerKm != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = UnitConverter.formatCostPerDistance(stats.averageCostPerKm, useMetricUnits, currencySymbol),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                } else if (stats.totalCost > 0.0 && stats.totalRecordedDistanceKm > 0.0) {
                     val dist = if (useMetricUnits) stats.totalRecordedDistanceKm else stats.totalRecordedDistanceKm * 0.621371
                     val costPerDist = stats.totalCost / dist
                     val distUnit = if (useMetricUnits) "km" else "mi"
@@ -726,12 +739,13 @@ private fun FuelSummaryCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Row 1: Mileage (Distance / Litre) & Total Spent
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("AVERAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("AVG MILEAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val avg = stats.averageMileageKml
                     Text(
                         text = if (avg != null) UnitConverter.formatFuelEconomy(avg, fuelUnit) else "—",
@@ -740,7 +754,7 @@ private fun FuelSummaryCard(
                     )
                 }
                 Column {
-                    Text("LATEST", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("LATEST MILEAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val latest = stats.latestMileageKml
                     Text(
                         text = if (latest != null) UnitConverter.formatFuelEconomy(latest, fuelUnit) else "—",
@@ -766,10 +780,48 @@ private fun FuelSummaryCard(
                 }
             }
 
+            // Row 2: Distance per Currency (Distance / Rupees)
+            if (stats.averageKmPerCost != null || stats.latestKmPerCost != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        val symbol = currencySymbol.trim().ifEmpty { "$" }
+                        Text("AVG DIST / $symbol", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = UnitConverter.formatDistancePerCost(stats.averageKmPerCost, useMetricUnits, currencySymbol),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column {
+                        val symbol = currencySymbol.trim().ifEmpty { "$" }
+                        Text("LATEST DIST / $symbol", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = UnitConverter.formatDistancePerCost(stats.latestKmPerCost, useMetricUnits, currencySymbol),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column {
+                        Text("TOTAL FUEL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = String.format(Locale.US, "%.1f L", stats.totalLitres),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             if (stats.measuredIntervalsCount == 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Requires at least 2 full-tank fill-ups to compute consumption (${fuelUnit.unitLabel}).",
+                    text = "Log at least 2 fuel fills with odometer readings to compute mileage (${fuelUnit.unitLabel}) and distance/cost.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -781,7 +833,7 @@ private fun FuelSummaryCard(
 @Composable
 private fun FuelLogCard(
     log: FuelLogEntity,
-    intervalKml: Double?,
+    interval: com.abrar.motolog.shared.domain.model.FuelIntervalResult?,
     useMetricUnits: Boolean,
     fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
     currencySymbol: String,
@@ -816,18 +868,29 @@ private fun FuelLogCard(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (intervalKml != null) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = UnitConverter.formatFuelEconomy(intervalKml, fuelUnit),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                    if (interval?.kmPerLitre != null) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = UnitConverter.formatFuelEconomy(interval.kmPerLitre, fuelUnit),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            if (interval.kmPerCost != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = UnitConverter.formatDistancePerCost(interval.kmPerCost, useMetricUnits, currencySymbol),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -851,12 +914,27 @@ private fun FuelLogCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${String.format(Locale.US, "%.2f", log.litres)} L  •  Cost: $currencySymbol${String.format(Locale.US, "%.2f", log.totalCost)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column {
+                    Text(
+                        text = "${String.format(Locale.US, "%.2f", log.litres)} L  •  Cost: $currencySymbol${String.format(Locale.US, "%.2f", log.totalCost)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (interval != null && interval.distanceKm > 0.0) {
+                        val distUser = UnitConverter.kmToUserDistance(interval.distanceKm, useMetricUnits)
+                        val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+                        val costPerDistStr = if (interval.costPerKm != null) {
+                            "  •  ${UnitConverter.formatCostPerDistance(interval.costPerKm, useMetricUnits, currencySymbol)}"
+                        } else ""
+                        Text(
+                            text = "+${String.format(Locale.US, "%.1f", distUser)} $distUnit interval$costPerDistStr",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {

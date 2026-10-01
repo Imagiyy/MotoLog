@@ -105,4 +105,23 @@ class UnitConverterTest {
         assertEquals(621.371, displayedInMiles, 0.01)
         assertEquals("621.4 mi", UnitConverter.formatInterval(kmEntered, isMetric = false))
     }
+
+    @Test
+    fun distancePerCostAndCostPerDistance_formatting() {
+        // 0.40 km / rupee
+        val kmPerCost = 0.40
+        assertEquals("0.40 km/₹", UnitConverter.formatDistancePerCost(kmPerCost, isMetric = true, currencySymbol = "₹"))
+        // In imperial: 0.40 * 0.621371 = ~0.25 mi/$
+        assertEquals("0.25 mi/$", UnitConverter.formatDistancePerCost(kmPerCost, isMetric = false, currencySymbol = "$"))
+
+        // Cost per distance: 2.50 rupees / km
+        val costPerKm = 2.50
+        assertEquals("₹2.50/km", UnitConverter.formatCostPerDistance(costPerKm, isMetric = true, currencySymbol = "₹"))
+        // In imperial: 2.50 * 1.609344 = ~4.02 $/mi
+        assertEquals("$4.02/mi", UnitConverter.formatCostPerDistance(costPerKm, isMetric = false, currencySymbol = "$"))
+
+        // Null / zero handling
+        assertEquals("—", UnitConverter.formatDistancePerCost(null, isMetric = true, currencySymbol = "₹"))
+        assertEquals("—", UnitConverter.formatCostPerDistance(null, isMetric = true, currencySymbol = "₹"))
+    }
 }

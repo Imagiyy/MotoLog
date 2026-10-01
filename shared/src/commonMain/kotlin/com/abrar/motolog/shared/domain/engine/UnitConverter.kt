@@ -176,8 +176,25 @@ object UnitConverter {
         return "${formatElevation(meters, isMetric)} ${elevationUnit(isMetric)}"
     }
 
-    fun formatFuelEconomy(kmPerLiter: Double, fuelUnit: FuelUnit): String {
+    fun formatFuelEconomy(kmPerLiter: Double?, fuelUnit: FuelUnit): String {
+        if (kmPerLiter == null || kmPerLiter <= 0.0) return "—"
         val converted = convertKmLToFuelEconomy(kmPerLiter, fuelUnit)
         return "${PlatformFormatter.formatDecimal(converted, 1)} ${fuelUnit.unitLabel}"
+    }
+
+    fun formatDistancePerCost(kmPerCost: Double?, isMetric: Boolean, currencySymbol: String): String {
+        if (kmPerCost == null || kmPerCost <= 0.0) return "—"
+        val userDistance = kmToUserDistance(kmPerCost, isMetric)
+        val unit = distanceUnit(isMetric)
+        val symbol = currencySymbol.trim().ifEmpty { "$" }
+        return "${PlatformFormatter.formatDecimal(userDistance, 2)} $unit/$symbol"
+    }
+
+    fun formatCostPerDistance(costPerKm: Double?, isMetric: Boolean, currencySymbol: String): String {
+        if (costPerKm == null || costPerKm <= 0.0) return "—"
+        val costPerUserDistance = if (isMetric) costPerKm else costPerKm * KM_PER_MILE
+        val unit = distanceUnit(isMetric)
+        val symbol = currencySymbol.trim().ifEmpty { "$" }
+        return "$symbol${PlatformFormatter.formatDecimal(costPerUserDistance, 2)}/$unit"
     }
 }

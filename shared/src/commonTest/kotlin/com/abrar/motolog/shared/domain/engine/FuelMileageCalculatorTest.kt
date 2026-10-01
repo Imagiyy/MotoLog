@@ -54,50 +54,70 @@ class FuelMileageCalculatorTest {
     }
 
     @Test
-    fun partialFillsAreAccumulatedIntoNextFullTankInterval() {
-        // Fill 1: odo 10,000, full tank
-        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
-        // Fill 2: odo 10,150, partial fill 4.0 litres (NOT full tank)
-        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_150.0, litres = 4.0, totalCost = 8.0, isFullTank = false)
-        // Fill 3: odo 10_300, full tank, 6.0 litres added
-        // Interval is between f1 and f3: Distance = 300 km, total litres used = 4.0 + 6.0 = 10.0 L -> 30 km/l
-        val f3 = FuelFill(id = 3, timestampEpochMs = 3000L, odometerKm = 10_300.0, litres = 6.0, totalCost = 12.0, isFullTank = true)
+    fun partialFillsComputeMileageAndDistancePerCostDirectly() {
+        // Fill 1: odo 10,000, 10.0 litres, cost 500 (NOT full tank)
+        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 500.0, isFullTank = false)
+        // Fill 2: odo 10,150, partial fill 4.0 litres, cost 400 (NOT full tank)
+        // Interval 1: 150 km / 4 L = 37.5 km/l, 150 km / 400 = 0.375 km/currency
+        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_150.0, litres = 4.0, totalCost = 400.0, isFullTank = false)
+        // Fill 3: odo 10,300, 6.0 litres, cost 600
+        // Interval 2: 150 km / 6 L = 25.0 km/l, 150 km / 600 = 0.25 km/currency
+        val f3 = FuelFill(id = 3, timestampEpochMs = 3000L, odometerKm = 10_300.0, litres = 6.0, totalCost = 600.0, isFullTank = false)
 
         val stats = FuelMileageCalculator.calculate(listOf(f1, f2, f3))
         assertEquals(20.0, stats.totalLitres, 0.001)
-        assertEquals(1, stats.measuredIntervalsCount)
-        assertEquals(30.0, stats.latestMileageKml!!, 0.001)
+        assertEquals(1500.0, stats.totalCost, 0.001)
+        assertEquals(2, stats.measuredIntervalsCount)
+
+        // Interval checks
+        assertEquals(37.5, stats.intervals[0].kmPerLitre, 0.001)
+        assertEquals(0.375, stats.intervals[0].kmPerCost!!, 0.001)
+
+        assertEquals(25.0, stats.intervals[1].kmPerLitre, 0.001)
+        assertEquals(0.25, stats.intervals[1].kmPerCost!!, 0.001)
+
+        // Overall stats
+        assertEquals(25.0, stats.latestMileageKml!!, 0.001)
         assertEquals(30.0, stats.averageMileageKml!!, 0.001)
+        assertEquals(0.25, stats.latestKmPerCost!!, 0.001)
+        assertEquals(300.0 / 1000.0, stats.averageKmPerCost!!, 0.001) // 300 km / (400 + 600) = 0.30 km/rupee
+        assertEquals(1000.0 / 300.0, stats.averageCostPerKm!!, 0.001) // 1000 / 300 = 3.333 rupee/km
     }
 
     @Test
     fun handlesOutOfOrderListCorrectly() {
         // Logs provided newest first (e.g. from UI query)
-        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
-        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_250.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
+        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 1000.0, isFullTank = false)
+        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_250.0, litres = 10.0, totalCost = 1000.0, isFullTank = false)
 
         // Pass descending order
         val stats = FuelMileageCalculator.calculate(listOf(f2, f1))
         assertEquals(1, stats.measuredIntervalsCount)
         assertEquals(25.0, stats.latestMileageKml!!, 0.001)
+        assertEquals(0.25, stats.latestKmPerCost!!, 0.001)
     }
 
     @Test
     fun multipleIntervalsComputeSeparateLatestAndAverageMileage() {
         // Fill 1: odo 10,000
-        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
-        // Fill 2: odo 10,300, 10 L -> 300 km / 10 L = 30 km/l
-        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_300.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
-        // Fill 3: odo 10,500, 10 L -> 200 km / 10 L = 20 km/l
-        val f3 = FuelFill(id = 3, timestampEpochMs = 3000L, odometerKm = 10_500.0, litres = 10.0, totalCost = 20.0, isFullTank = true)
+        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 10_000.0, litres = 10.0, totalCost = 500.0, isFullTank = true)
+        // Fill 2: odo 10,300, 10 L, 600 cost -> 300 km / 10 L = 30 km/l, 300 / 600 = 0.5 km/cost
+        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 10_300.0, litres = 10.0, totalCost = 600.0, isFullTank = true)
+        // Fill 3: odo 10,500, 10 L, 400 cost -> 200 km / 10 L = 20 km/l, 200 / 400 = 0.5 km/cost
+        val f3 = FuelFill(id = 3, timestampEpochMs = 3000L, odometerKm = 10_500.0, litres = 10.0, totalCost = 400.0, isFullTank = true)
 
         // Total distance across intervals = 300 + 200 = 500 km
         // Total litres consumed in intervals = 10 + 10 = 20 L
         // Overall average = 500 / 20 = 25.0 km/l
+        // Total cost in intervals = 600 + 400 = 1000
+        // Overall average km/cost = 500 / 1000 = 0.5 km/cost
         val stats = FuelMileageCalculator.calculate(listOf(f1, f2, f3))
         assertEquals(2, stats.measuredIntervalsCount)
         assertEquals(20.0, stats.latestMileageKml!!, 0.001)
         assertEquals(25.0, stats.averageMileageKml!!, 0.001)
+        assertEquals(0.5, stats.latestKmPerCost!!, 0.001)
+        assertEquals(0.5, stats.averageKmPerCost!!, 0.001)
+        assertEquals(2.0, stats.averageCostPerKm!!, 0.001)
     }
 
     @Test
@@ -109,5 +129,6 @@ class FuelMileageCalculatorTest {
         // Distance is 0 -> should not produce NaN or Infinity
         assertNull(stats.averageMileageKml)
         assertNull(stats.latestMileageKml)
+        assertNull(stats.averageKmPerCost)
     }
 }

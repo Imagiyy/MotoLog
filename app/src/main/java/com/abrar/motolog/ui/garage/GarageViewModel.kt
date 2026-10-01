@@ -10,6 +10,9 @@ import com.abrar.motolog.domain.engine.evaluate
 import com.abrar.motolog.shared.domain.engine.MaintenanceCalculator
 import com.abrar.motolog.shared.domain.engine.OdometerCalculator
 import com.abrar.motolog.domain.repository.GarageRepository
+import com.abrar.motolog.domain.engine.calculate
+import com.abrar.motolog.shared.domain.engine.FuelMileageCalculator
+import com.abrar.motolog.shared.domain.model.FuelUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,12 +46,27 @@ class GarageViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(
+            val garageDataFlow = combine(
                 garageRepository.activeBikes,
                 garageRepository.currentBikeId,
+                garageRepository.observeAllFuelLogs()
+            ) { bikes, currentBikeId, allFuelLogs ->
+                Triple(bikes, currentBikeId, allFuelLogs)
+            }
+
+            val settingsFlow = combine(
                 settingsRepository.useMetricUnits,
+                settingsRepository.fuelUnit,
+                settingsRepository.currencySymbol
+            ) { metric, fuel, currency ->
+                Triple(metric, fuel, currency)
+            }
+
+            combine(
+                garageDataFlow,
+                settingsFlow,
                 _dialogState
-            ) { bikes, currentBikeId, useMetricUnits, dialogState ->
+            ) { (bikes, currentBikeId, allFuelLogs), (useMetricUnits, fuelUnit, currencySymbol), dialogState ->
                 val now = System.currentTimeMillis()
                 val bikeItems = bikes.map { bike ->
                     val totalDistanceMeters = rideDao.getTotalDistanceMetersForBikeOnce(bike.id) ?: 0.0
@@ -61,11 +79,16 @@ class GarageViewModel @Inject constructor(
                     val evaluations = items.map { item ->
                         MaintenanceCalculator.evaluate(item, currentOdo, now)
                     }
+                    val logsForBike = allFuelLogs.filter { it.bikeId == bike.id }
+                    val fuelStats = FuelMileageCalculator.calculate(logsForBike)
+
                     BikeListItem(
                         bike = bike,
                         currentOdometerKm = currentOdo,
                         isCurrentBike = bike.id == currentBikeId,
-                        maintenanceEvaluations = evaluations
+                        maintenanceEvaluations = evaluations,
+                        fuelStats = fuelStats,
+                        fuelLogsCount = logsForBike.size
                     )
                 }
 
@@ -76,7 +99,9 @@ class GarageViewModel @Inject constructor(
                     isAddBikeDialogOpen = dialogState.isAddBikeDialogOpen,
                     bikeToArchiveOrDelete = dialogState.bikeToArchiveOrDelete,
                     bikeHasRides = dialogState.bikeHasRides,
-                    useMetricUnits = useMetricUnits
+                    useMetricUnits = useMetricUnits,
+                    fuelUnit = fuelUnit,
+                    currencySymbol = currencySymbol
                 )
             }.collect {
                 _uiState.value = it

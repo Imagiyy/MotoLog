@@ -300,6 +300,7 @@ class BikeDetailViewModelTest {
             }
         }
 
+        override fun observeAllFuelLogs(): Flow<List<FuelLogEntity>> = fuelLogsFlow
         override fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>> = fuelLogsFlow
         override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> = fuelStatsFlow
 

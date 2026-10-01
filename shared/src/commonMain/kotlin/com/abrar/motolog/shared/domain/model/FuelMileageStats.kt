@@ -13,7 +13,7 @@ data class FuelFill(
 )
 
 /**
- * Result of computing mileage between two consecutive full-tank fuel fills.
+ * Result of computing mileage and cost efficiency between consecutive fuel fills.
  */
 data class FuelIntervalResult(
     val intervalIndex: Int,
@@ -22,18 +22,24 @@ data class FuelIntervalResult(
     val endOdometerKm: Double,
     val distanceKm: Double,
     val litresConsumed: Double,
-    val kmPerLitre: Double
+    val kmPerLitre: Double,
+    val cost: Double = 0.0,
+    val kmPerCost: Double? = null,
+    val costPerKm: Double? = null
 ) {
     val mileageKml: Double get() = kmPerLitre
 }
 
 /**
- * Aggregated fuel mileage statistics for a motorcycle.
+ * Aggregated fuel mileage and cost efficiency statistics for a motorcycle.
  */
 data class FuelMileageStats(
     val intervals: List<FuelIntervalResult> = emptyList(),
     val averageKmPerLitre: Double? = null,
     val latestKmPerLitre: Double? = null,
+    val averageKmPerCost: Double? = null,
+    val latestKmPerCost: Double? = null,
+    val averageCostPerKm: Double? = null,
     val totalLitres: Double = 0.0,
     val totalCost: Double = 0.0,
     val totalRecordedDistanceKm: Double = 0.0

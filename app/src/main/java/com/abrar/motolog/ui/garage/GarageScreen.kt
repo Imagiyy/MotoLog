@@ -26,11 +26,13 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material.icons.filled.Warning
+import com.abrar.motolog.shared.domain.model.FuelUnit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -136,6 +138,8 @@ fun GarageScreen(
                             BikeCard(
                                 item = item,
                                 useMetricUnits = uiState.useMetricUnits,
+                                fuelUnit = uiState.fuelUnit,
+                                currencySymbol = uiState.currencySymbol,
                                 onClick = { onNavigateToBikeDetail(item.bike.id) },
                                 onSelectAsActive = { viewModel.selectCurrentBike(item.bike.id) },
                                 onClearActive = { viewModel.clearCurrentBike() },
@@ -172,6 +176,8 @@ fun GarageScreen(
 private fun BikeCard(
     item: BikeListItem,
     useMetricUnits: Boolean,
+    fuelUnit: FuelUnit,
+    currencySymbol: String,
     onClick: () -> Unit,
     onSelectAsActive: () -> Unit,
     onClearActive: () -> Unit,
@@ -323,10 +329,127 @@ private fun BikeCard(
                 }
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Mileage summary (Distance/Litre & Distance/Rupees)
+            BikeMileageSection(
+                item = item,
+                useMetricUnits = useMetricUnits,
+                fuelUnit = fuelUnit,
+                currencySymbol = currencySymbol
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Maintenance badge summary
             MaintenanceSummaryBadge(item = item)
+        }
+    }
+}
+
+@Composable
+private fun BikeMileageSection(
+    item: BikeListItem,
+    useMetricUnits: Boolean,
+    fuelUnit: FuelUnit,
+    currencySymbol: String,
+    modifier: Modifier = Modifier
+) {
+    val stats = item.fuelStats
+    val avgKml = stats.averageKmPerLitre
+    val avgKmPerCost = stats.averageKmPerCost
+    val avgCostPerKm = stats.averageCostPerKm
+
+    if (avgKml != null) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+            shape = RoundedCornerShape(10.dp),
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalGasStation,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "MILEAGE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = UnitConverter.formatFuelEconomy(avgKml, fuelUnit),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                if (avgKmPerCost != null) {
+                    val symbol = currencySymbol.trim().ifEmpty { "$" }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "DISTANCE / $symbol",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = UnitConverter.formatDistancePerCost(avgKmPerCost, useMetricUnits, symbol),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (avgCostPerKm != null) {
+                            Text(
+                                text = UnitConverter.formatCostPerDistance(avgCostPerKm, useMetricUnits, symbol),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else if (item.fuelLogsCount == 1) {
+        val symbol = currencySymbol.trim().ifEmpty { "$" }
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+            shape = RoundedCornerShape(8.dp),
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocalGasStation,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "1 fuel log • Log next fill to compute mileage (${fuelUnit.unitLabel}) & distance/$symbol",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

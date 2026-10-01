@@ -1,6 +1,8 @@
 package com.abrar.motolog.ui.garage
 
 import com.abrar.motolog.data.local.entity.BikeEntity
+import com.abrar.motolog.shared.domain.model.FuelMileageStats
+import com.abrar.motolog.shared.domain.model.FuelUnit
 import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 import com.abrar.motolog.shared.domain.model.MaintenanceStatus
 
@@ -8,7 +10,9 @@ data class BikeListItem(
     val bike: BikeEntity,
     val currentOdometerKm: Double,
     val isCurrentBike: Boolean,
-    val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList()
+    val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList(),
+    val fuelStats: FuelMileageStats = FuelMileageStats(),
+    val fuelLogsCount: Int = 0
 ) {
     val overdueCount: Int get() = maintenanceEvaluations.count { it.status == MaintenanceStatus.OVERDUE }
     val dueSoonCount: Int get() = maintenanceEvaluations.count { it.status == MaintenanceStatus.DUE_SOON }
@@ -21,5 +25,7 @@ data class GarageUiState(
     val isAddBikeDialogOpen: Boolean = false,
     val bikeToArchiveOrDelete: BikeEntity? = null,
     val bikeHasRides: Boolean = false,
-    val useMetricUnits: Boolean = true
+    val useMetricUnits: Boolean = true,
+    val fuelUnit: FuelUnit = FuelUnit.KM_PER_LITER,
+    val currencySymbol: String = "$"
 )

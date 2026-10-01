@@ -187,6 +187,10 @@ class GarageRepositoryImpl @Inject constructor(
     }
 
     // Fuel
+    override fun observeAllFuelLogs(): Flow<List<FuelLogEntity>> {
+        return fuelLogDao.getAllFuelLogsFlow()
+    }
+
     override fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>> {
         return fuelLogDao.getLogsForBike(bikeId)
     }

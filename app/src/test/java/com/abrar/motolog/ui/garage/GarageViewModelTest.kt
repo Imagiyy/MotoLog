@@ -88,6 +88,28 @@ class GarageViewModelTest {
     }
 
     @Test
+    fun loadsActiveBikes_withFuelMileageStats() = runTest(testDispatcher) {
+        val bike = BikeEntity(id = 1L, name = "Honda CB300R", makeModel = "Honda", initialOdometerKm = 5000.0)
+        fakeGarageRepository.activeBikesFlow.value = listOf(bike)
+        fakeGarageRepository.allFuelLogsFlow.value = listOf(
+            FuelLogEntity(id = 1L, bikeId = 1L, odometerKm = 5000.0, litres = 10.0, totalCost = 1000.0, isFullTank = false),
+            FuelLogEntity(id = 2L, bikeId = 1L, odometerKm = 5350.0, litres = 10.0, totalCost = 1050.0, isFullTank = false)
+        )
+
+        viewModel = GarageViewModel(fakeGarageRepository, fakeBikeDao, fakeRideDao, fakeMaintenanceDao, settingsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(1, state.bikes.size)
+        val bikeItem = state.bikes[0]
+        assertEquals(2, bikeItem.fuelLogsCount)
+        assertNotNull(bikeItem.fuelStats.averageKmPerLitre)
+        assertEquals(35.0, bikeItem.fuelStats.averageKmPerLitre!!, 0.001) // 350 km / 10 L
+        assertNotNull(bikeItem.fuelStats.averageKmPerCost)
+        assertEquals(350.0 / 1050.0, bikeItem.fuelStats.averageKmPerCost!!, 0.001) // 350 km / 1050 rupees
+    }
+
+    @Test
     fun selectCurrentBike_updatesCurrentBikeId() = runTest(testDispatcher) {
         val bike1 = BikeEntity(id = 1L, name = "Bike 1", initialOdometerKm = 0.0)
         val bike2 = BikeEntity(id = 2L, name = "Bike 2", initialOdometerKm = 0.0)
@@ -222,6 +244,8 @@ class GarageViewModelTest {
         override suspend fun updateMaintenanceItem(item: MaintenanceItemEntity) {}
         override suspend fun deleteMaintenanceItem(item: MaintenanceItemEntity) {}
         override suspend fun markMaintenanceDone(itemId: Long, odometerKm: Double, dateEpochMs: Long) {}
+        val allFuelLogsFlow = MutableStateFlow<List<FuelLogEntity>>(emptyList())
+        override fun observeAllFuelLogs(): Flow<List<FuelLogEntity>> = allFuelLogsFlow
         override fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>> = MutableStateFlow(emptyList())
         override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> = MutableStateFlow(FuelMileageStats())
         override suspend fun addFuelLog(bikeId: Long, odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestampEpochMs: Long): Long = 1L
