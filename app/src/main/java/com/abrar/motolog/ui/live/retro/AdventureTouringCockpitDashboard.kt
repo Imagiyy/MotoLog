@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -393,31 +394,31 @@ fun AdventureTouringCockpitDashboard(
                 }
             }
         } else {
-            // Portrait GS Overland Cockpit
+            // Portrait GS Overland Cockpit with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
+
+            val consoleHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
+            val odometerHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Expedition Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -494,7 +495,7 @@ fun AdventureTouringCockpitDashboard(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(consoleHeight)
                         .border(1.5.dp, GsCordobaBlue.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = GsPanelBg)
@@ -502,7 +503,7 @@ fun AdventureTouringCockpitDashboard(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = 12.dp, horizontal = 14.dp),
+                            .padding(vertical = 10.dp, horizontal = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
@@ -565,12 +566,12 @@ fun AdventureTouringCockpitDashboard(
                     shape = RoundedCornerShape(8.dp),
                     color = Color(0xFF0F1A24),
                     border = androidx.compose.foundation.BorderStroke(1.2.dp, GsCordobaBlue.copy(alpha = 0.65f)),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(odometerHeight)
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -648,12 +649,12 @@ fun AdventureTouringCockpitDashboard(
                     shape = RoundedCornerShape(8.dp),
                     color = Color(0xFF0A141E),
                     border = androidx.compose.foundation.BorderStroke(1.dp, GsCordobaBlue.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(statusHeight)
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -694,7 +695,7 @@ fun AdventureTouringCockpitDashboard(
 
                 // Expedition Telemetry - 6 Standard Metrics
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     GsMetricCard(
@@ -702,19 +703,19 @@ fun AdventureTouringCockpitDashboard(
                         value = movingTimeDisplay,
                         unit = "",
                         accentColor = GsGlacialCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     GsMetricCard(
                         title = "TOTAL ELAPSED",
                         value = totalTimeDisplay,
                         unit = "",
                         accentColor = GsGlacialCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     GsMetricCard(
@@ -722,19 +723,19 @@ fun AdventureTouringCockpitDashboard(
                         value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                         unit = speedUnit,
                         accentColor = GsAlpineWhite,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     GsMetricCard(
                         title = "OVERALL AVG",
                         value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
                         unit = speedUnit,
                         accentColor = GsAlpineWhite,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     GsMetricCard(
@@ -742,96 +743,90 @@ fun AdventureTouringCockpitDashboard(
                         value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                         unit = speedUnit,
                         accentColor = GsAlpineWhite,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     GsMetricCard(
                         title = "SAT-LOCK FIX",
                         value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                         unit = "",
                         accentColor = if (isGpsLost) GsDanger else GsGlacialCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
-                    }
-
-                    // Bottom Section: Action Controls (Anchored at the bottom)
-                    Column(
+                // Bottom Section: Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .height(actionButtonHeight)
                     ) {
-                        if (isIdle) {
-                            Button(
-                                onClick = onStartClick,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                            ) {
-                                Text(
-                                    text = "START EXPEDITION",
-                                    color = Color(0xFF1A1300),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 2.sp
-                                )
-                            }
-                        } else {
+                        Text(
+                            text = "START EXPEDITION",
+                            color = Color(0xFF1A1300),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.5.dp,
-                                        if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 56.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                            contentDescription = null,
-                                            tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
-                                            color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-
-                                ThemedHoldToStopButton(
-                                    onStopConfirmed = onStopConfirmed,
-                                    label = "END EXPEDITION",
-                                    progressLabel = "CONCLUDING",
-                                    borderColor = GsDanger,
-                                    gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
-                                    progressFillColor = GsDanger.copy(alpha = 0.6f),
-                                    textColor = GsAlpineWhite,
-                                    cornerRadius = 8.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
+                                    color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
                                 )
                             }
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "END EXPEDITION",
+                            progressLabel = "CONCLUDING",
+                            borderColor = GsDanger,
+                            gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
+                            progressFillColor = GsDanger.copy(alpha = 0.6f),
+                            textColor = GsAlpineWhite,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }
@@ -1017,7 +1012,8 @@ private fun GsMetricCard(
         colors = CardDefaults.cardColors(containerColor = GsPanelBg)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = title,

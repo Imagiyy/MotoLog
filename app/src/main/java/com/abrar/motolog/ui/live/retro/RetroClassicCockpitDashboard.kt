@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -387,32 +388,31 @@ fun RetroClassicCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Cafe Racer Cockpit Layout
+            // Portrait Cafe Racer Cockpit Layout with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
+
+            val dialSize = (netContentHeight * 0.31f).coerceIn(150.dp, 230.dp)
+            val drumHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val lampBarHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 46.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val dialSize = if (isTallScreen) (screenHeight * 0.22f).coerceIn(165.dp, 195.dp) else (screenHeight * 0.19f).coerceIn(145.dp, 175.dp)
-            val itemSpacing = if (isTallScreen) 7.dp else 5.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Cafe Racer Instruments Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Top Plaque & Map Button, or ThemedIdleTopBar
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -474,7 +474,7 @@ fun RetroClassicCockpitDashboard(
                     distanceValue = displayDistance,
                     unitLabel = distanceUnit,
                     palette = palette,
-                    modifier = Modifier.fillMaxWidth(0.85f)
+                    modifier = Modifier.fillMaxWidth(0.85f).height(drumHeight)
                 )
 
                 // Pilot Warning Lamps
@@ -483,12 +483,12 @@ fun RetroClassicCockpitDashboard(
                     pauseState = pauseState,
                     isSpeedAlert = isSpeedAlert,
                     accuracyMeters = accuracyMeters,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(lampBarHeight)
                 )
 
                 // Telemetry Cards displaying ALL specifications
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RetroInstrumentCard(
@@ -496,7 +496,7 @@ fun RetroClassicCockpitDashboard(
                         value = movingTimeDisplay,
                         subtitle = "Moving Clock",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
 
                     RetroInstrumentCard(
@@ -504,12 +504,12 @@ fun RetroClassicCockpitDashboard(
                         value = totalTimeDisplay,
                         subtitle = "Total on Ride",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RetroInstrumentCard(
@@ -518,7 +518,7 @@ fun RetroClassicCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "Moving Pace",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
 
                     RetroInstrumentCard(
@@ -527,12 +527,12 @@ fun RetroClassicCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "Trip Pace",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RetroInstrumentCard(
@@ -541,7 +541,7 @@ fun RetroClassicCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "Ace Top Mark",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
 
                     RetroInstrumentCard(
@@ -549,92 +549,86 @@ fun RetroClassicCockpitDashboard(
                         value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                         subtitle = if (isGpsLost) "Signal Lost" else "Satellite Fix",
                         palette = palette,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
-                    }
-
-                    // Bottom Action Controls (Anchored at the bottom)
-                    Column(
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .height(actionButtonHeight)
                     ) {
-                        if (isIdle) {
-                            Button(
-                                onClick = onStartClick,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
-                                border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                            ) {
-                                Text(
-                                    text = "IGNITION - START RIDE",
-                                    color = CafeIvory,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Serif,
-                                    letterSpacing = 2.sp
-                                )
-                            }
-                        } else {
+                        Text(
+                            text = "IGNITION - START RIDE",
+                            color = CafeIvory,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Serif,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) CafeBrass else CafeBilletInner
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    onClick = {
-                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.5.dp,
-                                        if (pauseState.isPaused) CafeBrass else CafeBilletInner
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 56.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                            contentDescription = null,
-                                            tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
-                                            color = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Serif
-                                        )
-                                    }
-                                }
-
-                                ThemedHoldToStopButton(
-                                    onStopConfirmed = onStopConfirmed,
-                                    label = "MAGNETO CUT",
-                                    progressLabel = "CUTTING",
-                                    borderColor = CafeBrass,
-                                    gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
-                                    progressFillColor = CafeCrimson.copy(alpha = 0.6f),
-                                    textColor = CafeIvory,
-                                    cornerRadius = 8.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
+                                    color = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Serif
                                 )
                             }
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "MAGNETO CUT",
+                            progressLabel = "CUTTING",
+                            borderColor = CafeBrass,
+                            gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
+                            progressFillColor = CafeCrimson.copy(alpha = 0.6f),
+                            textColor = CafeIvory,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }

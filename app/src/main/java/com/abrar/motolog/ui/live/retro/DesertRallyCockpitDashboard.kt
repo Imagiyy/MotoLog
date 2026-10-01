@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -391,32 +392,31 @@ fun DesertRallyCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Dakar Rally Cockpit Layout
+            // Portrait Dakar Rally Cockpit Layout with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
+
+            val speedDisplayHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
+            val tripMasterHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val speedDisplayHeight = if (isTallScreen) 195.dp else 175.dp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Dakar Rally Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Header
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -479,7 +479,9 @@ fun DesertRallyCockpitDashboard(
                 RallyRoadbookTripMaster(
                     distance = displayDistance,
                     distanceUnit = distanceUnit,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(tripMasterHeight)
                 )
 
                 // Dedicated Rally Status Bar
@@ -488,12 +490,16 @@ fun DesertRallyCockpitDashboard(
                     pauseState = pauseState,
                     isGpsLost = isGpsLost,
                     waypointCount = stats.acceptedPointCount,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(statusHeight)
                 )
 
                 // Telemetry Cards displaying ALL specifications
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RallyTelemetryCard(
@@ -501,7 +507,9 @@ fun DesertRallyCockpitDashboard(
                         value = movingTimeDisplay,
                         subtitle = "MOVING TIME",
                         accentColor = RallySandGold,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     RallyTelemetryCard(
@@ -509,12 +517,16 @@ fun DesertRallyCockpitDashboard(
                         value = totalTimeDisplay,
                         subtitle = "TOTAL ON RIDE",
                         accentColor = RallySandGold,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RallyTelemetryCard(
@@ -523,7 +535,9 @@ fun DesertRallyCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "ACTIVE PACE",
                         accentColor = RallyHighVisYellow,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     RallyTelemetryCard(
@@ -532,12 +546,16 @@ fun DesertRallyCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "OVERALL PACE",
                         accentColor = RallyHighVisYellow,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RallyTelemetryCard(
@@ -546,7 +564,9 @@ fun DesertRallyCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "MAX RECORD",
                         accentColor = RallyDakarOrange,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     RallyTelemetryCard(
@@ -554,91 +574,87 @@ fun DesertRallyCockpitDashboard(
                         value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                         subtitle = if (isGpsLost) "SIGNAL LOST" else "GPS SYNC",
                         accentColor = if (isGpsLost) RallyDakarOrange else RallyCompassCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
-                    }
-
-                    // Bottom Action Controls (Anchored at the bottom)
-                    Column(
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .height(actionButtonHeight)
                     ) {
-                        if (isIdle) {
-                            Button(
-                                onClick = onStartClick,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                            ) {
-                                Text(
-                                    text = "START RIDE",
-                                    color = RallyWhite,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 2.sp
-                                )
-                            }
-                        } else {
+                        Text(
+                            text = "START RIDE",
+                            color = RallyWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    onClick = {
-                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.5.dp,
-                                        if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 56.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                            contentDescription = null,
-                                            tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (pauseState.isPaused) "RESUME STAGE" else "BIVOUAC PAUSE",
-                                            color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-
-                                ThemedHoldToStopButton(
-                                    onStopConfirmed = onStopConfirmed,
-                                    label = "STAGE FINISH",
-                                    progressLabel = "FINISHING",
-                                    borderColor = RallyDakarOrange,
-                                    gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
-                                    progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
-                                    textColor = RallyWhite,
-                                    cornerRadius = 8.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME STAGE" else "BIVOUAC PAUSE",
+                                    color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
                                 )
                             }
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "STAGE FINISH",
+                            progressLabel = "FINISHING",
+                            borderColor = RallyDakarOrange,
+                            gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
+                            progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
+                            textColor = RallyWhite,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }
@@ -666,10 +682,10 @@ private fun RallyRoadbookTripMaster(
         // High-Vis Roadbook Distance Readout (Fits properly on screen)
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .clip(RoundedCornerShape(4.dp))
                 .background(Color(0xFF0C0B0A))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -807,7 +823,7 @@ private fun RallyTelemetryCard(
             .padding(8.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

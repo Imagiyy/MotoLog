@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -389,34 +390,32 @@ fun StealthHudCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Tactical Collimator Layout
-            val reticleSize = (screenWidth * 0.52f).coerceIn(185.dp, 215.dp)
-            val hudRowHeight = reticleSize + 6.dp
+            // Portrait Tactical Collimator Layout with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
+
+            val reticleSize = (netContentHeight * 0.30f).coerceIn(160.dp, 230.dp)
+            val hudRowHeight = reticleSize
+            val distanceStripHeight = (netContentHeight * 0.08f).coerceIn(38.dp, 48.dp)
+            val statusBarHeight = (netContentHeight * 0.08f).coerceIn(34.dp, 44.dp)
+            val cardRowHeight = (netContentHeight * 0.18f).coerceIn(58.dp, 94.dp)
 
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Avionics Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Header (ThemedIdleTopBar in Idle, or Tactical Header + Map Button when tracking)
                         if (isIdle) {
                             ThemedIdleTopBar(
@@ -527,235 +526,226 @@ fun StealthHudCockpitDashboard(
                             )
                         }
 
-                        // Tactical Mission Distance Strip
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = HudWireframe,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "TAC MISSION DISTANCE",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = HudPhosphorGreen.copy(alpha = 0.85f),
-                                    letterSpacing = 1.sp
-                                )
-                                Row(verticalAlignment = Alignment.Bottom) {
-                                    Text(
-                                        text = String.format(Locale.US, "%.1f", displayDistance),
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = HudPhosphorGreen
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = distanceUnit,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = HudCyan,
-                                        modifier = Modifier.padding(bottom = 2.dp)
-                                    )
-                                }
-                            }
+                // Tactical Mission Distance Strip
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = HudWireframe,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth().height(distanceStripHeight)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TAC MISSION DISTANCE",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HudPhosphorGreen.copy(alpha = 0.85f),
+                            letterSpacing = 1.sp
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = HudPhosphorGreen
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = distanceUnit,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HudCyan,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
                         }
+                    }
+                }
 
-                        // Tactical Avionics Status Bar (Matching Retro Pilot Lamps)
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFF040A06),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    RetroJewelLamp(
-                                        label = "TAC",
-                                        isActive = !isGpsLost,
-                                        color = JewelColor.GREEN,
-                                        size = 24.dp
-                                    )
-                                    RetroJewelLamp(
-                                        label = "IDL",
-                                        isActive = pauseState.isPaused,
-                                        color = JewelColor.AMBER,
-                                        size = 24.dp
-                                    )
-                                    RetroJewelLamp(
-                                        label = "ALT",
-                                        isActive = isSpeedAlert,
-                                        color = JewelColor.RED,
-                                        size = 24.dp,
-                                        shouldBlink = isSpeedAlert
-                                    )
-                                }
-
-                                Text(
-                                    text = if (isGpsLost) "RADAR LOST" else "RADAR LOCK ±${accuracyMeters.toInt()}M",
-                                    color = HudCyan,
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        // Middle Section: Tactical Telemetry Cards Grid - 6 Standard Metrics
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Tactical Avionics Status Bar (Matching Retro Pilot Lamps)
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color(0xFF040A06),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, HudPhosphorGreen.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth().height(statusBarHeight)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            HudCard(
-                                label = "MISSION TIME",
-                                value = movingTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                            RetroJewelLamp(
+                                label = "TAC",
+                                isActive = !isGpsLost,
+                                color = JewelColor.GREEN,
+                                size = 24.dp
                             )
-                            HudCard(
-                                label = "TOTAL TIME",
-                                value = totalTimeDisplay,
-                                unit = "",
-                                modifier = Modifier.weight(1f)
+                            RetroJewelLamp(
+                                label = "IDL",
+                                isActive = pauseState.isPaused,
+                                color = JewelColor.AMBER,
+                                size = 24.dp
                             )
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            HudCard(
-                                label = "MOVING AVG",
-                                value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            HudCard(
-                                label = "OVERALL AVG",
-                                value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
+                            RetroJewelLamp(
+                                label = "ALT",
+                                isActive = isSpeedAlert,
+                                color = JewelColor.RED,
+                                size = 24.dp,
+                                shouldBlink = isSpeedAlert
                             )
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            HudCard(
-                                label = "PEAK VELOCITY",
-                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                                unit = speedUnit,
-                                modifier = Modifier.weight(1f)
-                            )
-                            HudCard(
-                                label = "GPS ACCURACY",
-                                value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                                unit = "",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
 
+                        Text(
+                            text = if (isGpsLost) "RADAR LOST" else "RADAR LOCK ±${accuracyMeters.toInt()}M",
+                            color = HudCyan,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
+                }
 
-                    // Bottom Section: Action Controls (Anchored at the bottom)
-                    Column(
+                // Middle Section: Tactical Telemetry Cards Grid - 6 Standard Metrics
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HudCard(
+                        label = "MISSION TIME",
+                        value = movingTimeDisplay,
+                        unit = "",
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    HudCard(
+                        label = "TOTAL TIME",
+                        value = totalTimeDisplay,
+                        unit = "",
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HudCard(
+                        label = "MOVING AVG",
+                        value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
+                        unit = speedUnit,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    HudCard(
+                        label = "OVERALL AVG",
+                        value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
+                        unit = speedUnit,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HudCard(
+                        label = "PEAK VELOCITY",
+                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                        unit = speedUnit,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    HudCard(
+                        label = "GPS ACCURACY",
+                        value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                        unit = "",
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                }
+
+                // Bottom Section: Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HudPhosphorGreen),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .height(actionButtonHeight)
                     ) {
-                        if (isIdle) {
-                            Button(
-                                onClick = onStartClick,
-                                shape = RoundedCornerShape(4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = HudPhosphorGreen),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                            ) {
-                                Text(
-                                    text = "ENGAGE HUD - START",
-                                    color = HudBlack,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 2.sp
-                                )
-                            }
-                        } else {
+                        Text(
+                            text = "ENGAGE HUD - START",
+                            color = HudBlack,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (pauseState.isPaused) HudAmber.copy(alpha = 0.2f) else HudWireframe,
+                                contentColor = if (pauseState.isPaused) HudAmber else HudCyan
+                            ),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .border(1.dp, (if (pauseState.isPaused) HudAmber else HudCyan).copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Button(
-                                    onClick = if (pauseState.isPaused) onResumeClick else onPauseClick,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (pauseState.isPaused) HudAmber.copy(alpha = 0.2f) else HudWireframe,
-                                        contentColor = if (pauseState.isPaused) HudAmber else HudCyan
-                                    ),
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 56.dp)
-                                        .border(1.dp, (if (pauseState.isPaused) HudAmber else HudCyan).copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                            contentDescription = null,
-                                            tint = if (pauseState.isPaused) HudAmber else HudCyan,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (pauseState.isPaused) "RESUME" else "STAND DOWN",
-                                            color = if (pauseState.isPaused) HudAmber else HudCyan,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        )
-                                    }
-                                }
-
-                                ThemedHoldToStopButton(
-                                    onStopConfirmed = onStopConfirmed,
-                                    label = "DISARM HUD",
-                                    progressLabel = "DISARMING",
-                                    borderColor = HudRed,
-                                    gradientColors = listOf(Color(0xFF5E0B0B), Color(0xFF260505)),
-                                    progressFillColor = HudRed.copy(alpha = 0.6f),
-                                    textColor = Color.White,
-                                    cornerRadius = 4.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) HudAmber else HudCyan,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "STAND DOWN",
+                                    color = if (pauseState.isPaused) HudAmber else HudCyan,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "DISARM HUD",
+                            progressLabel = "DISARMING",
+                            borderColor = HudRed,
+                            gradientColors = listOf(Color(0xFF5E0B0B), Color(0xFF260505)),
+                            progressFillColor = HudRed.copy(alpha = 0.6f),
+                            textColor = Color.White,
+                            cornerRadius = 4.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }
@@ -1049,7 +1039,8 @@ private fun HudCard(
         shape = RoundedCornerShape(4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,

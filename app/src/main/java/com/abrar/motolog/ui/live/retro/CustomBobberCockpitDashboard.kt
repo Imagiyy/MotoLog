@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -369,33 +370,31 @@ fun CustomBobberCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Bobber Layout
-            val gaugeHeight = (screenWidth * 0.52f).coerceIn(185.dp, 215.dp)
+            // Portrait Bobber Layout with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
+
+            val gaugeHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
+            val odometerHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
 
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper V-Twin Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Header (ThemedIdleTopBar in Idle, or Custom Header + Map Button when tracking)
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -461,7 +460,7 @@ fun CustomBobberCockpitDashboard(
                     }
                 }
 
-                // Center 180° Billet Arc Gauge (Harmoniously Proportioned like Retro Classic)
+                // Center 180° Billet Arc Gauge
                 BobberBilletArcGauge(
                     speed = displaySpeed,
                     speedUnit = speedUnit,
@@ -476,12 +475,12 @@ fun CustomBobberCockpitDashboard(
                     shape = RoundedCornerShape(6.dp),
                     color = BobberCastIron,
                     border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(odometerHeight)
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -514,18 +513,18 @@ fun CustomBobberCockpitDashboard(
                     }
                 }
 
-                // V-Twin Engine Rumble & Pilot Lamp Status Bar (Matching Retro Pilot Lamps)
+                // V-Twin Engine Rumble & Pilot Lamp Status Bar
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = BobberCastIron,
                     border = androidx.compose.foundation.BorderStroke(1.dp, BobberBronze.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(statusHeight)
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .fillMaxSize()
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.SpaceEvenly
                     ) {
                         BobberEngineRumbleBar(
                             speed = displaySpeed,
@@ -575,141 +574,135 @@ fun CustomBobberCockpitDashboard(
 
                 // Leather-Stitched Telemetry Cards - 6 Standard Metrics
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     BobberMetricCard(
                         label = "RUMBLE TIME",
                         value = movingTimeDisplay,
                         unit = "",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     BobberMetricCard(
                         label = "TOTAL TIME",
                         value = totalTimeDisplay,
                         unit = "",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     BobberMetricCard(
                         label = "CRUISE AVG",
                         value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                         unit = speedUnit,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     BobberMetricCard(
                         label = "OVERALL AVG",
                         value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
                         unit = speedUnit,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     BobberMetricCard(
                         label = "TOP MARK",
                         value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                         unit = speedUnit,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                     BobberMetricCard(
                         label = "SAT FIX",
                         value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                         unit = "",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
 
-                }
-
-                // Bottom Action Controls (Anchored at the bottom)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (isIdle) {
-                        Button(
-                            onClick = onStartClick,
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight)
+                    ) {
+                        Text(
+                            text = "FIRE UP - START",
+                            color = BobberCastIron,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BobberFlameOrange),
+                            color = if (pauseState.isPaused) BobberFlameOrange.copy(alpha = 0.2f) else BobberCastIron,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (pauseState.isPaused) BobberFlameOrange else BobberBronze
+                            ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
+                                .weight(1f)
+                                .fillMaxHeight()
                         ) {
-                            Text(
-                                text = "FIRE UP - START",
-                                color = BobberCastIron,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 2.sp
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (pauseState.isPaused) BobberFlameOrange.copy(alpha = 0.2f) else BobberCastIron,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.5.dp,
-                                    if (pauseState.isPaused) BobberFlameOrange else BobberBronze
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .heightIn(min = 56.dp)
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                        contentDescription = null,
-                                        tint = if (pauseState.isPaused) BobberFlameOrange else BobberBronze,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (pauseState.isPaused) "RESUME" else "IDLE",
-                                        color = if (pauseState.isPaused) BobberFlameOrange else BobberParchment,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) BobberFlameOrange else BobberBronze,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RESUME" else "IDLE",
+                                    color = if (pauseState.isPaused) BobberFlameOrange else BobberParchment,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
-
-                            ThemedHoldToStopButton(
-                                onStopConfirmed = onStopConfirmed,
-                                label = "KILL MOTOR",
-                                progressLabel = "SHUTTING DOWN",
-                                borderColor = BobberFlameOrange,
-                                gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
-                                progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
-                                textColor = BobberParchment,
-                                cornerRadius = 8.dp,
-                                modifier = Modifier.weight(1.3f)
-                            )
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "KILL MOTOR",
+                            progressLabel = "SHUTTING DOWN",
+                            borderColor = BobberFlameOrange,
+                            gradientColors = listOf(Color(0xFF4E1A05), Color(0xFF220A01)),
+                            progressFillColor = BobberFlameOrange.copy(alpha = 0.6f),
+                            textColor = BobberParchment,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }
         }
     }
-}
 }
 
 /**
@@ -891,7 +884,8 @@ private fun BobberMetricCard(
         colors = CardDefaults.cardColors(containerColor = BobberCastIron)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,

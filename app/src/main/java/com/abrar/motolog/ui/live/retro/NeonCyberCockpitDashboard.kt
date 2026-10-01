@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -376,32 +377,31 @@ fun NeonCyberCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Cyber Cockpit Layout
+            // Portrait Cyber Cockpit Layout with Proportional Sizing
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val topBarHeight = 38.dp
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
+
+            val dialHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
+            val statusBarHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
+            val equalizerHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
-            val isTallScreen = screenHeight > 780.dp
-            val dialHeight = if (isTallScreen) 220.dp else 195.dp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Cyber Matrix Cluster
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                 // Header
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -467,12 +467,14 @@ fun NeonCyberCockpitDashboard(
                     shape = CutCornerShape(4.dp),
                     color = Color(0xFF07040E),
                     border = androidx.compose.foundation.BorderStroke(1.dp, CyberPurple.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(statusBarHeight)
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -514,12 +516,16 @@ fun NeonCyberCockpitDashboard(
                 // Neon Equalizer Spectrum
                 CyberEqualizerBar(
                     speed = speedKmh,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(equalizerHeight)
                 )
 
                 // Cyber Telemetry Grid displaying ALL specifications
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
@@ -527,7 +533,9 @@ fun NeonCyberCockpitDashboard(
                         value = movingTimeDisplay,
                         subtitle = "MOVING TIME",
                         accentColor = CyberCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     CyberTelemetryCard(
@@ -535,12 +543,16 @@ fun NeonCyberCockpitDashboard(
                         value = totalTimeDisplay,
                         subtitle = "TOTAL ON RIDE",
                         accentColor = CyberCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
@@ -549,7 +561,9 @@ fun NeonCyberCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "MOVING AVERAGE",
                         accentColor = CyberYellow,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     CyberTelemetryCard(
@@ -558,12 +572,16 @@ fun NeonCyberCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "OVERALL AVERAGE",
                         accentColor = CyberYellow,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardRowHeight),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CyberTelemetryCard(
@@ -572,7 +590,9 @@ fun NeonCyberCockpitDashboard(
                         unit = speedUnit,
                         subtitle = "TOP SPEED",
                         accentColor = CyberMagenta,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
 
                     CyberTelemetryCard(
@@ -580,91 +600,87 @@ fun NeonCyberCockpitDashboard(
                         value = if (isGpsLost) "LOST" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                         subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
                         accentColor = if (isGpsLost) CyberMagenta else CyberCyan,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
 
-                    }
-
-                    // Bottom Action Controls (Anchored at the bottom)
-                    Column(
+                // Bottom Action Controls
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .height(actionButtonHeight)
                     ) {
-                        if (isIdle) {
-                            Button(
-                                onClick = onStartClick,
-                                shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                            ) {
-                                Text(
-                                    text = "START RIDE",
-                                    color = Color(0xFF040208),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 2.sp
-                                )
-                            }
-                        } else {
+                        Text(
+                            text = "START RIDE",
+                            color = Color(0xFF040208),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(actionButtonHeight),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                            },
+                            shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
+                            color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (pauseState.isPaused) CyberYellow else CyberCyan
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    onClick = {
-                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                                    },
-                                    shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
-                                    color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        if (pauseState.isPaused) CyberYellow else CyberCyan
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 56.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                            contentDescription = null,
-                                            tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
-                                            color = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-
-                                ThemedHoldToStopButton(
-                                    onStopConfirmed = onStopConfirmed,
-                                    label = "OVERRIDE SYSTEM",
-                                    progressLabel = "DISENGAGING",
-                                    borderColor = CyberMagenta,
-                                    gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
-                                    progressFillColor = CyberMagenta.copy(alpha = 0.6f),
-                                    textColor = CyberWhite,
-                                    cornerRadius = 8.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                Icon(
+                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
+                                    color = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
                                 )
                             }
                         }
+
+                        ThemedHoldToStopButton(
+                            onStopConfirmed = onStopConfirmed,
+                            label = "OVERRIDE SYSTEM",
+                            progressLabel = "DISENGAGING",
+                            borderColor = CyberMagenta,
+                            gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
+                            progressFillColor = CyberMagenta.copy(alpha = 0.6f),
+                            textColor = CyberWhite,
+                            cornerRadius = 8.dp,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }
@@ -926,7 +942,7 @@ private fun CyberTelemetryCard(
             .padding(8.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

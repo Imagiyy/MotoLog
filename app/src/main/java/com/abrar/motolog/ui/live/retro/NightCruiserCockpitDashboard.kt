@@ -372,32 +372,28 @@ fun NightCruiserCockpitDashboard(
         } else {
             // Portrait Night Cruiser Layout
             val scrollState = rememberScrollState()
-            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
             val isTallScreen = screenHeight > 780.dp
-            val consoleHeight = if (screenHeight > 800.dp) 210.dp else if (screenHeight > 740.dp) 195.dp else 180.dp
-            val speedFontSize = if (screenHeight > 780.dp) 64.sp else 58.sp
-            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
-            val cardVerticalPadding = if (isTallScreen) 10.dp else 8.dp
+            val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
+            val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
+            val topBarHeight = 42.dp
+            val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
+            val itemSpacing = (availableForContent * 0.016f).coerceIn(6.dp, 10.dp)
+            val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
+
+            val consoleHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
+            val odometerHeight = (netContentHeight * 0.09f).coerceIn(40.dp, 52.dp)
+            val statusHeight = (netContentHeight * 0.09f).coerceIn(40.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.165f).coerceIn(58.dp, 96.dp)
+            val speedFontSize = if (screenHeight > 800.dp) 64.sp else if (screenHeight > 740.dp) 58.sp else 50.sp
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = contentMinHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Upper Section: Cockpit Instruments
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                         // Header (ThemedIdleTopBar in Idle, or Night Header + Map Button when tracking)
                         if (isIdle) {
                             ThemedIdleTopBar(
@@ -541,12 +537,14 @@ fun NightCruiserCockpitDashboard(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF040A17),
                             border = androidx.compose.foundation.BorderStroke(1.2.dp, NightBorder.copy(alpha = 0.65f)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(odometerHeight)
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = if (isTallScreen) 9.dp else 7.dp),
+                                    .fillMaxSize()
+                                    .padding(horizontal = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -584,12 +582,14 @@ fun NightCruiserCockpitDashboard(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF060D1E),
                             border = androidx.compose.foundation.BorderStroke(1.dp, NightBorder.copy(alpha = 0.5f)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(statusHeight)
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = if (isTallScreen) 8.dp else 6.dp),
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -630,71 +630,76 @@ fun NightCruiserCockpitDashboard(
 
                         // Low-Glare Night Telemetry Cards - 6 Standard Metrics
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(cardRowHeight),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             NightMetricCard(
                                 label = "MOVING TIME",
                                 value = movingTimeDisplay,
                                 unit = "",
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             NightMetricCard(
                                 label = "TOTAL TIME",
                                 value = totalTimeDisplay,
                                 unit = "",
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                         }
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(cardRowHeight),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             NightMetricCard(
                                 label = "CRUISE AVG",
                                 value = String.format(Locale.US, "%.1f", avgMovingSpeedDisplay),
                                 unit = speedUnit,
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             NightMetricCard(
                                 label = "OVERALL AVG",
                                 value = String.format(Locale.US, "%.1f", avgOverallSpeedDisplay),
                                 unit = speedUnit,
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                         }
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(cardRowHeight),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             NightMetricCard(
                                 label = "MAX VELOCITY",
                                 value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                                 unit = speedUnit,
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             NightMetricCard(
                                 label = "GPS FIX",
                                 value = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
                                 unit = "",
-                                verticalPadding = cardVerticalPadding,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                         }
-                    }
 
-                    // Bottom Section: Action Controls (Anchored at the bottom)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                        // Bottom Section: Action Controls (Resized to fit)
                         if (isIdle) {
                             Button(
                                 onClick = onStartClick,
@@ -702,7 +707,7 @@ fun NightCruiserCockpitDashboard(
                                 colors = ButtonDefaults.buttonColors(containerColor = NightStarlightBlue),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(60.dp)
+                                    .height(actionButtonHeight)
                             ) {
                                 Text(
                                     text = "START NIGHT CRUISE",
@@ -715,7 +720,9 @@ fun NightCruiserCockpitDashboard(
                             }
                         } else {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(actionButtonHeight),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Surface(
@@ -728,7 +735,7 @@ fun NightCruiserCockpitDashboard(
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .heightIn(min = 56.dp)
+                                        .fillMaxHeight()
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxSize(),
@@ -761,12 +768,12 @@ fun NightCruiserCockpitDashboard(
                                     progressFillColor = NightWarning.copy(alpha = 0.6f),
                                     textColor = NightPearl,
                                     cornerRadius = 8.dp,
-                                    modifier = Modifier.weight(1.3f)
+                                    modifier = Modifier
+                                        .weight(1.3f)
+                                        .fillMaxHeight()
                                 )
                             }
                         }
-                    }
-                }
             }
         }
     }
@@ -826,8 +833,7 @@ private fun NightMetricCard(
     label: String,
     value: String,
     unit: String,
-    modifier: Modifier = Modifier,
-    verticalPadding: Dp = 8.dp
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
@@ -836,7 +842,10 @@ private fun NightMetricCard(
         colors = CardDefaults.cardColors(containerColor = NightCardBg)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = verticalPadding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,
@@ -846,7 +855,7 @@ private fun NightMetricCard(
                 color = NightMuted,
                 letterSpacing = 1.sp
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Row(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
