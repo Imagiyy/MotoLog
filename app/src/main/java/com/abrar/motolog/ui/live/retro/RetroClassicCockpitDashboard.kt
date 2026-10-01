@@ -388,14 +388,31 @@ fun RetroClassicCockpitDashboard(
             }
         } else {
             // Portrait Cafe Racer Cockpit Layout
+            val scrollState = rememberScrollState()
+            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
+            val isTallScreen = screenHeight > 780.dp
+            val dialSize = if (isTallScreen) (screenHeight * 0.22f).coerceIn(165.dp, 195.dp) else (screenHeight * 0.19f).coerceIn(145.dp, 175.dp)
+            val itemSpacing = if (isTallScreen) 7.dp else 5.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentMinHeight),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Upper Cafe Racer Instruments Cluster
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                 // Top Plaque & Map Button, or ThemedIdleTopBar
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -445,7 +462,6 @@ fun RetroClassicCockpitDashboard(
                 }
 
                 // Smiths Analog Chronometer Gauge
-                val dialSize = (screenWidth * 0.75f).coerceAtMost(300.dp)
                 CafeSmithsChronometerDial(
                     currentSpeed = displaySpeed,
                     isMetric = isMetric,
@@ -537,80 +553,88 @@ fun RetroClassicCockpitDashboard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    }
 
-                // Bottom Controls Row (56dp min buttons)
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
+                    // Bottom Action Controls (Anchored at the bottom)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "IGNITION - START RIDE",
-                            color = CafeIvory,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = {
-                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) CafeBrass else CafeBilletInner
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                        if (isIdle) {
+                            Button(
+                                onClick = onStartClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CafeBritishGreen),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, CafeBrass),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
-                                    color = if (pauseState.isPaused) CafeBrass else CafeIvory,
-                                    fontSize = 12.sp,
+                                    text = "IGNITION - START RIDE",
+                                    color = CafeIvory,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Serif
+                                    fontFamily = FontFamily.Serif,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    onClick = {
+                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (pauseState.isPaused) CafeBrass.copy(alpha = 0.2f) else CafeSurface,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.5.dp,
+                                        if (pauseState.isPaused) CafeBrass else CafeBilletInner
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = null,
+                                            tint = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (pauseState.isPaused) "RESUME" else "IDLE PAUSE",
+                                            color = if (pauseState.isPaused) CafeBrass else CafeIvory,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Serif
+                                        )
+                                    }
+                                }
+
+                                ThemedHoldToStopButton(
+                                    onStopConfirmed = onStopConfirmed,
+                                    label = "MAGNETO CUT",
+                                    progressLabel = "CUTTING",
+                                    borderColor = CafeBrass,
+                                    gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
+                                    progressFillColor = CafeCrimson.copy(alpha = 0.6f),
+                                    textColor = CafeIvory,
+                                    cornerRadius = 8.dp,
+                                    modifier = Modifier.weight(1.3f)
                                 )
                             }
                         }
-
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "MAGNETO CUT",
-                            progressLabel = "CUTTING",
-                            borderColor = CafeBrass,
-                            gradientColors = listOf(Color(0xFF4A1010), Color(0xFF200505)),
-                            progressFillColor = CafeCrimson.copy(alpha = 0.6f),
-                            textColor = CafeIvory,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
                     }
                 }
             }

@@ -377,14 +377,31 @@ fun NeonCyberCockpitDashboard(
             }
         } else {
             // Portrait Cyber Cockpit Layout
+            val scrollState = rememberScrollState()
+            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
+            val isTallScreen = screenHeight > 780.dp
+            val dialHeight = if (isTallScreen) 220.dp else 195.dp
+            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentMinHeight),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Upper Cyber Matrix Cluster
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                 // Header
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -442,7 +459,7 @@ fun NeonCyberCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(205.dp)
+                        .height(dialHeight)
                 )
 
                 // Dedicated Cyber Matrix Status Bar (Matching Retro Pilot Lamps)
@@ -567,79 +584,87 @@ fun NeonCyberCockpitDashboard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    }
 
-                // Bottom Controls Row
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                    // Bottom Action Controls (Anchored at the bottom)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "START RIDE",
-                            color = Color(0xFF040208),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = {
-                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                            },
-                            shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
-                            color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (pauseState.isPaused) CyberYellow else CyberCyan
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                        if (isIdle) {
+                            Button(
+                                onClick = onStartClick,
+                                shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
-                                    color = if (pauseState.isPaused) CyberYellow else CyberCyan,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
+                                    text = "START RIDE",
+                                    color = Color(0xFF040208),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    onClick = {
+                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                    },
+                                    shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
+                                    color = if (pauseState.isPaused) CyberYellow.copy(alpha = 0.2f) else CyberSurfaceAlt,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (pauseState.isPaused) CyberYellow else CyberCyan
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = null,
+                                            tint = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (pauseState.isPaused) "RE-ENGAGE" else "PAUSE MATRIX",
+                                            color = if (pauseState.isPaused) CyberYellow else CyberCyan,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                ThemedHoldToStopButton(
+                                    onStopConfirmed = onStopConfirmed,
+                                    label = "OVERRIDE SYSTEM",
+                                    progressLabel = "DISENGAGING",
+                                    borderColor = CyberMagenta,
+                                    gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
+                                    progressFillColor = CyberMagenta.copy(alpha = 0.6f),
+                                    textColor = CyberWhite,
+                                    cornerRadius = 8.dp,
+                                    modifier = Modifier.weight(1.3f)
                                 )
                             }
                         }
-
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "OVERRIDE SYSTEM",
-                            progressLabel = "DISENGAGING",
-                            borderColor = CyberMagenta,
-                            gradientColors = listOf(Color(0xFF4A0033), Color(0xFF1E0017)),
-                            progressFillColor = CyberMagenta.copy(alpha = 0.6f),
-                            textColor = CyberWhite,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
                     }
                 }
             }

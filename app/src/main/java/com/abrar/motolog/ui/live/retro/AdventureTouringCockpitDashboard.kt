@@ -394,14 +394,30 @@ fun AdventureTouringCockpitDashboard(
             }
         } else {
             // Portrait GS Overland Cockpit
+            val scrollState = rememberScrollState()
+            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
+            val isTallScreen = screenHeight > 780.dp
+            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentMinHeight),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Upper Expedition Cluster
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                 // Header (ThemedIdleTopBar in Idle, or Expedition Banner + Map Button when tracking)
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -737,77 +753,85 @@ fun AdventureTouringCockpitDashboard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    }
 
-                // Bottom Section: Action Controls
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                    // Bottom Section: Action Controls (Anchored at the bottom)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "START EXPEDITION",
-                            color = Color(0xFF1A1300),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                        if (isIdle) {
+                            Button(
+                                onClick = onStartClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GsExpeditionGold),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
-                                    color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
+                                    text = "START EXPEDITION",
+                                    color = Color(0xFF1A1300),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    onClick = { if (pauseState.isPaused) onResumeClick() else onPauseClick() },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (pauseState.isPaused) GsExpeditionGold.copy(alpha = 0.2f) else GsPanelBg,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.5.dp,
+                                        if (pauseState.isPaused) GsExpeditionGold else GsCordobaBlue
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = null,
+                                            tint = if (pauseState.isPaused) GsExpeditionGold else GsGlacialCyan,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (pauseState.isPaused) "RESUME" else "BASE CAMP",
+                                            color = if (pauseState.isPaused) GsExpeditionGold else GsAlpineWhite,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                ThemedHoldToStopButton(
+                                    onStopConfirmed = onStopConfirmed,
+                                    label = "END EXPEDITION",
+                                    progressLabel = "CONCLUDING",
+                                    borderColor = GsDanger,
+                                    gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
+                                    progressFillColor = GsDanger.copy(alpha = 0.6f),
+                                    textColor = GsAlpineWhite,
+                                    cornerRadius = 8.dp,
+                                    modifier = Modifier.weight(1.3f)
                                 )
                             }
                         }
-
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "END EXPEDITION",
-                            progressLabel = "CONCLUDING",
-                            borderColor = GsDanger,
-                            gradientColors = listOf(Color(0xFF5A1010), Color(0xFF250505)),
-                            progressFillColor = GsDanger.copy(alpha = 0.6f),
-                            textColor = GsAlpineWhite,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
                     }
                 }
             }

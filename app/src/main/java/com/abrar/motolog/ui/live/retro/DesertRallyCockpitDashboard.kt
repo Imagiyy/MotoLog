@@ -392,14 +392,31 @@ fun DesertRallyCockpitDashboard(
             }
         } else {
             // Portrait Dakar Rally Cockpit Layout
+            val scrollState = rememberScrollState()
+            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
+            val isTallScreen = screenHeight > 780.dp
+            val speedDisplayHeight = if (isTallScreen) 195.dp else 175.dp
+            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentMinHeight),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Upper Dakar Rally Cluster
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                 // Header
                 if (isIdle) {
                     ThemedIdleTopBar(
@@ -455,7 +472,7 @@ fun DesertRallyCockpitDashboard(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(speedDisplayHeight)
                 )
 
                 // Dedicated Roadbook Trip Master (ICO Racing style)
@@ -541,79 +558,87 @@ fun DesertRallyCockpitDashboard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    }
 
-                // Bottom Controls Row
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
+                    // Bottom Action Controls (Anchored at the bottom)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "START RIDE",
-                            color = RallyWhite,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            onClick = {
-                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                        if (isIdle) {
+                            Button(
+                                onClick = onStartClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RallyDakarOrange),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (pauseState.isPaused) "RESUME STAGE" else "BIVOUAC PAUSE",
-                                    color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
+                                    text = "START RIDE",
+                                    color = RallyWhite,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    onClick = {
+                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (pauseState.isPaused) RallySandGold.copy(alpha = 0.2f) else RallyCardBg,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.5.dp,
+                                        if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = null,
+                                            tint = if (pauseState.isPaused) RallyHighVisYellow else RallyDakarOrange,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (pauseState.isPaused) "RESUME STAGE" else "BIVOUAC PAUSE",
+                                            color = if (pauseState.isPaused) RallyHighVisYellow else RallyWhite,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                ThemedHoldToStopButton(
+                                    onStopConfirmed = onStopConfirmed,
+                                    label = "STAGE FINISH",
+                                    progressLabel = "FINISHING",
+                                    borderColor = RallyDakarOrange,
+                                    gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
+                                    progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
+                                    textColor = RallyWhite,
+                                    cornerRadius = 8.dp,
+                                    modifier = Modifier.weight(1.3f)
                                 )
                             }
                         }
-
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "STAGE FINISH",
-                            progressLabel = "FINISHING",
-                            borderColor = RallyDakarOrange,
-                            gradientColors = listOf(Color(0xFF5A2500), Color(0xFF261000)),
-                            progressFillColor = RallyDakarOrange.copy(alpha = 0.6f),
-                            textColor = RallyWhite,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
-                        )
                     }
                 }
             }

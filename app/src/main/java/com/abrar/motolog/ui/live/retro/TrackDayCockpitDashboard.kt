@@ -394,231 +394,255 @@ fun TrackDayCockpitDashboard(
                 }
             }
         } else {
-            // Portrait Racing Cockpit Layout (Scrollable for smaller screens)
+            // Portrait Racing Cockpit Layout (Responsive & Bottom-Anchored)
+            val scrollState = rememberScrollState()
+            val contentMinHeight = (screenHeight - 16.dp).coerceAtLeast(0.dp)
+            val isTallScreen = screenHeight > 780.dp
+            val clusterHeight = if (screenHeight > 800.dp) 215.dp else if (screenHeight > 740.dp) 200.dp else 190.dp
+            val itemSpacing = if (isTallScreen) 10.dp else 8.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                // Top Shift Light Strip
-                TrackShiftLightBar(
-                    currentSpeed = speedKmh,
-                    isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Header
-                if (isIdle) {
-                    ThemedIdleTopBar(
-                        keepScreenOn = keepScreenOn,
-                        onToggleKeepScreenOn = onToggleKeepScreenOn,
-                        onNavigateToSettings = onNavigateToSettings,
-                        palette = palette,
-                        badgeText = "SUPERBIKE STANDBY",
-                        onSwitchToMap = onSwitchToMap
-                    )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RaceBadge(text = "RACE TELEMETRY - ${bikeName?.uppercase(Locale.US) ?: "PANIGALE V4"}")
-
-                        Surface(
-                            onClick = onSwitchToMap,
-                            shape = CutCornerShape(topStart = 6.dp, bottomEnd = 6.dp),
-                            color = RaceCarbonDark,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, RaceRed),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Map,
-                                    contentDescription = "Track Map",
-                                    tint = RaceRed,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "CIRCUIT MAP",
-                                    color = RaceWhite,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Superbike Speed Cluster
-                SuperbikeSpeedCluster(
-                    speed = displaySpeed,
-                    unit = speedUnit,
-                    distance = displayDistance,
-                    distanceUnit = distanceUnit,
-                    isSpeedAlert = isSpeedAlert,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(190.dp)
-                )
-
-                // Track Status Banner
-                TrackStatusBar(
-                    bikeName = bikeName,
-                    pauseState = pauseState,
-                    isGpsLost = isGpsLost,
-                    accuracyMeters = accuracyMeters,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Telemetry Cards displaying ALL specifications
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .heightIn(min = contentMinHeight),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    TrackTelemetryCard(
-                        label = "SESSION TIME",
-                        value = CockpitUtils.formatDurationMs(stats.movingTimeMs),
-                        subtitle = "MOVING",
-                        accentColor = RaceCyan,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    TrackTelemetryCard(
-                        label = "TOTAL TIME",
-                        value = CockpitUtils.formatDurationMs(stats.elapsedTimeMs),
-                        subtitle = "TOTAL ON RIDE",
-                        accentColor = RaceCyan,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TrackTelemetryCard(
-                        label = "MOVING AVG",
-                        value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371),
-                        unit = speedUnit,
-                        subtitle = "ACTIVE PACE",
-                        accentColor = RaceGreen,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    TrackTelemetryCard(
-                        label = "OVERALL AVG",
-                        value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371),
-                        unit = speedUnit,
-                        subtitle = "OVERALL PACE",
-                        accentColor = RaceGreen,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TrackTelemetryCard(
-                        label = "V-MAX (PEAK)",
-                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
-                        unit = speedUnit,
-                        subtitle = "TOP SPEED",
-                        accentColor = RaceRed,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    TrackTelemetryCard(
-                        label = "GPS ACCURACY",
-                        value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
-                        subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
-                        accentColor = if (isGpsLost) RaceRed else RaceAmber,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Controls Row
-                if (isIdle) {
-                    Button(
-                        onClick = onStartClick,
-                        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = RaceRed),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                    ) {
-                        Text(
-                            text = "START RIDE",
-                            color = RaceWhite,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
-                        )
-                    }
-                } else {
-                    Row(
+                    // Upper Cockpit Cluster
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Surface(
-                            onClick = {
-                                if (pauseState.isPaused) onResumeClick() else onPauseClick()
-                            },
-                            shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
-                            color = if (pauseState.isPaused) RaceAmber.copy(alpha = 0.2f) else RaceCarbonDark,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (pauseState.isPaused) RaceAmber else RaceGray
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                        ) {
+                        // Top Shift Light Strip
+                        TrackShiftLightBar(
+                            currentSpeed = speedKmh,
+                            isSpeedAlert = isSpeedAlert,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Header
+                        if (isIdle) {
+                            ThemedIdleTopBar(
+                                keepScreenOn = keepScreenOn,
+                                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                                onNavigateToSettings = onNavigateToSettings,
+                                palette = palette,
+                                badgeText = "SUPERBIKE STANDBY",
+                                onSwitchToMap = onSwitchToMap
+                            )
+                        } else {
                             Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = null,
-                                    tint = if (pauseState.isPaused) RaceAmber else RaceWhite,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (pauseState.isPaused) "RESUME" else "PIT BOX",
-                                    color = if (pauseState.isPaused) RaceAmber else RaceWhite,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                RaceBadge(text = "RACE TELEMETRY - ${bikeName?.uppercase(Locale.US) ?: "PANIGALE V4"}")
+
+                                Surface(
+                                    onClick = onSwitchToMap,
+                                    shape = CutCornerShape(topStart = 6.dp, bottomEnd = 6.dp),
+                                    color = RaceCarbonDark,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, RaceRed),
+                                    modifier = Modifier.height(34.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Map,
+                                            contentDescription = "Track Map",
+                                            tint = RaceRed,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "CIRCUIT MAP",
+                                            color = RaceWhite,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        ThemedHoldToStopButton(
-                            onStopConfirmed = onStopConfirmed,
-                            label = "KILL SWITCH",
-                            progressLabel = "DISARM",
-                            borderColor = RaceRed,
-                            gradientColors = listOf(Color(0xFF660000), Color(0xFF2B0000)),
-                            progressFillColor = RaceRedGlow.copy(alpha = 0.6f),
-                            textColor = RaceWhite,
-                            cornerRadius = 8.dp,
-                            modifier = Modifier.weight(1.3f)
+                        // Superbike Speed Cluster
+                        SuperbikeSpeedCluster(
+                            speed = displaySpeed,
+                            unit = speedUnit,
+                            distance = displayDistance,
+                            distanceUnit = distanceUnit,
+                            isSpeedAlert = isSpeedAlert,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(clusterHeight)
                         )
+
+                        // Track Status Banner
+                        TrackStatusBar(
+                            bikeName = bikeName,
+                            pauseState = pauseState,
+                            isGpsLost = isGpsLost,
+                            accuracyMeters = accuracyMeters,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Telemetry Cards displaying ALL specifications
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TrackTelemetryCard(
+                                label = "SESSION TIME",
+                                value = CockpitUtils.formatDurationMs(stats.movingTimeMs),
+                                subtitle = "MOVING",
+                                accentColor = RaceCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            TrackTelemetryCard(
+                                label = "TOTAL TIME",
+                                value = CockpitUtils.formatDurationMs(stats.elapsedTimeMs),
+                                subtitle = "TOTAL ON RIDE",
+                                accentColor = RaceCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TrackTelemetryCard(
+                                label = "MOVING AVG",
+                                value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371),
+                                unit = speedUnit,
+                                subtitle = "ACTIVE PACE",
+                                accentColor = RaceGreen,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            TrackTelemetryCard(
+                                label = "OVERALL AVG",
+                                value = String.format(Locale.US, "%.1f", if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371),
+                                unit = speedUnit,
+                                subtitle = "OVERALL PACE",
+                                accentColor = RaceGreen,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TrackTelemetryCard(
+                                label = "V-MAX (PEAK)",
+                                value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                                unit = speedUnit,
+                                subtitle = "TOP SPEED",
+                                accentColor = RaceRed,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            TrackTelemetryCard(
+                                label = "GPS ACCURACY",
+                                value = if (isGpsLost) "--" else String.format(Locale.US, "±%.0fm", accuracyMeters),
+                                subtitle = if (isGpsLost) "NO FIX" else "HIGH LOCK",
+                                accentColor = if (isGpsLost) RaceRed else RaceAmber,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Bottom Controls Row (Anchored at the bottom)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isIdle) {
+                            Button(
+                                onClick = onStartClick,
+                                shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RaceRed),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
+                            ) {
+                                Text(
+                                    text = "START RIDE",
+                                    color = RaceWhite,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    onClick = {
+                                        if (pauseState.isPaused) onResumeClick() else onPauseClick()
+                                    },
+                                    shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
+                                    color = if (pauseState.isPaused) RaceAmber.copy(alpha = 0.2f) else RaceCarbonDark,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.5.dp,
+                                        if (pauseState.isPaused) RaceAmber else RaceGray
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (pauseState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = null,
+                                            tint = if (pauseState.isPaused) RaceAmber else RaceWhite,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (pauseState.isPaused) "RESUME" else "PIT BOX",
+                                            color = if (pauseState.isPaused) RaceAmber else RaceWhite,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                ThemedHoldToStopButton(
+                                    onStopConfirmed = onStopConfirmed,
+                                    label = "KILL SWITCH",
+                                    progressLabel = "DISARM",
+                                    borderColor = RaceRed,
+                                    gradientColors = listOf(Color(0xFF660000), Color(0xFF2B0000)),
+                                    progressFillColor = RaceRedGlow.copy(alpha = 0.6f),
+                                    textColor = RaceWhite,
+                                    cornerRadius = 8.dp,
+                                    modifier = Modifier.weight(1.3f)
+                                )
+                            }
+                        }
                     }
                 }
             }
