@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +47,7 @@ fun RetroJewelLamp(
     isActive: Boolean,
     color: JewelColor,
     modifier: Modifier = Modifier,
-    size: Dp = 32.dp,
+    size: Dp = 18.dp,
     shouldBlink: Boolean = false
 ) {
     val blinkAlpha = if (shouldBlink && isActive) {
@@ -68,7 +69,7 @@ fun RetroJewelLamp(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(1.5.dp)
     ) {
         Canvas(modifier = Modifier.size(size)) {
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
@@ -137,10 +138,14 @@ fun RetroJewelLamp(
         Text(
             text = label,
             color = if (isActive) RetroIvory else Color(0xFF6B665F),
-            fontSize = 9.sp,
+            fontSize = 8.5.sp,
+            lineHeight = 9.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
-            letterSpacing = 1.sp
+            letterSpacing = 0.5.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

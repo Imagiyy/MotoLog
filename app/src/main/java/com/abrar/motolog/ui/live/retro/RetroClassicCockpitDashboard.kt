@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -398,10 +399,10 @@ fun RetroClassicCockpitDashboard(
             val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
             val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
 
-            val dialSize = (netContentHeight * 0.31f).coerceIn(150.dp, 230.dp)
+            val dialSize = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
             val drumHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
-            val lampBarHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 46.dp)
-            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+            val lampBarHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -877,7 +878,7 @@ private fun CafePilotLampBar(
             .clip(RoundedCornerShape(6.dp))
             .background(CafeSurface)
             .border(1.dp, CafeBrass.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -890,14 +891,16 @@ private fun CafePilotLampBar(
             RetroJewelLamp(
                 label = "IGN",
                 isActive = !isGpsLost,
-                color = JewelColor.GREEN
+                color = JewelColor.GREEN,
+                size = 18.dp
             )
 
             // Amber Jewel (Pause)
             RetroJewelLamp(
                 label = "IDL",
                 isActive = pauseState.isPaused,
-                color = JewelColor.AMBER
+                color = JewelColor.AMBER,
+                size = 18.dp
             )
 
             // Ruby Jewel (Speed Alert)
@@ -905,6 +908,7 @@ private fun CafePilotLampBar(
                 label = "ALT",
                 isActive = isSpeedAlert,
                 color = JewelColor.RED,
+                size = 18.dp,
                 shouldBlink = isSpeedAlert
             )
         }
@@ -912,8 +916,11 @@ private fun CafePilotLampBar(
         Text(
             text = if (isGpsLost) "NO GPS FIX" else "CHRONO SYNC ±${accuracyMeters.toInt()}M",
             color = CafeTextMuted,
-            fontSize = 10.sp,
-            fontFamily = FontFamily.Serif
+            fontSize = 9.5.sp,
+            fontFamily = FontFamily.Serif,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

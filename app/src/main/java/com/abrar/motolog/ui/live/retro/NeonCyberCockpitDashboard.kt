@@ -59,6 +59,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -388,9 +389,9 @@ fun NeonCyberCockpitDashboard(
             val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
 
             val dialHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
-            val statusBarHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
-            val equalizerHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
-            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+            val statusBarHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val equalizerHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -418,7 +419,10 @@ fun NeonCyberCockpitDashboard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CyberHudTag(text = "NEO-HUD - ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}")
+                        CyberHudTag(
+                            text = "NEO-HUD - ${bikeName?.uppercase(Locale.US) ?: "CYBER-01"}",
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
 
                         Surface(
                             onClick = onSwitchToMap,
@@ -474,7 +478,7 @@ fun NeonCyberCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 12.dp),
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -486,19 +490,19 @@ fun NeonCyberCockpitDashboard(
                                 label = "SYS",
                                 isActive = !isGpsLost,
                                 color = JewelColor.BLUE,
-                                size = 24.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "IDL",
                                 isActive = pauseState.isPaused,
                                 color = JewelColor.AMBER,
-                                size = 24.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "ALT",
                                 isActive = isSpeedAlert,
                                 color = JewelColor.RED,
-                                size = 24.dp,
+                                size = 18.dp,
                                 shouldBlink = isSpeedAlert
                             )
                         }
@@ -506,9 +510,12 @@ fun NeonCyberCockpitDashboard(
                         Text(
                             text = if (isGpsLost) "GNSS LINK LOST" else "MATRIX GNSS SYNC ±${accuracyMeters.toInt()}M",
                             color = CyberCyan,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -939,24 +946,28 @@ private fun CyberTelemetryCard(
             .background(CyberSurface)
             .border(1.dp, CyberPurple.copy(alpha = 0.6f), CutCornerShape(8.dp))
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(8.dp)
+            .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,
                 color = CyberTextMuted,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 0.5.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(1.dp))
 
             Row(
                 verticalAlignment = Alignment.Bottom,
@@ -965,19 +976,24 @@ private fun CyberTelemetryCard(
                 Text(
                     text = value,
                     color = accentColor,
-                    fontSize = 22.sp,
+                    fontSize = 19.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(3.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = unit,
                         color = CyberTextMuted,
-                        fontSize = 11.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = 2.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -986,8 +1002,12 @@ private fun CyberTelemetryCard(
                 Text(
                     text = subtitle,
                     color = Color(0xFF635685),
-                    fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontSize = 8.sp,
+                    lineHeight = 9.sp,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1042,9 +1062,12 @@ private fun CyberHeaderBar(
 }
 
 @Composable
-private fun CyberHudTag(text: String) {
+private fun CyberHudTag(
+    text: String,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clip(CutCornerShape(4.dp))
             .background(CyberSurfaceAlt)
             .border(1.dp, CyberCyan.copy(alpha = 0.4f), CutCornerShape(4.dp))
@@ -1056,7 +1079,9 @@ private fun CyberHudTag(text: String) {
             color = CyberCyan,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

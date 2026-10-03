@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -404,8 +405,8 @@ fun DesertRallyCockpitDashboard(
 
             val speedDisplayHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
             val tripMasterHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
-            val statusHeight = (netContentHeight * 0.085f).coerceIn(36.dp, 48.dp)
-            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -770,7 +771,9 @@ private fun RallySpeedDisplay(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
-                letterSpacing = 1.sp
+                letterSpacing = 1.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -834,7 +837,9 @@ private fun RallyTelemetryCard(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 0.5.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -848,7 +853,9 @@ private fun RallyTelemetryCard(
                     color = accentColor,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(3.dp))
@@ -868,7 +875,9 @@ private fun RallyTelemetryCard(
                     text = subtitle,
                     color = RallyTextMuted.copy(alpha = 0.7f),
                     fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -919,7 +928,9 @@ private fun RallyStatusBar(
                 },
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -927,7 +938,9 @@ private fun RallyStatusBar(
             text = String.format(Locale.US, "WP LOGGED: %d", waypointCount),
             color = RallySandGold,
             fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -947,7 +960,9 @@ private fun RallyTag(text: String) {
             color = RallyHighVisYellow,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

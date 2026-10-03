@@ -54,6 +54,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -400,11 +401,11 @@ fun StealthHudCockpitDashboard(
             val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
             val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
 
-            val reticleSize = (netContentHeight * 0.30f).coerceIn(160.dp, 230.dp)
+            val reticleSize = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
             val hudRowHeight = reticleSize
-            val distanceStripHeight = (netContentHeight * 0.08f).coerceIn(38.dp, 48.dp)
-            val statusBarHeight = (netContentHeight * 0.08f).coerceIn(34.dp, 44.dp)
-            val cardRowHeight = (netContentHeight * 0.18f).coerceIn(58.dp, 94.dp)
+            val distanceStripHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val statusBarHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -448,7 +449,10 @@ fun StealthHudCockpitDashboard(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = HudPhosphorGreen.copy(alpha = 0.9f),
-                                        letterSpacing = 2.sp
+                                        letterSpacing = 1.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
                                     )
                                     Text(
                                         text = if (isGpsLost) "NO FIX" else String.format(Locale.US, "±%.0fm", accuracyMeters),
@@ -579,7 +583,7 @@ fun StealthHudCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -591,19 +595,19 @@ fun StealthHudCockpitDashboard(
                                 label = "TAC",
                                 isActive = !isGpsLost,
                                 color = JewelColor.GREEN,
-                                size = 24.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "IDL",
                                 isActive = pauseState.isPaused,
                                 color = JewelColor.AMBER,
-                                size = 24.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "ALT",
                                 isActive = isSpeedAlert,
                                 color = JewelColor.RED,
-                                size = 24.dp,
+                                size = 18.dp,
                                 shouldBlink = isSpeedAlert
                             )
                         }
@@ -611,9 +615,12 @@ fun StealthHudCockpitDashboard(
                         Text(
                             text = if (isGpsLost) "RADAR LOST" else "RADAR LOCK ±${accuracyMeters.toInt()}M",
                             color = HudCyan,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1039,37 +1046,46 @@ private fun HudCard(
         shape = RoundedCornerShape(4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 3.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = HudTextMuted,
-                letterSpacing = 1.5.sp
+                letterSpacing = 0.5.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Row(
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = value,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 22.sp,
+                    fontSize = 19.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = HudPhosphorGreen
+                    color = HudPhosphorGreen,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotBlank()) {
                     Text(
                         text = unit,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = HudCyan,
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = 2.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }

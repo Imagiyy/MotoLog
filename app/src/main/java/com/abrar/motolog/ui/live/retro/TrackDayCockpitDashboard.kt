@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -407,8 +408,8 @@ fun TrackDayCockpitDashboard(
             val netContentHeight = (availableForContent - itemSpacing * 7).coerceAtLeast(260.dp)
 
             val clusterHeight = (netContentHeight * 0.38f).coerceIn(170.dp, 260.dp)
-            val statusHeight = (netContentHeight * 0.08f).coerceIn(32.dp, 44.dp)
-            val cardRowHeight = (netContentHeight * 0.18f).coerceIn(58.dp, 94.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -778,7 +779,8 @@ private fun SuperbikeSpeedCluster(
                     color = RaceGray,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1
                 )
 
                 Text(
@@ -786,7 +788,9 @@ private fun SuperbikeSpeedCluster(
                     color = if (isSpeedAlert) RaceRedGlow else RaceGreen,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -936,7 +940,9 @@ private fun TrackTelemetryCard(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 0.5.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -950,7 +956,9 @@ private fun TrackTelemetryCard(
                     color = accentColor,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(3.dp))
@@ -970,7 +978,9 @@ private fun TrackTelemetryCard(
                     text = subtitle,
                     color = Color(0xFF555E6D),
                     fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1028,7 +1038,9 @@ private fun TrackStatusBar(
                 },
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -1037,7 +1049,9 @@ private fun TrackStatusBar(
             text = if (isGpsLost) "NO FIX" else "RTK FIX ±${accuracyMeters.toInt()}M",
             color = if (isGpsLost) RaceRed else RaceGray,
             fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -1064,7 +1078,9 @@ private fun RaceBadge(text: String) {
             color = RaceWhite,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.ui.theme.CockpitThemePalette
@@ -66,18 +67,18 @@ fun RetroInstrumentCard(
             )
             .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.65f), RoundedCornerShape(8.dp))
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(8.dp)
+            .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         // 4 Corner Screws / Rivets
-        RivetDot(modifier = Modifier.align(Alignment.TopStart), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.TopEnd), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.BottomStart), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.BottomEnd), palette = palette)
+        RivetDot(modifier = Modifier.align(Alignment.TopStart).padding(1.dp), palette = palette)
+        RivetDot(modifier = Modifier.align(Alignment.TopEnd).padding(1.dp), palette = palette)
+        RivetDot(modifier = Modifier.align(Alignment.BottomStart).padding(1.dp), palette = palette)
+        RivetDot(modifier = Modifier.align(Alignment.BottomEnd).padding(1.dp), palette = palette)
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -85,36 +86,45 @@ fun RetroInstrumentCard(
             Text(
                 text = label.uppercase(),
                 color = palette.secondaryAccent,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
-                letterSpacing = 1.sp,
-                textAlign = TextAlign.Center
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
 
             // Primary Readout with theme glowing color
             Row(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 2.dp)
+                modifier = Modifier.padding(vertical = 1.dp)
             ) {
                 Text(
                     text = value,
                     color = palette.primaryAccent,
-                    fontSize = 22.sp,
+                    fontSize = 19.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotBlank()) {
-                    Spacer(modifier = Modifier.size(3.dp))
+                    Spacer(modifier = Modifier.size(2.dp))
                     Text(
                         text = unit.uppercase(),
                         color = palette.dialText.copy(alpha = 0.75f),
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 3.dp)
+                        modifier = Modifier.padding(bottom = 2.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -124,10 +134,13 @@ fun RetroInstrumentCard(
                 Text(
                     text = subtitle,
                     color = if (palette.isLight) Color(0xFF546E7A) else Color(0xFF8A8279),
-                    fontSize = 8.5.sp,
+                    fontSize = 7.5.sp,
+                    lineHeight = 8.5.sp,
                     fontFamily = FontFamily.Monospace,
                     textAlign = TextAlign.Center,
-                    maxLines = 1
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

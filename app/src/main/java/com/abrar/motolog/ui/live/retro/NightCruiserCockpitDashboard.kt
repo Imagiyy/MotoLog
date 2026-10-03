@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -375,15 +376,15 @@ fun NightCruiserCockpitDashboard(
             val isTallScreen = screenHeight > 780.dp
             val usableHeight = (screenHeight - 16.dp).coerceAtLeast(400.dp)
             val actionButtonHeight = (usableHeight * 0.075f).coerceIn(56.dp, 64.dp)
-            val topBarHeight = 42.dp
+            val topBarHeight = 38.dp
             val availableForContent = (usableHeight - topBarHeight - actionButtonHeight).coerceAtLeast(300.dp)
-            val itemSpacing = (availableForContent * 0.016f).coerceIn(6.dp, 10.dp)
+            val itemSpacing = (availableForContent * 0.015f).coerceIn(5.dp, 9.dp)
             val netContentHeight = (availableForContent - itemSpacing * 6).coerceAtLeast(260.dp)
 
             val consoleHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
-            val odometerHeight = (netContentHeight * 0.09f).coerceIn(40.dp, 52.dp)
-            val statusHeight = (netContentHeight * 0.09f).coerceIn(40.dp, 52.dp)
-            val cardRowHeight = (netContentHeight * 0.165f).coerceIn(58.dp, 96.dp)
+            val odometerHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
             val speedFontSize = if (screenHeight > 800.dp) 64.sp else if (screenHeight > 740.dp) 58.sp else 50.sp
 
             Column(
@@ -424,7 +425,10 @@ fun NightCruiserCockpitDashboard(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = NightStarlightBlue,
-                                        letterSpacing = 1.sp
+                                        letterSpacing = 1.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
@@ -589,7 +593,7 @@ fun NightCruiserCockpitDashboard(
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
+                                    .padding(horizontal = 10.dp, vertical = 2.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -601,19 +605,19 @@ fun NightCruiserCockpitDashboard(
                                         label = "NAV",
                                         isActive = !isGpsLost,
                                         color = JewelColor.BLUE,
-                                        size = 26.dp
+                                        size = 18.dp
                                     )
                                     RetroJewelLamp(
                                         label = "IDL",
                                         isActive = pauseState.isPaused,
                                         color = JewelColor.AMBER,
-                                        size = 26.dp
+                                        size = 18.dp
                                     )
                                     RetroJewelLamp(
                                         label = "ALT",
                                         isActive = isSpeedAlert,
                                         color = JewelColor.RED,
-                                        size = 26.dp,
+                                        size = 18.dp,
                                         shouldBlink = isSpeedAlert
                                     )
                                 }
@@ -621,9 +625,12 @@ fun NightCruiserCockpitDashboard(
                                 Text(
                                     text = if (isGpsLost) "GNSS SIGNAL LOST" else "STARLIGHT GNSS ±${accuracyMeters.toInt()}M",
                                     color = NightSkyIce.copy(alpha = 0.85f),
-                                    fontSize = 10.sp,
+                                    fontSize = 9.5.sp,
                                     fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -844,36 +851,45 @@ private fun NightMetricCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 3.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = label,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = NightMuted,
-                letterSpacing = 1.sp
+                letterSpacing = 0.5.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Row(
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = value,
-                    fontSize = 22.sp,
+                    fontSize = 19.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = NightPearl
+                    color = NightPearl,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotBlank()) {
                     Text(
                         text = unit,
-                        fontSize = 11.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = NightSkyIce,
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = 2.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }

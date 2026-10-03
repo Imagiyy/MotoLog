@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -406,8 +407,8 @@ fun AdventureTouringCockpitDashboard(
 
             val consoleHeight = (netContentHeight * 0.31f).coerceIn(160.dp, 240.dp)
             val odometerHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
-            val statusHeight = (netContentHeight * 0.085f).coerceIn(38.dp, 50.dp)
-            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(58.dp, 94.dp)
+            val statusHeight = (netContentHeight * 0.085f).coerceIn(44.dp, 52.dp)
+            val cardRowHeight = (netContentHeight * 0.173f).coerceIn(66.dp, 96.dp)
 
             val scrollState = rememberScrollState()
 
@@ -449,7 +450,10 @@ fun AdventureTouringCockpitDashboard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GsGlacialCyan,
-                                letterSpacing = 1.sp
+                                letterSpacing = 1.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -654,7 +658,7 @@ fun AdventureTouringCockpitDashboard(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -666,19 +670,19 @@ fun AdventureTouringCockpitDashboard(
                                 label = "GNSS",
                                 isActive = !isGpsLost,
                                 color = JewelColor.BLUE,
-                                size = 26.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "IDL",
                                 isActive = pauseState.isPaused,
                                 color = JewelColor.AMBER,
-                                size = 26.dp
+                                size = 18.dp
                             )
                             RetroJewelLamp(
                                 label = "ALT",
                                 isActive = isSpeedAlert,
                                 color = JewelColor.RED,
-                                size = 26.dp,
+                                size = 18.dp,
                                 shouldBlink = isSpeedAlert
                             )
                         }
@@ -686,9 +690,12 @@ fun AdventureTouringCockpitDashboard(
                         Text(
                             text = if (isGpsLost) "GNSS SIGNAL LOST" else "ALPINE GNSS SYNC ±${accuracyMeters.toInt()}M",
                             color = GsGlacialCyan,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1012,36 +1019,45 @@ private fun GsMetricCard(
         colors = CardDefaults.cardColors(containerColor = GsPanelBg)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 3.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = title,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = GsTextMuted,
-                letterSpacing = 1.sp
+                letterSpacing = 0.5.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Row(
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = value,
-                    fontSize = 22.sp,
+                    fontSize = 19.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = accentColor
+                    color = accentColor,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 if (unit.isNotBlank()) {
                     Text(
                         text = unit,
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = GsTextMuted,
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = 2.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
