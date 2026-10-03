@@ -131,4 +131,50 @@ class FuelMileageCalculatorTest {
         assertNull(stats.latestMileageKml)
         assertNull(stats.averageKmPerCost)
     }
+
+    @Test
+    fun singleEntryWithCurrentOdometerComputesDirectMileage() {
+        val log = FuelFill(
+            id = 1,
+            timestampEpochMs = 1_000L,
+            odometerKm = 300.0,
+            litres = 10.0,
+            totalCost = 1000.0,
+            isFullTank = true
+        )
+        // Bike has 400 km on the dash odometer, and 10 L of fuel logged
+        val stats = FuelMileageCalculator.calculate(listOf(log), currentOdometerKm = 400.0)
+        assertEquals(10.0, stats.totalLitres, 0.001)
+        assertEquals(1000.0, stats.totalCost, 0.001)
+        assertEquals(400.0, stats.totalRecordedDistanceKm, 0.001)
+        assertNotNull(stats.averageMileageKml)
+        assertEquals(40.0, stats.averageMileageKml!!, 0.001) // 400 km / 10 L = 40 km/l
+        assertNotNull(stats.averageKmPerCost)
+        assertEquals(400.0 / 1000.0, stats.averageKmPerCost!!, 0.001) // 400 / 1000 = 0.4 km/currency
+        assertEquals(1000.0 / 400.0, stats.averageCostPerKm!!, 0.001) // 1000 / 400 = 2.5 currency/km
+        assertNull(stats.latestMileageKml) // only 1 log, so no interval between logs
+    }
+
+    @Test
+    fun multipleEntriesWithCurrentOdometerIncludesUnloggedRideCalibration() {
+        // Fill 1: odo 1000 km, 10 L, 500 cost
+        val f1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 1000.0, litres = 10.0, totalCost = 500.0, isFullTank = true)
+        // Fill 2: odo 1300 km, 10 L, 500 cost
+        val f2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 1300.0, litres = 10.0, totalCost = 500.0, isFullTank = true)
+        // Rider then went for a ride without logging and calibrated dash to 1500 km
+        val stats = FuelMileageCalculator.calculate(listOf(f1, f2), currentOdometerKm = 1500.0)
+
+        // Total distance = 1500 km, Total fuel = 20 L, Total cost = 1000
+        assertEquals(20.0, stats.totalLitres, 0.001)
+        assertEquals(1000.0, stats.totalCost, 0.001)
+        assertEquals(1500.0, stats.totalRecordedDistanceKm, 0.001)
+        assertNotNull(stats.averageMileageKml)
+        assertEquals(75.0, stats.averageMileageKml!!, 0.001) // 1500 km / 20 L = 75 km/l
+        assertNotNull(stats.averageKmPerCost)
+        assertEquals(1500.0 / 1000.0, stats.averageKmPerCost!!, 0.001) // 1.5 km/currency
+        assertEquals(1000.0 / 1500.0, stats.averageCostPerKm!!, 0.001)
+
+        // Latest interval is still the most recent fill-to-fill interval
+        assertEquals(30.0, stats.latestMileageKml!!, 0.001) // (1300 - 1000) / 10 L = 30 km/l
+    }
 }

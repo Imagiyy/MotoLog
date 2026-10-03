@@ -196,8 +196,11 @@ class GarageRepositoryImpl @Inject constructor(
     }
 
     override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> {
-        return fuelLogDao.getLogsForBike(bikeId).map { logs ->
-            FuelMileageCalculator.calculate(logs)
+        return combine(
+            fuelLogDao.getLogsForBike(bikeId),
+            observeBikeOdometer(bikeId)
+        ) { logs, currentOdo ->
+            FuelMileageCalculator.calculate(logs, currentOdometerKm = currentOdo)
         }
     }
 

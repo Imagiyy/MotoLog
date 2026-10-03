@@ -71,5 +71,8 @@ fun FuelLogEntity.toDomain(): FuelFill = FuelFill(
     isFullTank = isFullTank
 )
 
-fun FuelMileageCalculator.calculate(logs: List<FuelLogEntity>): FuelMileageStats =
-    computeMileage(logs.map { it.toDomain() })
+fun FuelMileageCalculator.calculate(
+    logs: List<FuelLogEntity>,
+    currentOdometerKm: Double? = null
+): FuelMileageStats =
+    computeMileage(logs.map { it.toDomain() }, currentOdometerKm)

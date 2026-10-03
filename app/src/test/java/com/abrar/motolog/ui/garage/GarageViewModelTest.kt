@@ -104,9 +104,11 @@ class GarageViewModelTest {
         val bikeItem = state.bikes[0]
         assertEquals(2, bikeItem.fuelLogsCount)
         assertNotNull(bikeItem.fuelStats.averageKmPerLitre)
-        assertEquals(35.0, bikeItem.fuelStats.averageKmPerLitre!!, 0.001) // 350 km / 10 L
+        assertEquals(5350.0 / 20.0, bikeItem.fuelStats.averageKmPerLitre!!, 0.001) // 5350 km odometer / 20 L total fuel
         assertNotNull(bikeItem.fuelStats.averageKmPerCost)
-        assertEquals(350.0 / 1050.0, bikeItem.fuelStats.averageKmPerCost!!, 0.001) // 350 km / 1050 rupees
+        assertEquals(5350.0 / 2050.0, bikeItem.fuelStats.averageKmPerCost!!, 0.001) // 5350 km / 2050 cost
+        assertEquals(35.0, bikeItem.fuelStats.latestKmPerLitre!!, 0.001) // Latest interval: 350 km / 10 L
+        assertEquals(350.0 / 1050.0, bikeItem.fuelStats.latestKmPerCost!!, 0.001) // Latest interval: 350 km / 1050 cost
     }
 
     @Test

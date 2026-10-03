@@ -13,9 +13,15 @@ import com.abrar.motolog.shared.domain.model.FuelMileageStats
  */
 object FuelMileageCalculator {
 
-    fun calculate(entries: List<FuelFill>): FuelMileageStats = computeMileage(entries)
+    fun calculate(
+        entries: List<FuelFill>,
+        currentOdometerKm: Double? = null
+    ): FuelMileageStats = computeMileage(entries, currentOdometerKm)
 
-    fun computeMileage(entries: List<FuelFill>): FuelMileageStats {
+    fun computeMileage(
+        entries: List<FuelFill>,
+        currentOdometerKm: Double? = null
+    ): FuelMileageStats {
         if (entries.isEmpty()) {
             return FuelMileageStats()
         }
@@ -25,17 +31,6 @@ object FuelMileageCalculator {
 
         val totalLitres = sorted.sumOf { it.litres }
         val totalCost = sorted.sumOf { it.totalCost }
-        val totalDistanceKm = if (sorted.size >= 2) {
-            (sorted.last().odometerKm - sorted.first().odometerKm).coerceAtLeast(0.0)
-        } else 0.0
-
-        if (sorted.size < 2) {
-            return FuelMileageStats(
-                totalLitres = totalLitres,
-                totalCost = totalCost,
-                totalRecordedDistanceKm = totalDistanceKm
-            )
-        }
 
         var lastOdometer: Double? = null
         var accumulatedLitres = 0.0
@@ -80,17 +75,37 @@ object FuelMileageCalculator {
         val totalIntervalLitres = intervals.sumOf { it.litresConsumed }
         val totalIntervalCost = intervals.sumOf { it.cost }
 
-        val averageKmPerLitre = if (totalIntervalLitres > 0.0) {
-            totalIntervalDistance / totalIntervalLitres
-        } else null
+        val totalDistanceKm: Double
+        val averageKmPerLitre: Double?
+        val averageKmPerCost: Double?
+        val averageCostPerKm: Double?
 
-        val averageKmPerCost = if (totalIntervalCost > 0.0) {
-            totalIntervalDistance / totalIntervalCost
-        } else null
-
-        val averageCostPerKm = if (totalIntervalDistance > 0.0 && totalIntervalCost > 0.0) {
-            totalIntervalCost / totalIntervalDistance
-        } else null
+        if (currentOdometerKm != null) {
+            val effectiveDistance = maxOf(currentOdometerKm, sorted.lastOrNull()?.odometerKm ?: 0.0).coerceAtLeast(0.0)
+            totalDistanceKm = effectiveDistance
+            averageKmPerLitre = if (totalLitres > 0.0 && effectiveDistance > 0.0) {
+                effectiveDistance / totalLitres
+            } else null
+            averageKmPerCost = if (totalCost > 0.0 && effectiveDistance > 0.0) {
+                effectiveDistance / totalCost
+            } else null
+            averageCostPerKm = if (effectiveDistance > 0.0 && totalCost > 0.0) {
+                totalCost / effectiveDistance
+            } else null
+        } else {
+            totalDistanceKm = if (sorted.size >= 2) {
+                (sorted.last().odometerKm - sorted.first().odometerKm).coerceAtLeast(0.0)
+            } else 0.0
+            averageKmPerLitre = if (totalIntervalLitres > 0.0) {
+                totalIntervalDistance / totalIntervalLitres
+            } else null
+            averageKmPerCost = if (totalIntervalCost > 0.0) {
+                totalIntervalDistance / totalIntervalCost
+            } else null
+            averageCostPerKm = if (totalIntervalDistance > 0.0 && totalIntervalCost > 0.0) {
+                totalIntervalCost / totalIntervalDistance
+            } else null
+        }
 
         val latestKmPerLitre = intervals.lastOrNull()?.kmPerLitre
         val latestKmPerCost = intervals.lastOrNull()?.kmPerCost
