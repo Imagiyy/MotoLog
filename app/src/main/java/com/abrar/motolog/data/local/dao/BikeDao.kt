@@ -51,6 +51,9 @@ interface BikeDao {
     @Query("UPDATE bikes SET odometerOffsetKm = :offsetKm WHERE id = :bikeId")
     suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double)
 
+    @Query("UPDATE bikes SET mileageResetOdometerKm = :resetOdoKm, mileageResetEpochMs = :resetEpochMs WHERE id = :bikeId")
+    suspend fun updateMileageReset(bikeId: Long, resetOdoKm: Double?, resetEpochMs: Long?)
+
     @Query("SELECT * FROM bikes ORDER BY id ASC")
     suspend fun getAllBikesOnce(): List<BikeEntity>
 

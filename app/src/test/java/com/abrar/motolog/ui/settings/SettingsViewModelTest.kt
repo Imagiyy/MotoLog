@@ -232,6 +232,12 @@ class SettingsViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun updateMileageReset(bikeId: Long, resetOdoKm: Double?, resetEpochMs: Long?) {
+            val bike = bikes.find { it.id == bikeId } ?: return
+            bikes.remove(bike)
+            bikes.add(bike.copy(mileageResetOdometerKm = resetOdoKm, mileageResetEpochMs = resetEpochMs))
+            bikesFlow.value = bikes.toList()
+        }
         override suspend fun getAllBikesOnce(): List<BikeEntity> = bikes.toList()
         override suspend fun insertAll(bikesList: List<BikeEntity>) {
             bikes.addAll(bikesList)
@@ -304,5 +310,6 @@ class SettingsViewModelTest {
         override suspend fun getAllLogsOnce(): List<FuelLogEntity> = logs.toList()
         override suspend fun insertAll(logsList: List<FuelLogEntity>) { logs.addAll(logsList) }
         override suspend fun deleteAllFuelLogs() { logs.clear() }
+        override suspend fun deleteLogsForBike(bikeId: Long) { logs.removeAll { it.bikeId == bikeId } }
     }
 }

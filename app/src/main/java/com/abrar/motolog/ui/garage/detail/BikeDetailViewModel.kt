@@ -49,7 +49,8 @@ class BikeDetailViewModel @Inject constructor(
         val itemToMarkDone: MaintenanceItemEntity? = null,
         val isAddFuelDialogOpen: Boolean = false,
         val fuelLogToEdit: FuelLogEntity? = null,
-        val fuelLogToDelete: FuelLogEntity? = null
+        val fuelLogToDelete: FuelLogEntity? = null,
+        val isResetMileageDialogOpen: Boolean = false
     )
 
     private data class BikeData(
@@ -115,7 +116,8 @@ class BikeDetailViewModel @Inject constructor(
                     itemToMarkDone = dialogState.itemToMarkDone,
                     isAddFuelDialogOpen = dialogState.isAddFuelDialogOpen,
                     fuelLogToEdit = dialogState.fuelLogToEdit,
-                    fuelLogToDelete = dialogState.fuelLogToDelete
+                    fuelLogToDelete = dialogState.fuelLogToDelete,
+                    isResetMileageDialogOpen = dialogState.isResetMileageDialogOpen
                 )
             }.collect {
                 _uiState.value = it
@@ -305,6 +307,32 @@ class BikeDetailViewModel @Inject constructor(
         viewModelScope.launch {
             garageRepository.deleteFuelLog(log)
             dismissDeleteFuelDialog()
+        }
+    }
+
+    // Mileage Reset
+    fun openResetMileageDialog() {
+        _dialogState.update { it.copy(isResetMileageDialogOpen = true) }
+    }
+
+    fun dismissResetMileageDialog() {
+        _dialogState.update { it.copy(isResetMileageDialogOpen = false) }
+    }
+
+    fun confirmResetMileage(clearHistory: Boolean = false) {
+        viewModelScope.launch {
+            garageRepository.resetMileage(
+                bikeId = bikeId,
+                currentOdometerKm = uiState.value.currentOdometerKm,
+                clearLogs = clearHistory
+            )
+            dismissResetMileageDialog()
+        }
+    }
+
+    fun clearMileageReset() {
+        viewModelScope.launch {
+            garageRepository.clearMileageReset(bikeId)
         }
     }
 }

@@ -32,11 +32,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -186,7 +188,9 @@ fun BikeDetailScreen(
                                 uiState = uiState,
                                 onAddLog = { viewModel.openAddFuelDialog() },
                                 onEditLog = { viewModel.openEditFuelDialog(it) },
-                                onDeleteLog = { viewModel.requestDeleteFuelLog(it) }
+                                onDeleteLog = { viewModel.requestDeleteFuelLog(it) },
+                                onResetMileage = { viewModel.openResetMileageDialog() },
+                                onClearReset = { viewModel.clearMileageReset() }
                             )
                             1 -> MaintenanceTabContent(
                                 evaluations = uiState.maintenanceEvaluations,
@@ -335,6 +339,17 @@ fun BikeDetailScreen(
                 TextButton(onClick = { viewModel.dismissDeleteFuelDialog() }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (uiState.isResetMileageDialogOpen && bike != null) {
+        ResetMileageDialog(
+            currentOdoKm = uiState.currentOdometerKm,
+            useMetricUnits = uiState.useMetricUnits,
+            onDismiss = { viewModel.dismissResetMileageDialog() },
+            onConfirm = { clearLogs ->
+                viewModel.confirmResetMileage(clearLogs)
             }
         )
     }
@@ -631,6 +646,8 @@ private fun FuelTabContent(
     onAddLog: () -> Unit,
     onEditLog: (FuelLogEntity) -> Unit,
     onDeleteLog: (FuelLogEntity) -> Unit,
+    onResetMileage: () -> Unit = {},
+    onClearReset: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -645,7 +662,10 @@ private fun FuelTabContent(
                 currencySymbol = uiState.currencySymbol,
                 useMetricUnits = uiState.useMetricUnits,
                 currentOdometerKm = uiState.currentOdometerKm,
-                latestFuelLog = uiState.fuelLogs.firstOrNull()
+                latestFuelLog = uiState.fuelLogs.firstOrNull(),
+                mileageResetOdometerKm = uiState.bike?.mileageResetOdometerKm,
+                onResetMileage = onResetMileage,
+                onClearReset = onClearReset
             )
         }
 
@@ -677,16 +697,10 @@ private fun FuelTabContent(
                 )
             }
         } else {
-            // Map interval efficiencies to logs
-            val intervalMap = uiState.fuelStats.intervalResults.associateBy { it.endLogId }
-
             items(uiState.fuelLogs, key = { it.id }) { log ->
-                val intervalResult = intervalMap[log.id]
                 FuelLogCard(
                     log = log,
-                    interval = intervalResult,
                     useMetricUnits = uiState.useMetricUnits,
-                    fuelUnit = uiState.fuelUnit,
                     currencySymbol = uiState.currencySymbol,
                     onEdit = { onEditLog(log) },
                     onDelete = { onDeleteLog(log) }
@@ -703,7 +717,10 @@ private fun FuelSummaryCard(
     currencySymbol: String = "$",
     useMetricUnits: Boolean = true,
     currentOdometerKm: Double = 0.0,
-    latestFuelLog: FuelLogEntity? = null
+    latestFuelLog: FuelLogEntity? = null,
+    mileageResetOdometerKm: Double? = null,
+    onResetMileage: () -> Unit = {},
+    onClearReset: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -723,34 +740,53 @@ private fun FuelSummaryCard(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (stats.averageCostPerKm != null) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = UnitConverter.formatCostPerDistance(stats.averageCostPerKm, useMetricUnits, currencySymbol),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (mileageResetOdometerKm != null) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                val resetUser = UnitConverter.kmToUserDistance(mileageResetOdometerKm, useMetricUnits)
+                                val unitStr = UnitConverter.distanceUnit(useMetricUnits)
+                                Text(
+                                    text = "Reset @ ${String.format(Locale.US, "%.0f", resetUser)} $unitStr",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Spacer(modifier = Modifier.width(2.dp))
+                                IconButton(
+                                    onClick = onClearReset,
+                                    modifier = Modifier.size(16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear Reset",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
                     }
-                } else if (stats.totalCost > 0.0 && stats.totalRecordedDistanceKm > 0.0) {
-                    val dist = if (useMetricUnits) stats.totalRecordedDistanceKm else stats.totalRecordedDistanceKm * 0.621371
-                    val costPerDist = stats.totalCost / dist
-                    val distUnit = if (useMetricUnits) "km" else "mi"
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+
+                    OutlinedButton(
+                        onClick = onResetMileage,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
                     ) {
-                        Text(
-                            text = "$currencySymbol${String.format(Locale.US, "%.2f", costPerDist)} / $distUnit",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        Icon(
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = "Reset Mileage",
+                            modifier = Modifier.size(14.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Reset", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -769,6 +805,16 @@ private fun FuelSummaryCard(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
+                    if (mileageResetOdometerKm != null && currentOdometerKm >= mileageResetOdometerKm) {
+                        val trackedKm = currentOdometerKm - mileageResetOdometerKm
+                        val trackedUser = UnitConverter.kmToUserDistance(trackedKm, useMetricUnits)
+                        val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+                        Text(
+                            text = "(${String.format(Locale.US, "%.1f", trackedUser)} $distUnit tracked)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Column {
                     Text("LATEST MILEAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -871,9 +917,7 @@ private fun FuelSummaryCard(
 @Composable
 private fun FuelLogCard(
     log: FuelLogEntity,
-    interval: com.abrar.motolog.shared.domain.model.FuelIntervalResult?,
     useMetricUnits: Boolean,
-    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
     currencySymbol: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -905,46 +949,17 @@ private fun FuelLogCard(
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (interval?.kmPerLitre != null) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = UnitConverter.formatFuelEconomy(interval.kmPerLitre, fuelUnit),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                            if (interval.kmPerCost != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = UnitConverter.formatDistancePerCost(interval.kmPerCost, useMetricUnits, currencySymbol),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Surface(
-                        color = if (log.isFullTank) Color(0x3366BB6A) else MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (log.isFullTank) "FULL" else "PARTIAL",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (log.isFullTank) Color(0xFF66BB6A) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Surface(
+                    color = if (log.isFullTank) Color(0x3366BB6A) else MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (log.isFullTank) "FULL" else "PARTIAL",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (log.isFullTank) Color(0xFF66BB6A) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
@@ -960,18 +975,6 @@ private fun FuelLogCard(
                         text = "${String.format(Locale.US, "%.2f", log.litres)} L  •  Cost: $currencySymbol${String.format(Locale.US, "%.2f", log.totalCost)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    if (interval != null && interval.distanceKm > 0.0) {
-                        val distUser = UnitConverter.kmToUserDistance(interval.distanceKm, useMetricUnits)
-                        val distUnit = UnitConverter.distanceUnit(useMetricUnits)
-                        val costPerDistStr = if (interval.costPerKm != null) {
-                            "  •  ${UnitConverter.formatCostPerDistance(interval.costPerKm, useMetricUnits, currencySymbol)}"
-                        } else ""
-                        Text(
-                            text = "+${String.format(Locale.US, "%.1f", distUser)} $distUnit interval$costPerDistStr",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
 
                 Row {
@@ -980,7 +983,7 @@ private fun FuelLogCard(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -995,6 +998,62 @@ private fun FuelLogCard(
             }
         }
     }
+}
+
+@Composable
+private fun ResetMileageDialog(
+    currentOdoKm: Double,
+    useMetricUnits: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (clearLogs: Boolean) -> Unit
+) {
+    var clearLogs by rememberSaveable { mutableStateOf(false) }
+    val userOdo = UnitConverter.kmToUserDistance(currentOdoKm, useMetricUnits)
+    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.RestartAlt, contentDescription = null) },
+        title = { Text("Reset Average Mileage") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "This will reset your average fuel economy calculation baseline to your current odometer reading of ${String.format(Locale.US, "%,.1f %s", userOdo, distUnit)}.\n\nFuture fuel fills and distance will calculate mileage fresh from this point.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { clearLogs = !clearLogs }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = clearLogs,
+                        onCheckedChange = { clearLogs = it }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Also delete past fuel logs from history",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(clearLogs) }
+            ) {
+                Text("Reset")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

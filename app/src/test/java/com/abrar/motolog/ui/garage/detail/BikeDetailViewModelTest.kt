@@ -253,6 +253,51 @@ class BikeDetailViewModelTest {
         assertEquals(10_800.0, fakeGarageRepository.lastSetOdometerKm, 0.001)
     }
 
+    @Test
+    fun resetMileage_opensDialogAndConfirmsReset() = runTest(testDispatcher) {
+        fakeGarageRepository.bikeOdoFlow.value = 10_500.0
+        viewModel = createViewModel(1L)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isResetMileageDialogOpen)
+
+        viewModel.openResetMileageDialog()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isResetMileageDialogOpen)
+
+        viewModel.confirmResetMileage(clearHistory = false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isResetMileageDialogOpen)
+        assertEquals(10_500.0, fakeGarageRepository.resetOdometerCalled!!, 0.001)
+        assertFalse(fakeGarageRepository.resetClearLogsCalled)
+    }
+
+    @Test
+    fun resetMileage_withClearHistoryDeletesLogs() = runTest(testDispatcher) {
+        fakeGarageRepository.bikeOdoFlow.value = 10_500.0
+        fakeGarageRepository.fuelLogs.add(FuelLogEntity(id = 1L, bikeId = 1L, odometerKm = 10_000.0, litres = 10.0, totalCost = 1000.0, isFullTank = true))
+        viewModel = createViewModel(1L)
+        advanceUntilIdle()
+
+        viewModel.confirmResetMileage(clearHistory = true)
+        advanceUntilIdle()
+
+        assertTrue(fakeGarageRepository.resetClearLogsCalled)
+        assertTrue(fakeGarageRepository.fuelLogs.isEmpty())
+    }
+
+    @Test
+    fun clearMileageReset_callsRepository() = runTest(testDispatcher) {
+        viewModel = createViewModel(1L)
+        advanceUntilIdle()
+
+        viewModel.clearMileageReset()
+        advanceUntilIdle()
+
+        assertTrue(fakeGarageRepository.isClearResetCalled)
+    }
+
     private class FakeGarageRepository(val bike: BikeEntity) : GarageRepository {
         val bikeFlow = MutableStateFlow<BikeEntity?>(bike)
         val bikeOdoFlow = MutableStateFlow(bike.initialOdometerKm)
@@ -376,6 +421,31 @@ class BikeDetailViewModelTest {
         }
 
         override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? = fuelLogs.maxByOrNull { it.timestampEpochMs }
+        var resetOdometerCalled: Double? = null
+        var resetClearLogsCalled: Boolean = false
+        var isClearResetCalled: Boolean = false
+
+        override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean) {
+            resetOdometerCalled = currentOdometerKm
+            resetClearLogsCalled = clearLogs
+            if (clearLogs) {
+                fuelLogs.clear()
+                fuelLogsFlow.value = emptyList()
+            }
+            val b = bikeFlow.value
+            if (b != null) {
+                bikeFlow.value = b.copy(mileageResetOdometerKm = currentOdometerKm, mileageResetEpochMs = System.currentTimeMillis())
+            }
+        }
+
+        override suspend fun clearMileageReset(bikeId: Long) {
+            isClearResetCalled = true
+            val b = bikeFlow.value
+            if (b != null) {
+                bikeFlow.value = b.copy(mileageResetOdometerKm = null, mileageResetEpochMs = null)
+            }
+        }
+
         override suspend fun reassignRideBike(rideId: Long, newBikeId: Long?) {}
     }
 
@@ -394,6 +464,7 @@ class BikeDetailViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = rideCounts[bikeId] ?: 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun updateMileageReset(bikeId: Long, resetOdoKm: Double?, resetEpochMs: Long?) {}
         override suspend fun getAllBikesOnce(): List<BikeEntity> = emptyList()
         override suspend fun insertAll(bikes: List<BikeEntity>) {}
         override suspend fun deleteAllBikes() {}

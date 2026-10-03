@@ -42,6 +42,9 @@ interface FuelLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(logs: List<FuelLogEntity>)
 
+    @Query("DELETE FROM fuel_logs WHERE bikeId = :bikeId")
+    suspend fun deleteLogsForBike(bikeId: Long)
+
     @Query("DELETE FROM fuel_logs")
     suspend fun deleteAllFuelLogs()
 }

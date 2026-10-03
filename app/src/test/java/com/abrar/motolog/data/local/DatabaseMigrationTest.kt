@@ -267,4 +267,43 @@ class DatabaseMigrationTest {
         val bikeWithPlate = BikeEntity(id = 2L, name = "Ninja 400", registrationNumber = "KA-01-AB-1234")
         assertEquals("KA-01-AB-1234", bikeWithPlate.registrationNumber)
     }
+
+    @Test
+    fun migration_6_to_7_addsMileageResetColumnsToBikes() {
+        val executedSql = mutableListOf<String>()
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_6_7.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(6, MotoLogDatabase.MIGRATION_6_7.startVersion)
+        assertEquals(7, MotoLogDatabase.MIGRATION_6_7.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Adds mileageReset columns
+        assertTrue(
+            "Must add mileageResetOdometerKm column to bikes",
+            executedSql.any { it.contains("ALTER TABLE `bikes` ADD COLUMN `mileageResetOdometerKm` REAL DEFAULT NULL") }
+        )
+        assertTrue(
+            "Must add mileageResetEpochMs column to bikes",
+            executedSql.any { it.contains("ALTER TABLE `bikes` ADD COLUMN `mileageResetEpochMs` INTEGER DEFAULT NULL") }
+        )
+
+        // 4. Verify default BikeEntity contains null reset fields
+        val defaultBike = BikeEntity(id = 1L, name = "Ninja 400")
+        assertNull(defaultBike.mileageResetOdometerKm)
+        assertNull(defaultBike.mileageResetEpochMs)
+    }
 }

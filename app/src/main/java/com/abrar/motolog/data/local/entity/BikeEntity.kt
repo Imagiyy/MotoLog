@@ -35,5 +35,11 @@ data class BikeEntity(
     val isArchived: Boolean = false,
 
     /** Vehicle registration / license plate number (e.g., "KA-01-AB-1234") */
-    val registrationNumber: String = ""
+    val registrationNumber: String = "",
+
+    /** Odometer reading in km when mileage calculation was last reset (null = not reset, uses lifetime) */
+    val mileageResetOdometerKm: Double? = null,
+
+    /** Timestamp in epoch ms when mileage calculation was last reset */
+    val mileageResetEpochMs: Long? = null
 )

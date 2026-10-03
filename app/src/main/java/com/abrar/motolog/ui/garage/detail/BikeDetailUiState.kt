@@ -30,5 +30,6 @@ data class BikeDetailUiState(
     val itemToMarkDone: MaintenanceItemEntity? = null,
     val isAddFuelDialogOpen: Boolean = false,
     val fuelLogToEdit: FuelLogEntity? = null,
-    val fuelLogToDelete: FuelLogEntity? = null
+    val fuelLogToDelete: FuelLogEntity? = null,
+    val isResetMileageDialogOpen: Boolean = false
 )

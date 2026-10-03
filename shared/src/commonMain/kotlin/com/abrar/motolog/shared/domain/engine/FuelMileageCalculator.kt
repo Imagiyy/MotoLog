@@ -15,12 +15,14 @@ object FuelMileageCalculator {
 
     fun calculate(
         entries: List<FuelFill>,
-        currentOdometerKm: Double? = null
-    ): FuelMileageStats = computeMileage(entries, currentOdometerKm)
+        currentOdometerKm: Double? = null,
+        startOdometerKm: Double? = null
+    ): FuelMileageStats = computeMileage(entries, currentOdometerKm, startOdometerKm)
 
     fun computeMileage(
         entries: List<FuelFill>,
-        currentOdometerKm: Double? = null
+        currentOdometerKm: Double? = null,
+        startOdometerKm: Double? = null
     ): FuelMileageStats {
         if (entries.isEmpty()) {
             return FuelMileageStats()
@@ -81,7 +83,8 @@ object FuelMileageCalculator {
         val averageCostPerKm: Double?
 
         if (currentOdometerKm != null) {
-            val effectiveDistance = maxOf(currentOdometerKm, sorted.lastOrNull()?.odometerKm ?: 0.0).coerceAtLeast(0.0)
+            val baseOdo = startOdometerKm ?: 0.0
+            val effectiveDistance = (maxOf(currentOdometerKm, sorted.lastOrNull()?.odometerKm ?: 0.0) - baseOdo).coerceAtLeast(0.0)
             totalDistanceKm = effectiveDistance
             averageKmPerLitre = if (totalLitres > 0.0 && effectiveDistance > 0.0) {
                 effectiveDistance / totalLitres

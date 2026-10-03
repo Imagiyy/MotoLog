@@ -198,9 +198,23 @@ class GarageRepositoryImpl @Inject constructor(
     override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> {
         return combine(
             fuelLogDao.getLogsForBike(bikeId),
+            observeBike(bikeId),
             observeBikeOdometer(bikeId)
-        ) { logs, currentOdo ->
-            FuelMileageCalculator.calculate(logs, currentOdometerKm = currentOdo)
+        ) { logs, bike, currentOdo ->
+            val resetOdo = bike?.mileageResetOdometerKm
+            val resetEpoch = bike?.mileageResetEpochMs
+            val activeLogs = if (resetEpoch != null) {
+                logs.filter { it.timestampEpochMs >= resetEpoch }
+            } else if (resetOdo != null) {
+                logs.filter { it.odometerKm >= resetOdo }
+            } else {
+                logs
+            }
+            FuelMileageCalculator.calculate(
+                logs = activeLogs,
+                currentOdometerKm = currentOdo,
+                startOdometerKm = resetOdo
+            )
         }
     }
 
@@ -235,6 +249,18 @@ class GarageRepositoryImpl @Inject constructor(
 
     override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? = withContext(Dispatchers.IO) {
         fuelLogDao.getLatestLogForBike(bikeId)
+    }
+
+    override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean): Unit = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        bikeDao.updateMileageReset(bikeId, currentOdometerKm, now)
+        if (clearLogs) {
+            fuelLogDao.deleteLogsForBike(bikeId)
+        }
+    }
+
+    override suspend fun clearMileageReset(bikeId: Long): Unit = withContext(Dispatchers.IO) {
+        bikeDao.updateMileageReset(bikeId, null, null)
     }
 
     // Ride Reassignment

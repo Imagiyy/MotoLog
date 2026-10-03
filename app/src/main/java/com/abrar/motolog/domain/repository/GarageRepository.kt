@@ -55,6 +55,8 @@ interface GarageRepository {
     suspend fun updateFuelLog(log: FuelLogEntity)
     suspend fun deleteFuelLog(log: FuelLogEntity)
     suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity?
+    suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean = false)
+    suspend fun clearMileageReset(bikeId: Long)
 
     // Ride Reassignment
     suspend fun reassignRideBike(rideId: Long, newBikeId: Long?)

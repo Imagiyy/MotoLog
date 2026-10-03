@@ -79,8 +79,21 @@ class GarageViewModel @Inject constructor(
                     val evaluations = items.map { item ->
                         MaintenanceCalculator.evaluate(item, currentOdo, now)
                     }
+                    val resetOdo = bike.mileageResetOdometerKm
+                    val resetEpoch = bike.mileageResetEpochMs
                     val logsForBike = allFuelLogs.filter { it.bikeId == bike.id }
-                    val fuelStats = FuelMileageCalculator.calculate(logsForBike, currentOdometerKm = currentOdo)
+                    val activeLogs = if (resetEpoch != null) {
+                        logsForBike.filter { it.timestampEpochMs >= resetEpoch }
+                    } else if (resetOdo != null) {
+                        logsForBike.filter { it.odometerKm >= resetOdo }
+                    } else {
+                        logsForBike
+                    }
+                    val fuelStats = FuelMileageCalculator.calculate(
+                        logs = activeLogs,
+                        currentOdometerKm = currentOdo,
+                        startOdometerKm = resetOdo
+                    )
                     val latestFuelLogOdo = logsForBike.maxByOrNull { it.odometerKm }?.odometerKm
 
                     BikeListItem(

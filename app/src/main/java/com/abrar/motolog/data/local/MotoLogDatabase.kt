@@ -31,7 +31,7 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
         MaintenanceItemEntity::class,
         FuelLogEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -116,5 +116,14 @@ abstract class MotoLogDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `bikes` ADD COLUMN `registrationNumber` TEXT NOT NULL DEFAULT ''")
             }
         }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add mileage reset tracking columns to bikes
+                db.execSQL("ALTER TABLE `bikes` ADD COLUMN `mileageResetOdometerKm` REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE `bikes` ADD COLUMN `mileageResetEpochMs` INTEGER DEFAULT NULL")
+            }
+        }
     }
 }
+

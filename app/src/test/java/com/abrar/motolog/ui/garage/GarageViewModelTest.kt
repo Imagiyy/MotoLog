@@ -254,6 +254,8 @@ class GarageViewModelTest {
         override suspend fun updateFuelLog(log: FuelLogEntity) {}
         override suspend fun deleteFuelLog(log: FuelLogEntity) {}
         override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? = null
+        override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean) {}
+        override suspend fun clearMileageReset(bikeId: Long) {}
         override suspend fun reassignRideBike(rideId: Long, newBikeId: Long?) {}
     }
 
@@ -272,6 +274,7 @@ class GarageViewModelTest {
         override suspend fun getRideCountForBike(bikeId: Long): Int = rideCounts[bikeId] ?: 0
         override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {}
         override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {}
+        override suspend fun updateMileageReset(bikeId: Long, resetOdoKm: Double?, resetEpochMs: Long?) {}
         override suspend fun getAllBikesOnce(): List<BikeEntity> = emptyList()
         override suspend fun insertAll(bikes: List<BikeEntity>) {}
         override suspend fun deleteAllBikes() {}

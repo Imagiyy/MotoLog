@@ -149,8 +149,9 @@ class FuelMileageCalculatorTest {
         assertEquals(400.0, stats.totalRecordedDistanceKm, 0.001)
         assertNotNull(stats.averageMileageKml)
         assertEquals(40.0, stats.averageMileageKml!!, 0.001) // 400 km / 10 L = 40 km/l
-        assertNotNull(stats.averageKmPerCost)
-        assertEquals(400.0 / 1000.0, stats.averageKmPerCost!!, 0.001) // 400 / 1000 = 0.4 km/currency
+        val kmPerCost = stats.averageKmPerCost
+        assertNotNull(kmPerCost)
+        assertEquals(400.0 / 1000.0, kmPerCost, 0.001) // 400 / 1000 = 0.4 km/currency
         assertEquals(1000.0 / 400.0, stats.averageCostPerKm!!, 0.001) // 1000 / 400 = 2.5 currency/km
         assertNull(stats.latestMileageKml) // only 1 log, so no interval between logs
     }
@@ -170,11 +171,35 @@ class FuelMileageCalculatorTest {
         assertEquals(1500.0, stats.totalRecordedDistanceKm, 0.001)
         assertNotNull(stats.averageMileageKml)
         assertEquals(75.0, stats.averageMileageKml!!, 0.001) // 1500 km / 20 L = 75 km/l
-        assertNotNull(stats.averageKmPerCost)
-        assertEquals(1500.0 / 1000.0, stats.averageKmPerCost!!, 0.001) // 1.5 km/currency
+        val kmPerCost2 = stats.averageKmPerCost
+        assertNotNull(kmPerCost2)
+        assertEquals(1500.0 / 1000.0, kmPerCost2, 0.001) // 1.5 km/currency
         assertEquals(1000.0 / 1500.0, stats.averageCostPerKm!!, 0.001)
 
         // Latest interval is still the most recent fill-to-fill interval
         assertEquals(30.0, stats.latestMileageKml!!, 0.001) // (1300 - 1000) / 10 L = 30 km/l
+    }
+
+    @Test
+    fun resetOdometerBaselineCalculatesDistanceAndMileageSinceReset() {
+        // Rider reset mileage at 1500 km.
+        // Then added fill 3 at 1600 km: 5 L, 500 cost.
+        val f3 = FuelFill(id = 3, timestampEpochMs = 3000L, odometerKm = 1600.0, litres = 5.0, totalCost = 500.0, isFullTank = true)
+        // Current odometer is now 1700 km
+        val stats = FuelMileageCalculator.calculate(
+            entries = listOf(f3),
+            currentOdometerKm = 1700.0,
+            startOdometerKm = 1500.0
+        )
+
+        // Effective distance since reset = 1700 - 1500 = 200 km
+        assertEquals(200.0, stats.totalRecordedDistanceKm, 0.001)
+        assertEquals(5.0, stats.totalLitres, 0.001)
+        assertEquals(500.0, stats.totalCost, 0.001)
+        assertNotNull(stats.averageMileageKml)
+        assertEquals(40.0, stats.averageMileageKml!!, 0.001) // 200 km / 5 L = 40 km/l
+        val kmPerCost3 = stats.averageKmPerCost
+        assertNotNull(kmPerCost3)
+        assertEquals(200.0 / 500.0, kmPerCost3, 0.001) // 0.4 km/currency
     }
 }
