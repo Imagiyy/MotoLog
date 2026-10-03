@@ -81,6 +81,7 @@ class GarageViewModel @Inject constructor(
                     }
                     val logsForBike = allFuelLogs.filter { it.bikeId == bike.id }
                     val fuelStats = FuelMileageCalculator.calculate(logsForBike)
+                    val latestFuelLogOdo = logsForBike.maxByOrNull { it.odometerKm }?.odometerKm
 
                     BikeListItem(
                         bike = bike,
@@ -88,7 +89,8 @@ class GarageViewModel @Inject constructor(
                         isCurrentBike = bike.id == currentBikeId,
                         maintenanceEvaluations = evaluations,
                         fuelStats = fuelStats,
-                        fuelLogsCount = logsForBike.size
+                        fuelLogsCount = logsForBike.size,
+                        latestFuelLogOdometerKm = latestFuelLogOdo
                     )
                 }
 

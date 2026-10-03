@@ -1,6 +1,7 @@
 package com.abrar.motolog.ui.garage.detail
 
 import com.abrar.motolog.domain.engine.toEntity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -274,26 +276,36 @@ fun BikeDetailScreen(
     }
 
     if (uiState.isAddFuelDialogOpen) {
+        val lastLogOdo = uiState.fuelLogs.firstOrNull()?.odometerKm
         AddEditFuelLogDialog(
             log = null,
             defaultOdometerKm = uiState.currentOdometerKm,
+            currentBikeOdometerKm = uiState.currentOdometerKm,
+            lastLogOdometerKm = lastLogOdo,
             useMetricUnits = uiState.useMetricUnits,
             currencySymbol = uiState.currencySymbol,
             onDismiss = { viewModel.dismissAddFuelDialog() },
-            onConfirm = { odo, litres, cost, full, notes, timestamp ->
-                viewModel.addFuelLog(odo, litres, cost, full, notes, timestamp)
+            onConfirm = { odo, litres, cost, full, notes, timestamp, syncOdo ->
+                viewModel.addFuelLog(odo, litres, cost, full, notes, timestamp, syncOdo)
             }
         )
     }
 
     uiState.fuelLogToEdit?.let { log ->
+        val logIndex = uiState.fuelLogs.indexOfFirst { it.id == log.id }
+        val lastLogOdo = if (logIndex in 0 until uiState.fuelLogs.size - 1) {
+            uiState.fuelLogs[logIndex + 1].odometerKm
+        } else null
+
         AddEditFuelLogDialog(
             log = log,
             defaultOdometerKm = log.odometerKm,
+            currentBikeOdometerKm = uiState.currentOdometerKm,
+            lastLogOdometerKm = lastLogOdo,
             useMetricUnits = uiState.useMetricUnits,
             currencySymbol = uiState.currencySymbol,
             onDismiss = { viewModel.dismissEditFuelDialog() },
-            onConfirm = { odo, litres, cost, full, notes, timestamp ->
+            onConfirm = { odo, litres, cost, full, notes, timestamp, syncOdo ->
                 viewModel.updateFuelLog(
                     log.copy(
                         odometerKm = odo,
@@ -302,7 +314,8 @@ fun BikeDetailScreen(
                         isFullTank = full,
                         notes = notes,
                         timestampEpochMs = timestamp
-                    )
+                    ),
+                    syncOdometer = syncOdo
                 )
             }
         )
@@ -630,7 +643,9 @@ private fun FuelTabContent(
                 stats = uiState.fuelStats,
                 fuelUnit = uiState.fuelUnit,
                 currencySymbol = uiState.currencySymbol,
-                useMetricUnits = uiState.useMetricUnits
+                useMetricUnits = uiState.useMetricUnits,
+                currentOdometerKm = uiState.currentOdometerKm,
+                latestFuelLog = uiState.fuelLogs.firstOrNull()
             )
         }
 
@@ -686,7 +701,9 @@ private fun FuelSummaryCard(
     stats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
     fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
     currencySymbol: String = "$",
-    useMetricUnits: Boolean = true
+    useMetricUnits: Boolean = true,
+    currentOdometerKm: Double = 0.0,
+    latestFuelLog: FuelLogEntity? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -818,12 +835,33 @@ private fun FuelSummaryCard(
                 }
             }
 
+            val distUnit = UnitConverter.distanceUnit(useMetricUnits)
             if (stats.measuredIntervalsCount == 0) {
                 Spacer(modifier = Modifier.height(8.dp))
+                if (latestFuelLog != null && currentOdometerKm > latestFuelLog.odometerKm) {
+                    val distSoFarKm = currentOdometerKm - latestFuelLog.odometerKm
+                    val distSoFarUser = UnitConverter.kmToUserDistance(distSoFarKm, useMetricUnits)
+                    val lastOdoUser = UnitConverter.kmToUserDistance(latestFuelLog.odometerKm, useMetricUnits)
+                    Text(
+                        text = "1 fill-up logged at ${String.format(Locale.US, "%,.1f", lastOdoUser)} $distUnit • +${String.format(Locale.US, "%,.1f", distSoFarUser)} $distUnit ridden so far on this tank (includes unlogged/calibrated riding). Log your next fill to compute mileage.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = "Log at least 2 fuel fills with odometer readings to compute mileage (${fuelUnit.unitLabel}) and distance/cost.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (latestFuelLog != null && currentOdometerKm > latestFuelLog.odometerKm) {
+                val distSoFarKm = currentOdometerKm - latestFuelLog.odometerKm
+                val distSoFarUser = UnitConverter.kmToUserDistance(distSoFarKm, useMetricUnits)
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Log at least 2 fuel fills with odometer readings to compute mileage (${fuelUnit.unitLabel}) and distance/cost.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Current tank: +${String.format(Locale.US, "%,.1f", distSoFarUser)} $distUnit ridden since last fill (includes unlogged/calibrated distance).",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -1007,10 +1045,16 @@ private fun SetOdometerDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Enter the current physical dashboard odometer reading of your motorcycle. MotoLog will adjust its calibration offset accordingly.",
+                    text = "Enter the current physical dashboard odometer reading of your motorcycle. MotoLog will adjust its calibration offset accordingly, ensuring unlogged rides are included in your odometer and fuel calculations.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+                Text(
+                    text = "Current MotoLog reading: ${String.format(Locale.US, "%,.1f", displayOdo)} $distUnit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
@@ -1282,42 +1326,246 @@ private fun MarkDoneDialog(
     )
 }
 
+private enum class FuelInputMode {
+    TRIP_DISTANCE,
+    ODOMETER
+}
+
 @Composable
 private fun AddEditFuelLogDialog(
     log: FuelLogEntity?,
     defaultOdometerKm: Double,
+    currentBikeOdometerKm: Double,
+    lastLogOdometerKm: Double?,
     useMetricUnits: Boolean,
     currencySymbol: String,
     onDismiss: () -> Unit,
-    onConfirm: (odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestamp: Long) -> Unit
+    onConfirm: (odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestamp: Long, syncOdometer: Boolean) -> Unit
 ) {
-    val initialOdo = log?.odometerKm ?: defaultOdometerKm
-    val displayOdo = UnitConverter.kmToUserDistance(initialOdo, useMetricUnits)
-    var odoText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", displayOdo)) }
+    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+    val prevLogOdo = lastLogOdometerKm
+
+    // Determine initial values
+    val initialOdoKm = log?.odometerKm ?: defaultOdometerKm
+    val initialTripKm = if (prevLogOdo != null) {
+        (initialOdoKm - prevLogOdo).coerceAtLeast(0.0)
+    } else 0.0
+
+    val initialDisplayOdo = UnitConverter.kmToUserDistance(initialOdoKm, useMetricUnits)
+    val initialDisplayTrip = UnitConverter.kmToUserDistance(initialTripKm, useMetricUnits)
+
+    var inputMode by rememberSaveable {
+        mutableStateOf(
+            if (log == null && prevLogOdo != null) FuelInputMode.TRIP_DISTANCE else FuelInputMode.ODOMETER
+        )
+    }
+
+    var odoText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", initialDisplayOdo)) }
+    var tripText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", initialDisplayTrip)) }
     var litresText by rememberSaveable { mutableStateOf(log?.litres?.toString().orEmpty()) }
     var costText by rememberSaveable { mutableStateOf(log?.totalCost?.toString().orEmpty()) }
     var isFullTank by rememberSaveable { mutableStateOf(log?.isFullTank ?: true) }
     var notes by rememberSaveable { mutableStateOf(log?.notes.orEmpty()) }
-    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
 
-    val odo = odoText.toDoubleOrNull()
+    // Parse values
+    val enteredOdoUser = odoText.toDoubleOrNull()
+    val enteredTripUser = tripText.toDoubleOrNull()
     val litres = litresText.toDoubleOrNull()
     val cost = costText.toDoubleOrNull()
-    val isValid = odo != null && odo >= 0.0 && litres != null && litres > 0.0 && cost != null && cost >= 0.0
+
+    val effectiveOdoKm: Double? = if (prevLogOdo != null && inputMode == FuelInputMode.TRIP_DISTANCE) {
+        if (enteredTripUser != null && enteredTripUser >= 0.0) {
+            val tripKm = UnitConverter.userDistanceToKm(enteredTripUser, useMetricUnits)
+            prevLogOdo + tripKm
+        } else null
+    } else {
+        if (enteredOdoUser != null && enteredOdoUser >= 0.0) {
+            UnitConverter.userDistanceToKm(enteredOdoUser, useMetricUnits)
+        } else null
+    }
+
+    val isValid = effectiveOdoKm != null && effectiveOdoKm >= 0.0 && litres != null && litres > 0.0 && cost != null && cost >= 0.0
+
+    val canSyncOdometer = effectiveOdoKm != null && effectiveOdoKm > currentBikeOdometerKm
+    var syncOdometer by rememberSaveable(canSyncOdometer) { mutableStateOf(canSyncOdometer) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (log == null) "Add Fuel Fill-Up" else "Edit Fuel Fill-Up") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = odoText,
-                    onValueChange = { odoText = it },
-                    label = { Text("Odometer ($distUnit)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (prevLogOdo != null) {
+                    // Segmented toggle row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                if (inputMode != FuelInputMode.TRIP_DISTANCE) {
+                                    val currentOdo = odoText.toDoubleOrNull()
+                                    if (currentOdo != null) {
+                                        val odoKm = UnitConverter.userDistanceToKm(currentOdo, useMetricUnits)
+                                        val deltaKm = (odoKm - lastLogOdometerKm).coerceAtLeast(0.0)
+                                        tripText = String.format(Locale.US, "%.1f", UnitConverter.kmToUserDistance(deltaKm, useMetricUnits))
+                                    }
+                                    inputMode = FuelInputMode.TRIP_DISTANCE
+                                }
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (inputMode == FuelInputMode.TRIP_DISTANCE) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Trip Meter",
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (inputMode == FuelInputMode.TRIP_DISTANCE) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Surface(
+                            onClick = {
+                                if (inputMode != FuelInputMode.ODOMETER) {
+                                    val trip = tripText.toDoubleOrNull()
+                                    if (trip != null) {
+                                        val tripKm = UnitConverter.userDistanceToKm(trip, useMetricUnits)
+                                        val newOdoKm = lastLogOdometerKm + tripKm
+                                        odoText = String.format(Locale.US, "%.1f", UnitConverter.kmToUserDistance(newOdoKm, useMetricUnits))
+                                    }
+                                    inputMode = FuelInputMode.ODOMETER
+                                }
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (inputMode == FuelInputMode.ODOMETER) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Total Dash",
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (inputMode == FuelInputMode.ODOMETER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (inputMode == FuelInputMode.TRIP_DISTANCE) {
+                        OutlinedTextField(
+                            value = tripText,
+                            onValueChange = { tripText = it },
+                            label = { Text("Trip Distance ($distUnit)") },
+                            placeholder = { Text("e.g. from bike's Trip A meter") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (effectiveOdoKm != null) {
+                            val computedOdoUser = UnitConverter.kmToUserDistance(effectiveOdoKm, useMetricUnits)
+                            val lastLogUser = UnitConverter.kmToUserDistance(lastLogOdometerKm, useMetricUnits)
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        text = "Resulting Odometer: ${String.format(Locale.US, "%,.1f", computedOdoUser)} $distUnit",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "From last fill (${String.format(Locale.US, "%,.1f", lastLogUser)} $distUnit) + ${String.format(Locale.US, "%,.1f", enteredTripUser ?: 0.0)} $distUnit",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = odoText,
+                            onValueChange = { odoText = it },
+                            label = { Text("Dashboard Odometer ($distUnit)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (enteredOdoUser != null) {
+                            val odoKm = UnitConverter.userDistanceToKm(enteredOdoUser, useMetricUnits)
+                            val intervalKm = odoKm - lastLogOdometerKm
+                            val intervalUser = UnitConverter.kmToUserDistance(intervalKm, useMetricUnits)
+                            if (intervalKm > 0.0) {
+                                Text(
+                                    text = "Distance since last fill: +${String.format(Locale.US, "%.1f", intervalUser)} $distUnit",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            } else {
+                                Text(
+                                    text = "Note: Reading is less than or equal to last fill (${String.format(Locale.US, "%,.1f", UnitConverter.kmToUserDistance(lastLogOdometerKm, useMetricUnits))} $distUnit)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = odoText,
+                        onValueChange = { odoText = it },
+                        label = { Text("Odometer ($distUnit)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "First fill-up: Enter your motorcycle's dashboard odometer to begin tracking fuel economy.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (canSyncOdometer) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { syncOdometer = !syncOdometer }
+                    ) {
+                        Checkbox(checked = syncOdometer, onCheckedChange = { syncOdometer = it })
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column {
+                            Text(
+                                text = "Sync motorcycle odometer",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            val currentOdoUser = UnitConverter.kmToUserDistance(currentBikeOdometerKm, useMetricUnits)
+                            val targetOdoUser = UnitConverter.kmToUserDistance(effectiveOdoKm, useMetricUnits)
+                            Text(
+                                text = "Updates dash from ${String.format(Locale.US, "%,.1f", currentOdoUser)} to ${String.format(Locale.US, "%,.1f", targetOdoUser)} $distUnit to account for unlogged riding.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = litresText,
                     onValueChange = { litresText = it },
@@ -1354,15 +1602,15 @@ private fun AddEditFuelLogDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (isValid) {
-                        val odoKm = UnitConverter.userDistanceToKm(odo, useMetricUnits)
+                    if (effectiveOdoKm != null && effectiveOdoKm >= 0.0 && litres != null && litres > 0.0 && cost != null && cost >= 0.0) {
                         onConfirm(
-                            odoKm,
+                            effectiveOdoKm,
                             litres,
                             cost,
                             isFullTank,
                             notes,
-                            log?.timestampEpochMs ?: System.currentTimeMillis()
+                            log?.timestampEpochMs ?: System.currentTimeMillis(),
+                            syncOdometer
                         )
                     }
                 },

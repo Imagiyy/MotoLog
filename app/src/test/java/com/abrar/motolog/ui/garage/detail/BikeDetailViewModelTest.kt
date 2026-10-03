@@ -207,6 +207,8 @@ class BikeDetailViewModelTest {
         val addedLog = fakeGarageRepository.fuelLogs[0]
         assertEquals(10_350.0, addedLog.odometerKm, 0.001)
         assertEquals(12.5, addedLog.litres, 0.001)
+        // Verify odometer synced automatically because 10_350.0 > 10_000.0
+        assertEquals(10_350.0, fakeGarageRepository.lastSetOdometerKm, 0.001)
 
         // Request delete
         viewModel.requestDeleteFuelLog(addedLog)
@@ -217,6 +219,38 @@ class BikeDetailViewModelTest {
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.fuelLogToDelete)
         assertTrue(fakeGarageRepository.fuelLogs.isEmpty())
+    }
+
+    @Test
+    fun addFuelLog_withSyncDisabled_doesNotSyncBikeOdometer() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.addFuelLog(
+            odometerKm = 10_500.0,
+            litres = 10.0,
+            totalCost = 1000.0,
+            isFullTank = true,
+            notes = "No sync",
+            syncOdometer = false
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, fakeGarageRepository.fuelLogs.size)
+        // lastSetOdometerKm should remain 0.0 because sync was disabled
+        assertEquals(0.0, fakeGarageRepository.lastSetOdometerKm, 0.001)
+    }
+
+    @Test
+    fun updateFuelLog_withSyncEnabled_syncsBikeOdometerWhenHigher() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val log = FuelLogEntity(id = 1L, bikeId = 1L, timestampEpochMs = 1000L, odometerKm = 10_800.0, litres = 10.0, totalCost = 1000.0)
+        viewModel.updateFuelLog(log, syncOdometer = true)
+        advanceUntilIdle()
+
+        assertEquals(10_800.0, fakeGarageRepository.lastSetOdometerKm, 0.001)
     }
 
     private class FakeGarageRepository(val bike: BikeEntity) : GarageRepository {

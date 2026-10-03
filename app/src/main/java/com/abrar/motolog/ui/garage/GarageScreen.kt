@@ -428,6 +428,15 @@ private fun BikeMileageSection(
         }
     } else if (item.fuelLogsCount == 1) {
         val symbol = currencySymbol.trim().ifEmpty { "$" }
+        val tankProgressKm = if (item.latestFuelLogOdometerKm != null && item.currentOdometerKm > item.latestFuelLogOdometerKm) {
+            item.currentOdometerKm - item.latestFuelLogOdometerKm
+        } else 0.0
+        val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+        val progressText = if (tankProgressKm > 0.0) {
+            val userProgress = UnitConverter.kmToUserDistance(tankProgressKm, useMetricUnits)
+            "+${String.format(Locale.US, "%.1f", userProgress)} $distUnit on tank • "
+        } else ""
+
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
             shape = RoundedCornerShape(8.dp),
@@ -445,7 +454,7 @@ private fun BikeMileageSection(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "1 fuel log • Log next fill to compute mileage (${fuelUnit.unitLabel}) & distance/$symbol",
+                    text = "1 fuel log • ${progressText}Log next fill to compute mileage (${fuelUnit.unitLabel}) & distance/$symbol",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

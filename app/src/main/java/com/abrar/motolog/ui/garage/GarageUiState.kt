@@ -12,7 +12,8 @@ data class BikeListItem(
     val isCurrentBike: Boolean,
     val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList(),
     val fuelStats: FuelMileageStats = FuelMileageStats(),
-    val fuelLogsCount: Int = 0
+    val fuelLogsCount: Int = 0,
+    val latestFuelLogOdometerKm: Double? = null
 ) {
     val overdueCount: Int get() = maintenanceEvaluations.count { it.status == MaintenanceStatus.OVERDUE }
     val dueSoonCount: Int get() = maintenanceEvaluations.count { it.status == MaintenanceStatus.DUE_SOON }

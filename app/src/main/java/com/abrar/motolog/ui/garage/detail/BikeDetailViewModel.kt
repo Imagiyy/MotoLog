@@ -254,7 +254,8 @@ class BikeDetailViewModel @Inject constructor(
         totalCost: Double,
         isFullTank: Boolean,
         notes: String,
-        timestampEpochMs: Long = System.currentTimeMillis()
+        timestampEpochMs: Long = System.currentTimeMillis(),
+        syncOdometer: Boolean = true
     ) {
         viewModelScope.launch {
             garageRepository.addFuelLog(
@@ -266,6 +267,9 @@ class BikeDetailViewModel @Inject constructor(
                 notes = notes.trim(),
                 timestampEpochMs = timestampEpochMs
             )
+            if (syncOdometer && odometerKm > uiState.value.currentOdometerKm) {
+                garageRepository.setOdometer(bikeId, odometerKm)
+            }
             dismissAddFuelDialog()
         }
     }
@@ -278,9 +282,12 @@ class BikeDetailViewModel @Inject constructor(
         _dialogState.update { it.copy(fuelLogToEdit = null) }
     }
 
-    fun updateFuelLog(log: FuelLogEntity) {
+    fun updateFuelLog(log: FuelLogEntity, syncOdometer: Boolean = false) {
         viewModelScope.launch {
             garageRepository.updateFuelLog(log)
+            if (syncOdometer && log.odometerKm > uiState.value.currentOdometerKm) {
+                garageRepository.setOdometer(bikeId, log.odometerKm)
+            }
             dismissEditFuelDialog()
         }
     }
