@@ -58,6 +58,10 @@ interface GarageRepository {
     suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean = false)
     suspend fun clearMileageReset(bikeId: Long)
 
+    // Mileage Cycles
+    fun observeMileageCycles(bikeId: Long): Flow<List<com.abrar.motolog.data.local.entity.MileageCycleEntity>>
+    suspend fun deleteMileageCycle(cycle: com.abrar.motolog.data.local.entity.MileageCycleEntity)
+
     // Ride Reassignment
     suspend fun reassignRideBike(rideId: Long, newBikeId: Long?)
 }

@@ -3,6 +3,7 @@ package com.abrar.motolog.ui.garage.detail
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
+import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.shared.domain.model.FuelMileageStats
 import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 
@@ -15,6 +16,7 @@ data class BikeDetailUiState(
     val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList(),
     val fuelLogs: List<FuelLogEntity> = emptyList(),
     val fuelStats: FuelMileageStats = FuelMileageStats(),
+    val mileageCycles: List<MileageCycleEntity> = emptyList(),
     val selectedTab: Int = 0, // 0 = Fuel Log, 1 = Maintenance
     val isCurrentBike: Boolean = false,
     val useMetricUnits: Boolean = true,

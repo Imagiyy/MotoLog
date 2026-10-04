@@ -86,7 +86,11 @@ object FuelMileageCalculator {
             val baseOdo = startOdometerKm ?: 0.0
             val effectiveDistance = (maxOf(currentOdometerKm, sorted.lastOrNull()?.odometerKm ?: 0.0) - baseOdo).coerceAtLeast(0.0)
             totalDistanceKm = effectiveDistance
-            averageKmPerLitre = if (totalLitres > 0.0 && effectiveDistance > 0.0) {
+            // Round totalLitres to 1 decimal place to match displayed fuel volume (e.g. 2.77 -> 2.8)
+            val displayLitres = kotlin.math.round(totalLitres * 10.0) / 10.0
+            averageKmPerLitre = if (displayLitres > 0.0 && effectiveDistance > 0.0) {
+                effectiveDistance / displayLitres
+            } else if (totalLitres > 0.0 && effectiveDistance > 0.0) {
                 effectiveDistance / totalLitres
             } else null
             averageKmPerCost = if (totalCost > 0.0 && effectiveDistance > 0.0) {
@@ -99,7 +103,10 @@ object FuelMileageCalculator {
             totalDistanceKm = if (sorted.size >= 2) {
                 (sorted.last().odometerKm - sorted.first().odometerKm).coerceAtLeast(0.0)
             } else 0.0
-            averageKmPerLitre = if (totalIntervalLitres > 0.0) {
+            val displayIntervalLitres = kotlin.math.round(totalIntervalLitres * 10.0) / 10.0
+            averageKmPerLitre = if (displayIntervalLitres > 0.0) {
+                totalIntervalDistance / displayIntervalLitres
+            } else if (totalIntervalLitres > 0.0) {
                 totalIntervalDistance / totalIntervalLitres
             } else null
             averageKmPerCost = if (totalIntervalCost > 0.0) {

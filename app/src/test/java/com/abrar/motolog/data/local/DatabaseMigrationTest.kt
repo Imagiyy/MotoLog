@@ -306,4 +306,38 @@ class DatabaseMigrationTest {
         assertNull(defaultBike.mileageResetOdometerKm)
         assertNull(defaultBike.mileageResetEpochMs)
     }
+
+    @Test
+    fun migration_7_to_8_createsMileageCyclesTable() {
+        val executedSql = mutableListOf<String>()
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_7_8.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(7, MotoLogDatabase.MIGRATION_7_8.startVersion)
+        assertEquals(8, MotoLogDatabase.MIGRATION_7_8.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Creates mileage_cycles table
+        assertTrue(
+            "Must create mileage_cycles table",
+            executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `mileage_cycles`") }
+        )
+        assertTrue(
+            "Must create index on bikeId",
+            executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_bikeId`") }
+        )
+    }
 }

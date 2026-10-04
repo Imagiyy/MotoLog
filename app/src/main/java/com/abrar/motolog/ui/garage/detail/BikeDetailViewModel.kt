@@ -58,17 +58,25 @@ class BikeDetailViewModel @Inject constructor(
         val odo: Double,
         val maintenanceEvals: List<com.abrar.motolog.shared.domain.model.MaintenanceEvaluation>,
         val fuelLogs: List<com.abrar.motolog.data.local.entity.FuelLogEntity>,
-        val fuelStats: com.abrar.motolog.shared.domain.model.FuelMileageStats
+        val fuelStats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
+        val mileageCycles: List<com.abrar.motolog.data.local.entity.MileageCycleEntity>
     )
+
+    private val fuelDataFlow = combine(
+        garageRepository.observeFuelLogs(bikeId),
+        garageRepository.observeFuelStats(bikeId),
+        garageRepository.observeMileageCycles(bikeId)
+    ) { logs, stats, cycles ->
+        Triple(logs, stats, cycles)
+    }
 
     private val bikeDataFlow = combine(
         garageRepository.observeBike(bikeId),
         garageRepository.observeBikeOdometer(bikeId),
         garageRepository.observeMaintenanceEvaluations(bikeId),
-        garageRepository.observeFuelLogs(bikeId),
-        garageRepository.observeFuelStats(bikeId)
-    ) { bike, odo, maintenanceEvals, fuelLogs, fuelStats ->
-        BikeData(bike, odo, maintenanceEvals, fuelLogs, fuelStats)
+        fuelDataFlow
+    ) { bike, odo, maintenanceEvals, (fuelLogs, fuelStats, mileageCycles) ->
+        BikeData(bike, odo, maintenanceEvals, fuelLogs, fuelStats, mileageCycles)
     }
 
     private val bikeDetailFlow = combine(
@@ -103,6 +111,7 @@ class BikeDetailViewModel @Inject constructor(
                     maintenanceEvaluations = data.maintenanceEvals,
                     fuelLogs = data.fuelLogs,
                     fuelStats = data.fuelStats,
+                    mileageCycles = data.mileageCycles,
                     selectedTab = dialogState.selectedTab,
                     isCurrentBike = isCurrentBike,
                     useMetricUnits = useMetricUnits,
@@ -122,6 +131,12 @@ class BikeDetailViewModel @Inject constructor(
             }.collect {
                 _uiState.value = it
             }
+        }
+    }
+
+    fun deleteMileageCycle(cycle: com.abrar.motolog.data.local.entity.MileageCycleEntity) {
+        viewModelScope.launch {
+            garageRepository.deleteMileageCycle(cycle)
         }
     }
 

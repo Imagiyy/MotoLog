@@ -202,4 +202,25 @@ class FuelMileageCalculatorTest {
         assertNotNull(kmPerCost3)
         assertEquals(200.0 / 500.0, kmPerCost3, 0.001) // 0.4 km/currency
     }
+
+    @Test
+    fun roundsTotalFuelForDisplayedAverageMileageMatchingScreenNumbers() {
+        // User scenario: fill 1: 0.92 L at 0 km, fill 2: 1.85 L at 45.2 km.
+        // Total fuel = 0.92 + 1.85 = 2.77 L, which displays on screen rounded as 2.8 L.
+        // Current odometer = 109.3 km.
+        // Average mileage must compute 109.3 / 2.8 = 39.0357... km/l (formatted as 39.0 km/l)
+        val fill1 = FuelFill(id = 1, timestampEpochMs = 1000L, odometerKm = 0.0, litres = 0.92, totalCost = 100.0, isFullTank = false)
+        val fill2 = FuelFill(id = 2, timestampEpochMs = 2000L, odometerKm = 45.2, litres = 1.85, totalCost = 200.0, isFullTank = false)
+
+        val stats = FuelMileageCalculator.calculate(
+            entries = listOf(fill1, fill2),
+            currentOdometerKm = 109.3
+        )
+
+        assertEquals(2.77, stats.totalLitres, 0.001)
+        assertEquals(300.0, stats.totalCost, 0.001)
+        assertNotNull(stats.averageMileageKml)
+        // 109.3 / 2.8 = 39.035714...
+        assertEquals(109.3 / 2.8, stats.averageMileageKml!!, 0.001)
+    }
 }

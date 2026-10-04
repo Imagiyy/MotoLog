@@ -190,7 +190,8 @@ fun BikeDetailScreen(
                                 onEditLog = { viewModel.openEditFuelDialog(it) },
                                 onDeleteLog = { viewModel.requestDeleteFuelLog(it) },
                                 onResetMileage = { viewModel.openResetMileageDialog() },
-                                onClearReset = { viewModel.clearMileageReset() }
+                                onClearReset = { viewModel.clearMileageReset() },
+                                onDeleteMileageCycle = { viewModel.deleteMileageCycle(it) }
                             )
                             1 -> MaintenanceTabContent(
                                 evaluations = uiState.maintenanceEvaluations,
@@ -648,6 +649,7 @@ private fun FuelTabContent(
     onDeleteLog: (FuelLogEntity) -> Unit,
     onResetMileage: () -> Unit = {},
     onClearReset: () -> Unit = {},
+    onDeleteMileageCycle: (com.abrar.motolog.data.local.entity.MileageCycleEntity) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -704,6 +706,26 @@ private fun FuelTabContent(
                     currencySymbol = uiState.currencySymbol,
                     onEdit = { onEditLog(log) },
                     onDelete = { onDeleteLog(log) }
+                )
+            }
+        }
+
+        if (uiState.mileageCycles.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Previous Mileage Cycles",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(uiState.mileageCycles, key = { "cycle_${it.id}" }) { cycle ->
+                MileageCycleCard(
+                    cycle = cycle,
+                    fuelUnit = uiState.fuelUnit,
+                    currencySymbol = uiState.currencySymbol,
+                    useMetricUnits = uiState.useMetricUnits,
+                    onDelete = { onDeleteMileageCycle(cycle) }
                 )
             }
         }
@@ -792,16 +814,26 @@ private fun FuelSummaryCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Row 1: Mileage (Distance / Litre) & Total Spent
+            // Fuel Summary Stats: AVG MILEAGE, TOTAL FUEL, TOTAL SPENT
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("AVG MILEAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "AVG MILEAGE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     val avg = stats.averageMileageKml
                     Text(
-                        text = if (avg != null) UnitConverter.formatFuelEconomy(avg, fuelUnit) else "—",
+                        text = if (avg != null && avg > 0.0) {
+                            UnitConverter.formatFuelEconomy(avg, fuelUnit)
+                        } else if (mileageResetOdometerKm != null) {
+                            "0.0 ${fuelUnit.unitLabel}"
+                        } else {
+                            "—"
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -817,17 +849,20 @@ private fun FuelSummaryCard(
                     }
                 }
                 Column {
-                    Text("LATEST MILEAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val latest = stats.latestMileageKml
                     Text(
-                        text = if (latest != null) UnitConverter.formatFuelEconomy(latest, fuelUnit) else "—",
+                        text = "TOTAL FUEL",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = String.format(Locale.US, "%.1f L", stats.totalLitres),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Column {
                     Text(
-                        text = if (stats.totalCost > 0.0) "TOTAL SPENT" else "TOTAL LITRES",
+                        text = "TOTAL SPENT",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -835,49 +870,11 @@ private fun FuelSummaryCard(
                         text = if (stats.totalCost > 0.0) {
                             "$currencySymbol${String.format(Locale.US, "%.1f", stats.totalCost)}"
                         } else {
-                            String.format(Locale.US, "%.1f L", stats.totalLitres)
+                            "${currencySymbol}0.0"
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                }
-            }
-
-            // Row 2: Distance per Currency (Distance / Rupees)
-            if (stats.averageKmPerCost != null || stats.latestKmPerCost != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        val symbol = currencySymbol.trim().ifEmpty { "$" }
-                        Text("AVG DIST / $symbol", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = UnitConverter.formatDistancePerCost(stats.averageKmPerCost, useMetricUnits, currencySymbol),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Column {
-                        val symbol = currencySymbol.trim().ifEmpty { "$" }
-                        Text("LATEST DIST / $symbol", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = UnitConverter.formatDistancePerCost(stats.latestKmPerCost, useMetricUnits, currencySymbol),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Column {
-                        Text("TOTAL FUEL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = String.format(Locale.US, "%.1f L", stats.totalLitres),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
 
@@ -895,7 +892,7 @@ private fun FuelSummaryCard(
                     )
                 } else {
                     Text(
-                        text = "Log at least 2 fuel fills with odometer readings to compute mileage (${fuelUnit.unitLabel}) and distance/cost.",
+                        text = "Log at least 2 fuel fills with odometer readings to compute mileage (${fuelUnit.unitLabel}).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1014,11 +1011,11 @@ private fun ResetMileageDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.RestartAlt, contentDescription = null) },
-        title = { Text("Reset Average Mileage") },
+        title = { Text("Reset Mileage Period") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "This will reset your average fuel economy calculation baseline to your current odometer reading of ${String.format(Locale.US, "%,.1f %s", userOdo, distUnit)}.\n\nFuture fuel fills and distance will calculate mileage fresh from this point.",
+                    text = "This will archive your current period stats into 'Previous Mileage Cycles' and reset active fuel tracking to zero (0.0 km/l, 0.0 L, ₹0.0).\n\nFuture rides and fuel fills will calculate fresh from ${String.format(Locale.US, "%,.1f %s", userOdo, distUnit)}.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -1035,7 +1032,7 @@ private fun ResetMileageDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Also delete past fuel logs from history",
+                        text = "Also delete past fuel fills from history",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -1054,6 +1051,109 @@ private fun ResetMileageDialog(
             }
         }
     )
+}
+
+@Composable
+private fun MileageCycleCard(
+    cycle: com.abrar.motolog.data.local.entity.MileageCycleEntity,
+    fuelUnit: com.abrar.motolog.shared.domain.model.FuelUnit,
+    currencySymbol: String,
+    useMetricUnits: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    val startOdo = UnitConverter.kmToUserDistance(cycle.startOdometerKm, useMetricUnits)
+                    val endOdo = UnitConverter.kmToUserDistance(cycle.endOdometerKm, useMetricUnits)
+                    val distUnit = UnitConverter.distanceUnit(useMetricUnits)
+                    val dist = UnitConverter.kmToUserDistance(cycle.distanceKm, useMetricUnits)
+                    Text(
+                        text = "Archived Cycle • ${FormatUtils.formatDate(cycle.resetTimestampEpochMs)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${String.format(Locale.US, "%,.1f", startOdo)} → ${String.format(Locale.US, "%,.1f", endOdo)} $distUnit (+${String.format(Locale.US, "%,.1f", dist)} $distUnit)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Cycle Record",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "AVG MILEAGE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (cycle.averageMileageKml != null && cycle.averageMileageKml > 0.0) {
+                            UnitConverter.formatFuelEconomy(cycle.averageMileageKml, fuelUnit)
+                        } else {
+                            "—"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column {
+                    Text(
+                        text = "TOTAL FUEL",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = String.format(Locale.US, "%.1f L", cycle.totalLitres),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column {
+                    Text(
+                        text = "TOTAL SPENT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (cycle.totalCost > 0.0) {
+                            "$currencySymbol${String.format(Locale.US, "%.1f", cycle.totalCost)}"
+                        } else {
+                            "${currencySymbol}0.0"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

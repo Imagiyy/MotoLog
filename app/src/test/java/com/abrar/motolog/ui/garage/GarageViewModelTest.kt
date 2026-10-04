@@ -256,6 +256,8 @@ class GarageViewModelTest {
         override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? = null
         override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean) {}
         override suspend fun clearMileageReset(bikeId: Long) {}
+        override fun observeMileageCycles(bikeId: Long): Flow<List<com.abrar.motolog.data.local.entity.MileageCycleEntity>> = MutableStateFlow(emptyList())
+        override suspend fun deleteMileageCycle(cycle: com.abrar.motolog.data.local.entity.MileageCycleEntity) {}
         override suspend fun reassignRideBike(rideId: Long, newBikeId: Long?) {}
     }
 

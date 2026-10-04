@@ -39,7 +39,8 @@ object DatabaseModule {
                 MotoLogDatabase.MIGRATION_3_4,
                 MotoLogDatabase.MIGRATION_4_5,
                 MotoLogDatabase.MIGRATION_5_6,
-                MotoLogDatabase.MIGRATION_6_7
+                MotoLogDatabase.MIGRATION_6_7,
+                MotoLogDatabase.MIGRATION_7_8
             )
             .build()
     }
@@ -58,4 +59,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFuelLogDao(database: MotoLogDatabase): FuelLogDao = database.fuelLogDao()
+
+    @Provides
+    fun provideMileageCycleDao(database: MotoLogDatabase): com.abrar.motolog.data.local.dao.MileageCycleDao = database.mileageCycleDao()
 }

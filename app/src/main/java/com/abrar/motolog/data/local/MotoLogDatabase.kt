@@ -8,11 +8,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.FuelLogDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
+import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
+import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 
@@ -29,9 +31,10 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
         RideEntity::class,
         RidePointEntity::class,
         MaintenanceItemEntity::class,
-        FuelLogEntity::class
+        FuelLogEntity::class,
+        MileageCycleEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -41,6 +44,7 @@ abstract class MotoLogDatabase : RoomDatabase() {
     abstract fun ridePointDao(): RidePointDao
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun fuelLogDao(): FuelLogDao
+    abstract fun mileageCycleDao(): MileageCycleDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -122,6 +126,30 @@ abstract class MotoLogDatabase : RoomDatabase() {
                 // Add mileage reset tracking columns to bikes
                 db.execSQL("ALTER TABLE `bikes` ADD COLUMN `mileageResetOdometerKm` REAL DEFAULT NULL")
                 db.execSQL("ALTER TABLE `bikes` ADD COLUMN `mileageResetEpochMs` INTEGER DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `mileage_cycles` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `bikeId` INTEGER NOT NULL,
+                        `resetTimestampEpochMs` INTEGER NOT NULL,
+                        `startOdometerKm` REAL NOT NULL,
+                        `endOdometerKm` REAL NOT NULL,
+                        `distanceKm` REAL NOT NULL,
+                        `totalLitres` REAL NOT NULL,
+                        `totalCost` REAL NOT NULL,
+                        `averageMileageKml` REAL,
+                        `notes` TEXT NOT NULL,
+                        FOREIGN KEY(`bikeId`) REFERENCES `bikes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_bikeId` ON `mileage_cycles` (`bikeId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_resetTimestampEpochMs` ON `mileage_cycles` (`resetTimestampEpochMs`)")
             }
         }
     }

@@ -446,6 +446,12 @@ class BikeDetailViewModelTest {
             }
         }
 
+        val mileageCyclesFlow = MutableStateFlow<List<com.abrar.motolog.data.local.entity.MileageCycleEntity>>(emptyList())
+        override fun observeMileageCycles(bikeId: Long): Flow<List<com.abrar.motolog.data.local.entity.MileageCycleEntity>> = mileageCyclesFlow
+        override suspend fun deleteMileageCycle(cycle: com.abrar.motolog.data.local.entity.MileageCycleEntity) {
+            mileageCyclesFlow.value = mileageCyclesFlow.value.filter { it.id != cycle.id }
+        }
+
         override suspend fun reassignRideBike(rideId: Long, newBikeId: Long?) {}
     }
 
