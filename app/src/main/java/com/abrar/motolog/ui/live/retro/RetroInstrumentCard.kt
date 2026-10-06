@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,10 +50,12 @@ fun RetroInstrumentCard(
     subtitle: String? = null,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC),
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    showRivets: Boolean = true
 ) {
     Box(
         modifier = modifier
+            .defaultMinSize(minHeight = 52.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
                 Brush.linearGradient(
@@ -70,15 +73,18 @@ fun RetroInstrumentCard(
             .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         // 4 Corner Screws / Rivets
-        RivetDot(modifier = Modifier.align(Alignment.TopStart).padding(1.dp), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.TopEnd).padding(1.dp), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.BottomStart).padding(1.dp), palette = palette)
-        RivetDot(modifier = Modifier.align(Alignment.BottomEnd).padding(1.dp), palette = palette)
+        if (showRivets) {
+            RivetDot(modifier = Modifier.align(Alignment.TopStart).padding(1.dp), palette = palette)
+            RivetDot(modifier = Modifier.align(Alignment.TopEnd).padding(1.dp), palette = palette)
+            RivetDot(modifier = Modifier.align(Alignment.BottomStart).padding(1.dp), palette = palette)
+            RivetDot(modifier = Modifier.align(Alignment.BottomEnd).padding(1.dp), palette = palette)
+        }
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 2.dp, vertical = 1.dp),
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

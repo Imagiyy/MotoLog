@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -922,14 +923,17 @@ private fun TrackTelemetryCard(
 ) {
     Box(
         modifier = modifier
+            .defaultMinSize(minHeight = 52.dp)
             .clip(CutCornerShape(6.dp))
             .background(RaceSurface)
             .border(1.dp, Color(0xFF262C3D), CutCornerShape(6.dp))
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(8.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

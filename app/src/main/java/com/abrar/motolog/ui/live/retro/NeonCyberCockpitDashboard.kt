@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -942,6 +943,7 @@ private fun CyberTelemetryCard(
 ) {
     Box(
         modifier = modifier
+            .defaultMinSize(minHeight = 52.dp)
             .clip(CutCornerShape(8.dp))
             .background(CyberSurface)
             .border(1.dp, CyberPurple.copy(alpha = 0.6f), CutCornerShape(8.dp))
@@ -949,7 +951,10 @@ private fun CyberTelemetryCard(
             .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp, vertical = 1.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

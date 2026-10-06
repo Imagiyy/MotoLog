@@ -27,12 +27,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material.icons.filled.Pause
+import com.abrar.motolog.ui.live.retro.CockpitUtils
+import java.util.Locale
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ScreenLockPortrait
@@ -630,10 +634,11 @@ fun LiveScreen(
         }
 
         is LiveUiState.Stopped -> {
-            RetroStoppedCockpitView(
+            ThemedStoppedCockpitView(
                 stats = state.stats,
                 useMetricUnits = useMetricUnits,
                 onResetClick = { viewModel.resetToIdle() },
+                themeMode = themeMode,
                 palette = palette,
                 modifier = modifier.fillMaxSize()
             )
@@ -999,12 +1004,13 @@ private fun RetroWaitingForGpsView(
 }
 
 @Composable
-private fun RetroStoppedCockpitView(
-    stats: com.abrar.motolog.shared.domain.model.RideStats,
+private fun ThemedStoppedCockpitView(
+    stats: RideStats,
     useMetricUnits: Boolean,
     onResetClick: () -> Unit,
+    themeMode: ThemeMode,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
+    palette: CockpitThemePalette = getCockpitThemePalette(themeMode)
 ) {
     val totalDistKm = stats.totalDistanceMeters / 1000.0
     val displayDistance = if (useMetricUnits) totalDistKm else totalDistKm * 0.621371
@@ -1012,8 +1018,12 @@ private fun RetroStoppedCockpitView(
     val spdUnit = if (useMetricUnits) "km/h" else "mph"
     val avgSpeedDisplay = if (useMetricUnits) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
     val maxSpeedDisplay = if (useMetricUnits) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
+    val overallAvgSpeed = if (useMetricUnits) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
 
-    Box(
+    val movingTimeStr = CockpitUtils.formatDurationMs(stats.movingTimeMs)
+    val totalTimeStr = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
+
+    BoxWithConstraints(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
@@ -1024,13 +1034,20 @@ private fun RetroStoppedCockpitView(
                     }
                 )
             )
-            .padding(14.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
+        val isLandscape = maxWidth > maxHeight
+        val cardHeight = if (isLandscape) 64.dp else 76.dp
+        val spacing = if (isLandscape) 8.dp else 12.dp
+
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
+            // Header Status Tag
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
@@ -1039,7 +1056,7 @@ private fun RetroStoppedCockpitView(
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "RIDE COMPLETED",
+                    text = if (themeMode == ThemeMode.TRACK_DAY) "SESSION FINISHED" else "RIDE COMPLETED",
                     color = palette.primaryAccent,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
@@ -1047,58 +1064,136 @@ private fun RetroStoppedCockpitView(
                     letterSpacing = 1.5.sp
                 )
             }
-            RetroOdometerDrum(
-                distanceValue = displayDistance,
-                unitLabel = "TRIP $distUnit",
-                palette = palette
-            )
+
+            // Trip Distance Section
+            if (themeMode == ThemeMode.RETRO_CLASSIC) {
+                RetroOdometerDrum(
+                    distanceValue = displayDistance,
+                    unitLabel = "TRIP $distUnit",
+                    palette = palette
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(palette.surface)
+                        .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
+                        .padding(vertical = 10.dp, horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "TOTAL DISTANCE",
+                            color = palette.secondaryAccent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                color = palette.primaryAccent,
+                                fontSize = 34.sp,
+                                lineHeight = 36.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = distUnit.uppercase(),
+                                color = palette.dialText.copy(alpha = 0.8f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(bottom = 3.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Telemetry Cards: Row 1
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val totalSec = stats.movingTimeMs / 1000
-                val hrs = totalSec / 3600
-                val mins = (totalSec % 3600) / 60
-                val secs = totalSec % 60
-                val timeStr = if (hrs > 0) {
-                    String.format(java.util.Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
-                } else {
-                    String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
-                }
-
                 RetroInstrumentCard(
                     label = "Moving Time",
-                    value = timeStr,
+                    value = movingTimeStr,
                     palette = palette,
-                    modifier = Modifier.weight(1f)
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 )
                 RetroInstrumentCard(
                     label = "Moving Avg",
-                    value = String.format(java.util.Locale.US, "%.1f", avgSpeedDisplay),
+                    value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
                     unit = spdUnit,
                     palette = palette,
-                    modifier = Modifier.weight(1f)
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
+
+            // Telemetry Cards: Row 2
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 RetroInstrumentCard(
                     label = "Max Speed",
-                    value = String.format(java.util.Locale.US, "%.1f", maxSpeedDisplay),
+                    value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                     unit = spdUnit,
                     palette = palette,
-                    modifier = Modifier.weight(1f)
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 )
                 RetroInstrumentCard(
-                    label = "Fix Points",
-                    value = "${stats.acceptedPointCount}",
-                    subtitle = "Recorded GPS Hits",
+                    label = "Total Time",
+                    value = totalTimeStr,
                     palette = palette,
-                    modifier = Modifier.weight(1f)
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
+
+            // Telemetry Cards: Row 3
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(cardHeight),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RetroInstrumentCard(
+                    label = "Overall Avg",
+                    value = String.format(Locale.US, "%.1f", overallAvgSpeed),
+                    unit = spdUnit,
+                    palette = palette,
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+                RetroInstrumentCard(
+                    label = "GPS Hits",
+                    value = "${stats.acceptedPointCount}",
+                    subtitle = "Recorded Fixes",
+                    palette = palette,
+                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Action Button
             Button(
                 onClick = onResetClick,
                 modifier = Modifier

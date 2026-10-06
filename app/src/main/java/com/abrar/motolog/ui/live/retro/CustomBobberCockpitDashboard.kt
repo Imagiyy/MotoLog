@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -886,12 +887,15 @@ private fun BobberMetricCard(
 ) {
     Card(
         modifier = modifier
+            .defaultMinSize(minHeight = 52.dp)
             .border(1.dp, BobberBorder, RoundedCornerShape(8.dp)),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = BobberCastIron)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
