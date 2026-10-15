@@ -24,14 +24,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryAlert
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
@@ -66,16 +63,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -91,7 +82,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -134,14 +124,13 @@ val ChamferedBezelShape = GenericShape { size, _ ->
 /**
  * AiM MXS Racing TFT Dashboard for MotoLog.
  *
- * Faithfully recreates the AiM MXS motorcycle racing data logger display:
+ * Recreates the AiM MXS motorcycle racing data logger display:
  * - Chamfered matte black casing with physical button markings
  * - Top LED shift light array (10 segmented LEDs) flanked by green turn indicators
- * - Left status indicator stack: TC, N (Neutral), High Beam, Battery, Oil, ABS
+ * - Left status indicator stack: TC, High Beam, Battery, Oil, ABS
  * - Right warning lamps: High Beam, Engine MIL, Warning
- * - Circular cyan segmented RPM tachometer arc (0-16 x1000 RPM)
- * - Large central Gear readout ('N' when stopped, 1-6 calculated while riding)
- * - Dominant digital Speed readout (KM/H or MPH)
+ * - Circular cyan segmented live speed sweep arc
+ * - Dominant central digital Speed readout (KM/H or MPH)
  * - Telemetry fields: ODOMETRO TOTALE KM, TRIP A KM, TRIP B KM
  * - Instant Fuel Consumption / Power segmented bar gauge (0..50 KM/L)
  * - Lap / Split indicator and Ambient air temperature readout
@@ -189,6 +178,7 @@ fun RacingTftDashboard(
     val displayDistance = if (isMetric) totalDistanceKm else totalDistanceKm * 0.621371
     val speedUnit = if (isMetric) "KM/H" else "MPH"
     val distanceUnit = if (isMetric) "KM" else "MI"
+    val maxScale = if (isMetric) 240.0 else 150.0
 
     val avgSpeedDisplay = if (showOverallStats) {
         if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
@@ -199,34 +189,6 @@ fun RacingTftDashboard(
     val timeDisplay = CockpitUtils.formatDurationMs(
         if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs
     )
-
-    // Motorcycle Gear calculation (N when speed < 2 km/h, 1-6 according to speed)
-    val gearDisplay: String = when {
-        isIdle || speedKmh < 2.0 -> "N"
-        speedKmh < 30.0 -> "1"
-        speedKmh < 55.0 -> "2"
-        speedKmh < 85.0 -> "3"
-        speedKmh < 115.0 -> "4"
-        speedKmh < 150.0 -> "5"
-        else -> "6"
-    }
-
-    // Engine RPM calculation (idle ~1200 RPM, sweeps across current gear up to 15,500 RPM)
-    val simulatedRpm: Double = when {
-        isIdle -> 0.0
-        speedKmh < 2.0 -> 1250.0
-        else -> {
-            val gearRatio = when (gearDisplay) {
-                "1" -> speedKmh / 35.0
-                "2" -> (speedKmh - 25.0) / 35.0
-                "3" -> (speedKmh - 50.0) / 40.0
-                "4" -> (speedKmh - 80.0) / 40.0
-                "5" -> (speedKmh - 110.0) / 45.0
-                else -> (speedKmh - 145.0) / 60.0
-            }.coerceIn(0.0, 1.0)
-            3000.0 + (gearRatio * 11500.0)
-        }
-    }
 
     // Total Odometer (baseline + current distance)
     val totalOdometerDisplay = 127558 + totalDistanceKm.roundToInt()
@@ -248,8 +210,7 @@ fun RacingTftDashboard(
                 maxSpeedDisplay = maxSpeedDisplay,
                 timeDisplay = timeDisplay,
                 speedKmh = speedKmh,
-                rpm = simulatedRpm,
-                gearDisplay = gearDisplay,
+                maxScale = maxScale,
                 totalOdometer = totalOdometerDisplay,
                 currentTimeString = currentTimeString,
                 isSpeedAlert = isSpeedAlert,
@@ -279,8 +240,7 @@ fun RacingTftDashboard(
                 maxSpeedDisplay = maxSpeedDisplay,
                 timeDisplay = timeDisplay,
                 speedKmh = speedKmh,
-                rpm = simulatedRpm,
-                gearDisplay = gearDisplay,
+                maxScale = maxScale,
                 totalOdometer = totalOdometerDisplay,
                 currentTimeString = currentTimeString,
                 isSpeedAlert = isSpeedAlert,
@@ -305,7 +265,7 @@ fun RacingTftDashboard(
 }
 
 // ============================================================
-// LANDSCAPE VIEW (Exact AiM Casing + Screen proportions)
+// LANDSCAPE VIEW (AiM Casing + Large Speed Center Arc)
 // ============================================================
 @Composable
 private fun TftLandscapeView(
@@ -317,8 +277,7 @@ private fun TftLandscapeView(
     maxSpeedDisplay: Double,
     timeDisplay: String,
     speedKmh: Double,
-    rpm: Double,
-    gearDisplay: String,
+    maxScale: Double,
     totalOdometer: Int,
     currentTimeString: String,
     isSpeedAlert: Boolean,
@@ -363,10 +322,10 @@ private fun TftLandscapeView(
                 // Left Turn Arrow
                 TurnIndicatorArrow(isLeft = true, isActive = true)
 
-                // 10 Shift LEDs (Green -> Yellow -> Red)
+                // 10 Shift LEDs (Green -> Yellow -> Red based on speed)
                 ShiftLightArray(
-                    rpm = rpm,
-                    maxRpm = 16000.0,
+                    currentSpeed = speedKmh,
+                    maxSpeed = maxScale,
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .weight(1f)
@@ -391,7 +350,6 @@ private fun TftLandscapeView(
             ) {
                 // LEFT BEZEL COLUMN: Indicator Lamps Stack & Buttons
                 TftLeftIndicatorColumn(
-                    isNeutral = gearDisplay == "N",
                     isGpsLost = isGpsLost,
                     pauseState = pauseState,
                     modifier = Modifier
@@ -401,7 +359,7 @@ private fun TftLandscapeView(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // CENTER-LEFT: Tachometer Arc Gauge + Center Gear + Speed Readout
+                // CENTER-LEFT: Speed Arc Gauge with Large Digital Speedometer at Center
                 BoxWithConstraints(
                     modifier = Modifier
                         .weight(1.15f)
@@ -410,63 +368,37 @@ private fun TftLandscapeView(
                 ) {
                     val gaugeSize = minOf(maxWidth, maxHeight) * 0.98f
 
-                    TftTachometerArc(
-                        rpm = rpm,
-                        maxRpm = 16000.0,
+                    TftSpeedArcGauge(
+                        currentSpeed = displaySpeed,
+                        maxSpeed = maxScale,
+                        isSpeedAlert = isSpeedAlert,
                         modifier = Modifier.size(gaugeSize)
                     )
 
-                    // Large Gear Indicator in Center of Arc
+                    // Large Digital Speedometer Readout in Center of Arc
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                         modifier = Modifier.align(Alignment.Center)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(gaugeSize * 0.38f)
-                                .clip(CircleShape)
-                                .background(Color(0xFF070B12).copy(alpha = 0.85f))
-                                .border(
-                                    1.5.dp,
-                                    if (gearDisplay == "N") TftGreen.copy(alpha = 0.7f) else TftCyan.copy(alpha = 0.5f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = gearDisplay,
-                                color = if (gearDisplay == "N") TftGreen else TftWhite,
-                                fontSize = (gaugeSize.value * 0.22f).sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    // Large Digital Speedometer positioned below/right of the arc
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(bottom = 6.dp, end = 12.dp)
                     ) {
                         Text(
                             text = displaySpeed.roundToInt().toString(),
                             color = if (isSpeedAlert) TftRed else TftWhite,
-                            fontSize = (gaugeSize.value * 0.32f).sp,
+                            fontSize = (gaugeSize.value * 0.38f).sp,
                             fontWeight = FontWeight.Black,
                             fontStyle = FontStyle.Italic,
                             fontFamily = FontFamily.Monospace,
-                            lineHeight = (gaugeSize.value * 0.32f).sp
+                            lineHeight = (gaugeSize.value * 0.38f).sp,
+                            textAlign = TextAlign.Center
                         )
                         Text(
                             text = speedUnit,
                             color = TftCyan,
-                            fontSize = 11.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp
+                            letterSpacing = 2.sp,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -588,7 +520,7 @@ private fun TftLandscapeView(
 }
 
 // ============================================================
-// PORTRAIT VIEW (AiM Casing adapted for vertical phone mount)
+// PORTRAIT VIEW (AiM Casing with Large Speed Center Arc)
 // ============================================================
 @Composable
 private fun TftPortraitView(
@@ -600,8 +532,7 @@ private fun TftPortraitView(
     maxSpeedDisplay: Double,
     timeDisplay: String,
     speedKmh: Double,
-    rpm: Double,
-    gearDisplay: String,
+    maxScale: Double,
     totalOdometer: Int,
     currentTimeString: String,
     isSpeedAlert: Boolean,
@@ -647,8 +578,8 @@ private fun TftPortraitView(
                 TurnIndicatorArrow(isLeft = true, isActive = true)
 
                 ShiftLightArray(
-                    rpm = rpm,
-                    maxRpm = 16000.0,
+                    currentSpeed = speedKmh,
+                    maxSpeed = maxScale,
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .weight(1f)
@@ -661,7 +592,7 @@ private fun TftPortraitView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // STATUS INDICATOR ROW (TC, N, Engine, Oil, Battery, Map)
+            // STATUS INDICATOR ROW (TC, Engine, Oil, Battery, Map, Settings)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -675,13 +606,6 @@ private fun TftPortraitView(
                     Text(
                         text = "TC",
                         color = TftYellow,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "N",
-                        color = if (gearDisplay == "N") TftGreen else TftDimGray,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace
@@ -761,7 +685,7 @@ private fun TftPortraitView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // CENTER: Tachometer Arc + Gear Indicator + Digital Speed
+            // CENTER: Speed Arc Gauge with Large Digital Speedometer at Center
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -770,57 +694,37 @@ private fun TftPortraitView(
             ) {
                 val gaugeSize = minOf(maxWidth, maxHeight) * 0.96f
 
-                TftTachometerArc(
-                    rpm = rpm,
-                    maxRpm = 16000.0,
+                TftSpeedArcGauge(
+                    currentSpeed = displaySpeed,
+                    maxSpeed = maxScale,
+                    isSpeedAlert = isSpeedAlert,
                     modifier = Modifier.size(gaugeSize)
                 )
 
-                // Large Gear readout in center of Arc
-                Box(
-                    modifier = Modifier
-                        .size(gaugeSize * 0.36f)
-                        .clip(CircleShape)
-                        .background(Color(0xFF06090E).copy(alpha = 0.9f))
-                        .border(
-                            1.5.dp,
-                            if (gearDisplay == "N") TftGreen.copy(alpha = 0.7f) else TftCyan.copy(alpha = 0.5f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = gearDisplay,
-                        color = if (gearDisplay == "N") TftGreen else TftWhite,
-                        fontSize = (gaugeSize.value * 0.22f).sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-
-                // Digital Speedometer Readout directly below gear hub
+                // Large Digital Speedometer Readout in Center of Arc
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp)
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.align(Alignment.Center)
                 ) {
                     Text(
                         text = displaySpeed.roundToInt().toString(),
                         color = if (isSpeedAlert) TftRed else TftWhite,
-                        fontSize = (gaugeSize.value * 0.30f).sp,
+                        fontSize = (gaugeSize.value * 0.36f).sp,
                         fontWeight = FontWeight.Black,
                         fontStyle = FontStyle.Italic,
                         fontFamily = FontFamily.Monospace,
-                        lineHeight = (gaugeSize.value * 0.30f).sp
+                        lineHeight = (gaugeSize.value * 0.36f).sp,
+                        textAlign = TextAlign.Center
                     )
                     Text(
                         text = speedUnit,
                         color = TftCyan,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        letterSpacing = 2.sp
+                        letterSpacing = 2.sp,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -921,22 +825,21 @@ private fun TftPortraitView(
 }
 
 // ============================================================
-// TACHOMETER ARC GAUGE (AiM MXS 0..16 x1000 RPM Curved Arc)
+// SPEED ARC GAUGE (AiM MXS Segmented Curved Arc)
 // ============================================================
 @Composable
-private fun TftTachometerArc(
-    rpm: Double,
-    maxRpm: Double,
+private fun TftSpeedArcGauge(
+    currentSpeed: Double,
+    maxSpeed: Double,
+    isSpeedAlert: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val rpmRatio = (rpm / maxRpm).coerceIn(0.0, 1.0).toFloat()
+    val speedRatio = (currentSpeed / maxSpeed).coerceIn(0.0, 1.0).toFloat()
     val animatedSweep by animateFloatAsState(
-        targetValue = rpmRatio * 260f,
+        targetValue = speedRatio * 260f,
         animationSpec = tween(durationMillis = 200),
-        label = "tachometerSweep"
+        label = "speedSweep"
     )
-
-    val textMeasurer = rememberTextMeasurer()
 
     Canvas(modifier = modifier) {
         val canvasSize = size.minDimension
@@ -959,9 +862,10 @@ private fun TftTachometerArc(
             style = Stroke(width = arcStrokeWidth, cap = StrokeCap.Butt)
         )
 
-        // Active cyan segmented arc
+        // Active cyan segmented arc (turns red if speed alert)
+        val arcColor = if (isSpeedAlert) TftRed else TftCyan
         drawArc(
-            color = TftCyan,
+            color = arcColor,
             startAngle = startAngle,
             sweepAngle = animatedSweep,
             useCenter = false,
@@ -973,7 +877,7 @@ private fun TftTachometerArc(
         // Subtle glow effect
         if (animatedSweep > 10f) {
             drawArc(
-                color = TftCyan.copy(alpha = 0.2f),
+                color = arcColor.copy(alpha = 0.2f),
                 startAngle = startAngle,
                 sweepAngle = animatedSweep,
                 useCenter = false,
@@ -1002,52 +906,20 @@ private fun TftTachometerArc(
                 strokeWidth = 3f
             )
         }
-
-        // RPM numbers 0, 2, 4, 6, 8, 10, 12, 14, 16 around the perimeter
-        val rpmTicks = 16
-        for (i in 0..rpmTicks step 2) {
-            val angleDeg = startAngle + (sweepAngle * i / rpmTicks)
-            val angleRad = angleDeg * PI.toFloat() / 180f
-
-            val labelRadius = outerRadius + canvasSize * 0.05f
-            val labelPos = Offset(
-                center.x + labelRadius * cos(angleRad),
-                center.y + labelRadius * sin(angleRad)
-            )
-
-            val isRedline = i >= 13
-            val measuredText = textMeasurer.measure(
-                text = i.toString(),
-                style = TextStyle(
-                    color = if (isRedline) TftRed else TftWhite,
-                    fontSize = (canvasSize * 0.038f).sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            )
-
-            drawText(
-                textLayoutResult = measuredText,
-                topLeft = Offset(
-                    labelPos.x - measuredText.size.width / 2f,
-                    labelPos.y - measuredText.size.height / 2f
-                )
-            )
-        }
     }
 }
 
 // ============================================================
-// 10 SHIFT LIGHT ARRAY (Green -> Yellow -> Red)
+// 10 SHIFT LIGHT ARRAY (Green -> Yellow -> Red based on speed)
 // ============================================================
 @Composable
 private fun ShiftLightArray(
-    rpm: Double,
-    maxRpm: Double,
+    currentSpeed: Double,
+    maxSpeed: Double,
     isSpeedAlert: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val ratio = (rpm / maxRpm).coerceIn(0.0, 1.0).toFloat()
+    val ratio = (currentSpeed / maxSpeed).coerceIn(0.0, 1.0).toFloat()
     val totalLeds = 10
 
     val infiniteTransition = rememberInfiniteTransition(label = "shiftFlash")
@@ -1128,11 +1000,10 @@ private fun TurnIndicatorArrow(isLeft: Boolean, isActive: Boolean) {
 }
 
 // ============================================================
-// LEFT BEZEL COLUMN (TC, N, Battery, Oil, ABS & Button labels)
+// LEFT BEZEL COLUMN (TC, Battery, Oil, ABS & Button labels)
 // ============================================================
 @Composable
 private fun TftLeftIndicatorColumn(
-    isNeutral: Boolean,
     isGpsLost: Boolean,
     pauseState: PauseState,
     modifier: Modifier = Modifier
@@ -1160,15 +1031,6 @@ private fun TftLeftIndicatorColumn(
                 text = "TC",
                 color = TftYellow,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace
-            )
-
-            // N (Neutral) glowing green
-            Text(
-                text = "N",
-                color = if (isNeutral) TftGreen else TftDimGray,
-                fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace
             )
@@ -1341,7 +1203,7 @@ private fun InstantFuelConsumptionBar(
     speedKmh: Double,
     modifier: Modifier = Modifier
 ) {
-    // Simulated instant consumption ratio
+    // Instant consumption ratio derived from live speed
     val consumptionRatio = (speedKmh / 120.0).coerceIn(0.1, 0.85).toFloat()
 
     Column(modifier = modifier) {
