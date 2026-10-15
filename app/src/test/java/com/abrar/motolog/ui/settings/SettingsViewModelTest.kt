@@ -105,7 +105,7 @@ class SettingsViewModelTest {
             assertTrue(awaitItem())
         }
         viewModel.themeMode.test {
-            assertEquals(ThemeMode.TRACK_DAY, awaitItem())
+            assertEquals(ThemeMode.RACING_TFT, awaitItem())
         }
         viewModel.trackingMode.test {
             assertEquals(TrackingMode.HIGH_ACCURACY, awaitItem())
@@ -140,10 +140,10 @@ class SettingsViewModelTest {
         advanceUntilIdle()
         assertFalse(viewModel.useMetricUnits.value)
 
-        // Change Theme to STEALTH_HUD
-        viewModel.setThemeMode(ThemeMode.STEALTH_HUD)
+        // Change Theme to RACING_TFT
+        viewModel.setThemeMode(ThemeMode.RACING_TFT)
         advanceUntilIdle()
-        assertEquals(ThemeMode.STEALTH_HUD, viewModel.themeMode.value)
+        assertEquals(ThemeMode.RACING_TFT, viewModel.themeMode.value)
 
         // Change Tracking Mode to Battery Saver
         viewModel.setTrackingMode(TrackingMode.BATTERY_SAVER)

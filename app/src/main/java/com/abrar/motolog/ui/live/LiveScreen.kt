@@ -12,6 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -45,21 +49,9 @@ import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
 import com.abrar.motolog.shared.domain.model.PauseState
 import com.abrar.motolog.shared.domain.model.RideStats
-import com.abrar.motolog.ui.live.retro.JewelColor
+import com.abrar.motolog.ui.live.retro.RacingTftDashboard
 import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
-import com.abrar.motolog.ui.live.retro.RetroInstrumentCard
-import com.abrar.motolog.ui.live.retro.RetroJewelLamp
 import com.abrar.motolog.ui.live.retro.RetroLiveMap
-import com.abrar.motolog.ui.live.retro.RetroOdometerDrum
-import com.abrar.motolog.ui.live.retro.RetroSpeedometerDial
-import com.abrar.motolog.ui.live.retro.TrackDayCockpitDashboard
-import com.abrar.motolog.ui.live.retro.DesertRallyCockpitDashboard
-import com.abrar.motolog.ui.live.retro.NeonCyberCockpitDashboard
-import com.abrar.motolog.ui.live.retro.RetroClassicCockpitDashboard
-import com.abrar.motolog.ui.live.retro.StealthHudCockpitDashboard
-import com.abrar.motolog.ui.live.retro.AdventureTouringCockpitDashboard
-import com.abrar.motolog.ui.live.retro.CustomBobberCockpitDashboard
-import com.abrar.motolog.ui.live.retro.NightCruiserCockpitDashboard
 import com.abrar.motolog.ui.theme.JewelAmber
 import com.abrar.motolog.ui.theme.JewelGreen
 import com.abrar.motolog.ui.theme.JewelRed
@@ -257,157 +249,27 @@ fun LiveScreen(
                     modifier = modifier.fillMaxSize()
                 )
             } else {
-                when (themeMode) {
-                    ThemeMode.TRACK_DAY -> {
-                        TrackDayCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.DESERT_RALLY -> {
-                        DesertRallyCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.NEON_CYBER -> {
-                        NeonCyberCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.RETRO_CLASSIC -> {
-                        RetroClassicCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.STEALTH_HUD -> {
-                        StealthHudCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.ADVENTURE_TOURING -> {
-                        AdventureTouringCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.CUSTOM_BOBBER -> {
-                        CustomBobberCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.NIGHT_CRUISER -> {
-                        NightCruiserCockpitDashboard(
-                            stats = state.stats,
-                            speedKmh = state.speedKmh,
-                            accuracyMeters = state.accuracyMeters,
-                            isMetric = useMetricUnits,
-                            pauseState = state.pauseState,
-                            isGpsLost = state.isGpsLost,
-                            isSpeedAlert = state.isSpeedAlert,
-                            bikeName = state.bikeName,
-                            onPauseClick = handlePause,
-                            onResumeClick = handleResume,
-                            onStopConfirmed = { viewModel.stopTracking() },
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                }
+                RacingTftDashboard(
+                    stats = state.stats,
+                    speedKmh = state.speedKmh,
+                    accuracyMeters = state.accuracyMeters,
+                    isMetric = useMetricUnits,
+                    pauseState = state.pauseState,
+                    isGpsLost = state.isGpsLost,
+                    isSpeedAlert = state.isSpeedAlert,
+                    bikeName = state.bikeName,
+                    onPauseClick = handlePause,
+                    onResumeClick = handleResume,
+                    onStopConfirmed = { viewModel.stopTracking() },
+                    onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                    palette = palette,
+                    modifier = modifier.fillMaxSize()
+                )
             }
         }
 
         is LiveUiState.WaitingForGps -> {
-            RetroWaitingForGpsView(
+            TftWaitingForGpsView(
                 currentAccuracyMeters = state.currentAccuracyMeters,
                 useMetricUnits = useMetricUnits,
                 keepScreenOn = keepScreenOn,
@@ -444,201 +306,35 @@ fun LiveScreen(
                     modifier = modifier.fillMaxSize()
                 )
             } else {
-                when (themeMode) {
-                    ThemeMode.TRACK_DAY -> {
-                        TrackDayCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.DESERT_RALLY -> {
-                        DesertRallyCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.NEON_CYBER -> {
-                        NeonCyberCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.RETRO_CLASSIC -> {
-                        RetroClassicCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.STEALTH_HUD -> {
-                        StealthHudCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.ADVENTURE_TOURING -> {
-                        AdventureTouringCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.CUSTOM_BOBBER -> {
-                        CustomBobberCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                    ThemeMode.NIGHT_CRUISER -> {
-                        NightCruiserCockpitDashboard(
-                            stats = emptyStats,
-                            speedKmh = 0.0,
-                            accuracyMeters = 0f,
-                            isMetric = useMetricUnits,
-                            pauseState = PauseState.RECORDING,
-                            isGpsLost = false,
-                            isSpeedAlert = false,
-                            bikeName = null,
-                            onPauseClick = {},
-                            onResumeClick = {},
-                            onStopConfirmed = {},
-                            onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
-                            isIdle = true,
-                            onStartClick = { initiateStart() },
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
-                            onNavigateToSettings = onNavigateToSettings,
-                            palette = palette,
-                            modifier = modifier.fillMaxSize()
-                        )
-                    }
-                }
+                RacingTftDashboard(
+                    stats = emptyStats,
+                    speedKmh = 0.0,
+                    accuracyMeters = 0f,
+                    isMetric = useMetricUnits,
+                    pauseState = PauseState.RECORDING,
+                    isGpsLost = false,
+                    isSpeedAlert = false,
+                    bikeName = null,
+                    onPauseClick = {},
+                    onResumeClick = {},
+                    onStopConfirmed = {},
+                    onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                    isIdle = true,
+                    onStartClick = { initiateStart() },
+                    keepScreenOn = keepScreenOn,
+                    onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                    onNavigateToSettings = onNavigateToSettings,
+                    palette = palette,
+                    modifier = modifier.fillMaxSize()
+                )
             }
         }
 
         is LiveUiState.Stopped -> {
-            ThemedStoppedCockpitView(
+            TftStoppedView(
                 stats = state.stats,
                 useMetricUnits = useMetricUnits,
                 onResetClick = { viewModel.resetToIdle() },
-                themeMode = themeMode,
                 palette = palette,
                 modifier = modifier.fillMaxSize()
             )
@@ -917,8 +613,11 @@ enum class LiveViewMode {
     MAP
 }
 
+// ============================================================
+// TFT-style Waiting for GPS View
+// ============================================================
 @Composable
-private fun RetroWaitingForGpsView(
+private fun TftWaitingForGpsView(
     currentAccuracyMeters: Float?,
     useMetricUnits: Boolean,
     keepScreenOn: Boolean,
@@ -926,61 +625,118 @@ private fun RetroWaitingForGpsView(
     onNavigateToSettings: () -> Unit,
     onStopConfirmed: () -> Unit,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
 ) {
+    val tftCyan = Color(0xFF00D4E5)
+    val tftBg = Color(0xFF080A10)
+    val tftSurface = Color(0xFF0E1118)
+    val tftYellow = Color(0xFFFFEA00)
+    val tftGray = Color(0xFF6B7280)
+    val tftWhite = Color(0xFFF5F5F7)
+
     BoxWithConstraints(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
-                    colors = if (palette.isLight) {
-                        listOf(palette.background, Color(0xFFDDE2E5), palette.background)
-                    } else {
-                        listOf(palette.background, Color(0xFF0A0908), palette.background)
-                    }
+                    colors = listOf(tftBg, Color(0xFF06080E), tftBg)
                 )
             )
             .padding(14.dp)
     ) {
-        val screenMaxWidth = maxWidth
-        val screenMaxHeight = maxHeight
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            IdleTopBar(
-                keepScreenOn = keepScreenOn,
-                onToggleKeepScreenOn = onToggleKeepScreenOn,
-                onNavigateToSettings = onNavigateToSettings,
-                palette = palette
-            )
-            val dialSize = (screenMaxHeight * 0.40f).coerceAtMost(screenMaxWidth * 0.85f)
-            RetroSpeedometerDial(
-                currentSpeed = 0.0,
-                isMetric = useMetricUnits,
-                isSpeedAlert = false,
-                palette = palette,
-                modifier = Modifier.size(dialSize)
-            )
+            // Top bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(tftSurface)
+                        .border(1.dp, tftCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "MOTO LOG",
+                        color = tftCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 2.sp
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onToggleKeepScreenOn,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
+                            contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
+                            tint = if (keepScreenOn) tftCyan else tftGray
+                        )
+                    }
+                    IconButton(
+                        onClick = onNavigateToSettings,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SettingsIcon,
+                            contentDescription = "Open Settings",
+                            tint = tftGray
+                        )
+                    }
+                }
+            }
+
+            // Large GPS animation area
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                RetroJewelLamp(
-                    label = "GPS FIX",
-                    isActive = true,
-                    color = JewelColor.AMBER,
-                    size = 36.dp,
-                    shouldBlink = true
+                // Pulsing GPS icon
+                val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "gpsPulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.3f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 1000),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "gpsPulseAlpha"
                 )
+
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(tftYellow.copy(alpha = pulseAlpha * 0.1f))
+                        .border(2.dp, tftYellow.copy(alpha = pulseAlpha * 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.GpsNotFixed,
+                        contentDescription = "Acquiring GPS",
+                        tint = tftYellow.copy(alpha = pulseAlpha),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
                 Text(
                     text = "ACQUIRING SATELLITE FIX",
-                    color = palette.primaryAccent,
+                    color = tftYellow,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.sp
                 )
+
                 val accuracyText = if (currentAccuracyMeters != null) {
                     val acc = if (useMetricUnits) "±${currentAccuracyMeters.toInt()}m" else "±${(currentAccuracyMeters * 3.28084).toInt()}ft"
                     val target = if (useMetricUnits) "≤25m" else "≤82ft"
@@ -990,11 +746,12 @@ private fun RetroWaitingForGpsView(
                 }
                 Text(
                     text = accuracyText,
-                    color = palette.dialText.copy(alpha = 0.75f),
+                    color = tftGray,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace
                 )
             }
+
             RetroHoldToStopButton(
                 onStopConfirmed = onStopConfirmed,
                 modifier = Modifier.fillMaxWidth()
@@ -1003,15 +760,26 @@ private fun RetroWaitingForGpsView(
     }
 }
 
+// ============================================================
+// TFT-style Stopped / Ride Summary View
+// ============================================================
 @Composable
-private fun ThemedStoppedCockpitView(
+private fun TftStoppedView(
     stats: RideStats,
     useMetricUnits: Boolean,
     onResetClick: () -> Unit,
-    themeMode: ThemeMode,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(themeMode)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
 ) {
+    val tftCyan = Color(0xFF00D4E5)
+    val tftBg = Color(0xFF080A10)
+    val tftSurface = Color(0xFF0E1118)
+    val tftGreen = Color(0xFF00E676)
+    val tftYellow = Color(0xFFFFEA00)
+    val tftRed = Color(0xFFFF1744)
+    val tftGray = Color(0xFF6B7280)
+    val tftWhite = Color(0xFFF5F5F7)
+
     val totalDistKm = stats.totalDistanceMeters / 1000.0
     val displayDistance = if (useMetricUnits) totalDistKm else totalDistKm * 0.621371
     val distUnit = if (useMetricUnits) "km" else "mi"
@@ -1027,11 +795,7 @@ private fun ThemedStoppedCockpitView(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
-                    colors = if (palette.isLight) {
-                        listOf(palette.background, Color(0xFFDDE2E5), palette.background)
-                    } else {
-                        listOf(palette.background, Color(0xFF0A0908), palette.background)
-                    }
+                    colors = listOf(tftBg, Color(0xFF06080E), tftBg)
                 )
             )
             .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -1051,13 +815,13 @@ private fun ThemedStoppedCockpitView(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .background(palette.surface)
-                    .border(1.5.dp, palette.surfaceBorder, RoundedCornerShape(4.dp))
+                    .background(tftSurface)
+                    .border(1.5.dp, tftCyan.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = if (themeMode == ThemeMode.TRACK_DAY) "SESSION FINISHED" else "RIDE COMPLETED",
-                    color = palette.primaryAccent,
+                    text = "SESSION COMPLETE",
+                    color = tftCyan,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -1065,148 +829,134 @@ private fun ThemedStoppedCockpitView(
                 )
             }
 
-            // Trip Distance Section
-            if (themeMode == ThemeMode.RETRO_CLASSIC) {
-                RetroOdometerDrum(
-                    distanceValue = displayDistance,
-                    unitLabel = "TRIP $distUnit",
-                    palette = palette
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(palette.surface)
-                        .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
-                        .padding(vertical = 10.dp, horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Trip Distance
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(tftSurface)
+                    .border(1.dp, tftCyan.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                    .padding(vertical = 10.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "TOTAL DISTANCE",
+                        color = tftCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
                         Text(
-                            text = "TOTAL DISTANCE",
-                            color = palette.secondaryAccent,
-                            fontSize = 11.sp,
+                            text = String.format(Locale.US, "%.1f", displayDistance),
+                            color = tftWhite,
+                            fontSize = 34.sp,
+                            lineHeight = 36.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = distUnit.uppercase(),
+                            color = tftGray,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.sp
+                            modifier = Modifier.padding(bottom = 3.dp)
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = String.format(Locale.US, "%.1f", displayDistance),
-                                color = palette.primaryAccent,
-                                fontSize = 34.sp,
-                                lineHeight = 36.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = distUnit.uppercase(),
-                                color = palette.dialText.copy(alpha = 0.8f),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
                     }
                 }
             }
 
-            // Telemetry Cards: Row 1
+            // Telemetry Cards Row 1
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "Moving Time",
                     value = movingTimeStr,
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = tftGreen,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "Moving Avg",
                     value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
                     unit = spdUnit,
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = tftYellow,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
 
-            // Telemetry Cards: Row 2
+            // Telemetry Cards Row 2
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "Max Speed",
                     value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                     unit = spdUnit,
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = tftRed,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "Total Time",
                     value = totalTimeStr,
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = tftCyan,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
 
-            // Telemetry Cards: Row 3
+            // Telemetry Cards Row 3
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(cardHeight),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "Overall Avg",
                     value = String.format(Locale.US, "%.1f", overallAvgSpeed),
                     unit = spdUnit,
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = Color(0xFFFF9100),
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
-                RetroInstrumentCard(
+                TftSummaryCard(
                     label = "GPS Hits",
                     value = "${stats.acceptedPointCount}",
                     subtitle = "Recorded Fixes",
-                    palette = palette,
-                    showRivets = themeMode == ThemeMode.RETRO_CLASSIC,
+                    accentColor = tftGray,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Action Button
+            // Start New Ride Button
             Button(
                 onClick = onResetClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp),
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = palette.primaryAccent
+                    containerColor = tftCyan
                 )
             ) {
                 Text(
                     text = "START NEW RIDE",
-                    color = if (palette.isLight) Color.White else Color.Black,
+                    color = Color.Black,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -1217,54 +967,71 @@ private fun ThemedStoppedCockpitView(
     }
 }
 
+/**
+ * Summary card for the stopped/completed ride screen, matching TFT aesthetic.
+ */
 @Composable
-private fun IdleTopBar(
-    keepScreenOn: Boolean,
-    onToggleKeepScreenOn: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC)
+private fun TftSummaryCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    unit: String? = null,
+    subtitle: String? = null,
+    accentColor: Color = Color(0xFF00D4E5)
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    val tftSurface = Color(0xFF0E1118)
+    val tftWhite = Color(0xFFF5F5F7)
+    val tftGray = Color(0xFF6B7280)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(tftSurface)
+            .border(0.8.dp, accentColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(palette.surface)
-                .border(1.2.dp, palette.surfaceBorder.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "MOTO LOG",
-                color = palette.secondaryAccent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
+                text = label.uppercase(),
+                color = accentColor,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 1.sp
             )
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onToggleKeepScreenOn,
-                modifier = Modifier.size(44.dp)
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
-                    contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
-                    tint = if (keepScreenOn) palette.primaryAccent else palette.dialText.copy(alpha = 0.6f)
+                Text(
+                    text = value,
+                    color = tftWhite,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
                 )
+                if (unit != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = unit,
+                        color = tftGray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
             }
-            IconButton(
-                onClick = onNavigateToSettings,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.SettingsIcon,
-                    contentDescription = "Open Settings",
-                    tint = palette.secondaryAccent
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    color = tftGray,
+                    fontSize = 9.sp,
+                    fontFamily = FontFamily.Monospace
                 )
             }
         }

@@ -844,12 +844,18 @@
   - **Custom Bobber (`CUSTOM_BOBBER`)**: Rebalanced the 180° machined billet arc gauge to `(screenWidth * 0.65f).coerceIn(240.dp, 275.dp)` with thick 10dp billet tracks, 76sp serif stamped speed digits, a bold 24sp stamped trip odometer plate, 12-segment engine rumble spectrum, and 20sp telemetry cards.
   - **Night Cruiser (`NIGHT_CRUISER`)**: Elevated into a majestic **Midnight Horizon Cockpit Console** integrating the ambient horizon light beam directly into the canopy, bold 76sp starlight numerals, a dedicated 24sp cruise odometer with an 18sp moving clock, and 20sp telemetry cards.
   - **Stealth HUD (`STEALTH_HUD`)**: Harmonized collimator reticle to `(screenWidth * 0.62f).coerceIn(220.dp, 255.dp)` with 70sp laser speed digits, 24sp tactical mission distance strip, and 56dp action buttons.
-  - Sizing is now fully consistent, bold, and glove-glanceable across all 8 themes without clipping or dead space.
+  - Sizing is now fully consistent, bold, and glove-glanceable across all themes without clipping or dead space.
+- [x] **AiM Racing TFT Dashboard Theme Re-creation & Theme Consolidation**:
+  - Replaced multiple cockpits with a single, highly authentic, unified **AiM MXS-style Racing TFT Display** dashboard matching user reference imagery.
+  - **Bezel & Casing**: Modeled authentic matte-black chamfered hardware bezel (`ChamferedBezelShape`) with printed button markings (`MENU / <<`, `>>`, `MEM / OK`, `VIEW / QUIT`) and central oval `AiM` emblem.
+  - **LED Shift Lights & Indicators**: Implemented 10-segment shift light array (Green -> Yellow -> Red) with overspeed blink, flanked by left/right green turn indicator arrows, alongside left indicator lamps (TC, Neutral, High Beam, Battery, Oil, ABS) and right warning lamps (High Beam, Engine MIL, Master Warning).
+  - **Tachometer & Gear Display**: Sweeping cyan segmented arc tachometer (0-16 x1000 RPM) with radial gaps, redline zone (13-16k), and a dominant central Gear indicator badge (`N` glowing green when stopped, gears 1-6 calculated while riding).
+  - **Speedometer & Telemetry Grid**: High-contrast italic digital speedometer (KM/H or MPH) below the arc, plus full telemetry stack: `ODOMETRO TOTALE KM`, `TRIP A KM`, `TRIP B TIME`, instant fuel consumption bar gauge (0-50 KM/L with QS status), and G-DNS / ambient temp readouts.
+  - **Bottom Info Strip**: Fuel level gauge with pump icon and remaining range (`-> 525 KM`), coolant temp (`105 °C`), air temp (`25 °C`), GPS accuracy/fix status, info line, and live date/time clock.
+  - **Responsive Dual-Orientation**: Fully tailored layouts for both Landscape and Portrait orientations, keeping glove-friendly 56dp touch targets, Pause/Resume toggle, and 2-second Hold-to-Stop progress ring.
+  - **Theme Simplification**: Consolidated `ThemeMode` to `RACING_TFT`, streamlined `SettingsScreen`, and updated all unit tests and state flows.
 
 ### Verified
 - [x] `./gradlew compileDebugKotlin` (compilation passes cleanly) — VERIFIED
 - [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
-
-
-

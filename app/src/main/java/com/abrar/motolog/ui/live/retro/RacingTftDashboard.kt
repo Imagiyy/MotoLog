@@ -1,0 +1,1716 @@
+package com.abrar.motolog.ui.live.retro
+
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.GpsNotFixed
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ScreenLockPortrait
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.abrar.motolog.shared.domain.model.PauseState
+import com.abrar.motolog.shared.domain.model.RideStats
+import com.abrar.motolog.ui.theme.CockpitThemePalette
+import com.abrar.motolog.ui.theme.ThemeMode
+import com.abrar.motolog.ui.theme.getCockpitThemePalette
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlinx.coroutines.delay
+
+// ============================================================
+// AiM MXS Racing TFT Color Constants
+// ============================================================
+private val TftBackground = Color(0xFF030508)
+private val TftBezelBg = Color(0xFF0D0F14)
+private val TftBezelBorder = Color(0xFF1E222D)
+private val TftSurface = Color(0xFF090C12)
+private val TftCyan = Color(0xFF00D4E5)
+private val TftCyanDim = Color(0xFF005860)
+private val TftGreen = Color(0xFF00E676)
+private val TftYellow = Color(0xFFFFEA00)
+private val TftOrange = Color(0xFFFF9100)
+private val TftRed = Color(0xFFFF1744)
+private val TftWhite = Color(0xFFF5F5F7)
+private val TftGray = Color(0xFF6B7280)
+private val TftDimGray = Color(0xFF232730)
+private val TftBlue = Color(0xFF2979FF)
+
+/**
+ * Chamfered bezel shape matching physical AiM MXS / GS-Dash displays.
+ */
+val ChamferedBezelShape = GenericShape { size, _ ->
+    val chamfer = min(size.width, size.height) * 0.08f
+    moveTo(chamfer, 0f)
+    lineTo(size.width - chamfer, 0f)
+    lineTo(size.width, chamfer)
+    lineTo(size.width, size.height - chamfer)
+    lineTo(size.width - chamfer, size.height)
+    lineTo(chamfer, size.height)
+    lineTo(0f, size.height - chamfer)
+    lineTo(0f, chamfer)
+    close()
+}
+
+/**
+ * AiM MXS Racing TFT Dashboard for MotoLog.
+ *
+ * Faithfully recreates the AiM MXS motorcycle racing data logger display:
+ * - Chamfered matte black casing with physical button markings
+ * - Top LED shift light array (10 segmented LEDs) flanked by green turn indicators
+ * - Left status indicator stack: TC, N (Neutral), High Beam, Battery, Oil, ABS
+ * - Right warning lamps: High Beam, Engine MIL, Warning
+ * - Circular cyan segmented RPM tachometer arc (0-16 x1000 RPM)
+ * - Large central Gear readout ('N' when stopped, 1-6 calculated while riding)
+ * - Dominant digital Speed readout (KM/H or MPH)
+ * - Telemetry fields: ODOMETRO TOTALE KM, TRIP A KM, TRIP B KM
+ * - Instant Fuel Consumption / Power segmented bar gauge (0..50 KM/L)
+ * - Lap / Split indicator and Ambient air temperature readout
+ * - Bottom strip: Fuel gauge with pump icon, Coolant temp, Intake temp,
+ *   GPS health status, bike name / status info line, and live date/clock.
+ *
+ * Full responsive compatibility for both Landscape and Portrait orientations.
+ */
+@Composable
+fun RacingTftDashboard(
+    stats: RideStats,
+    speedKmh: Double,
+    accuracyMeters: Float,
+    isMetric: Boolean,
+    pauseState: PauseState,
+    isGpsLost: Boolean,
+    isSpeedAlert: Boolean,
+    bikeName: String?,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    onSwitchToMap: () -> Unit,
+    modifier: Modifier = Modifier,
+    isIdle: Boolean = false,
+    onStartClick: () -> Unit = {},
+    keepScreenOn: Boolean = false,
+    onToggleKeepScreenOn: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
+) {
+    var showOverallStats by remember { mutableStateOf(false) }
+
+    // Live clock ticker
+    var currentTimeString by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy hh:mm a", Locale.US)
+        while (true) {
+            currentTimeString = dateFormat.format(Date()).uppercase()
+            delay(1000)
+        }
+    }
+
+    val totalDistanceKm = stats.totalDistanceMeters / 1000.0
+    val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
+    val displayDistance = if (isMetric) totalDistanceKm else totalDistanceKm * 0.621371
+    val speedUnit = if (isMetric) "KM/H" else "MPH"
+    val distanceUnit = if (isMetric) "KM" else "MI"
+
+    val avgSpeedDisplay = if (showOverallStats) {
+        if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
+    } else {
+        if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
+    }
+    val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
+    val timeDisplay = CockpitUtils.formatDurationMs(
+        if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs
+    )
+
+    // Motorcycle Gear calculation (N when speed < 2 km/h, 1-6 according to speed)
+    val gearDisplay: String = when {
+        isIdle || speedKmh < 2.0 -> "N"
+        speedKmh < 30.0 -> "1"
+        speedKmh < 55.0 -> "2"
+        speedKmh < 85.0 -> "3"
+        speedKmh < 115.0 -> "4"
+        speedKmh < 150.0 -> "5"
+        else -> "6"
+    }
+
+    // Engine RPM calculation (idle ~1200 RPM, sweeps across current gear up to 15,500 RPM)
+    val simulatedRpm: Double = when {
+        isIdle -> 0.0
+        speedKmh < 2.0 -> 1250.0
+        else -> {
+            val gearRatio = when (gearDisplay) {
+                "1" -> speedKmh / 35.0
+                "2" -> (speedKmh - 25.0) / 35.0
+                "3" -> (speedKmh - 50.0) / 40.0
+                "4" -> (speedKmh - 80.0) / 40.0
+                "5" -> (speedKmh - 110.0) / 45.0
+                else -> (speedKmh - 145.0) / 60.0
+            }.coerceIn(0.0, 1.0)
+            3000.0 + (gearRatio * 11500.0)
+        }
+    }
+
+    // Total Odometer (baseline + current distance)
+    val totalOdometerDisplay = 127558 + totalDistanceKm.roundToInt()
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .background(TftBackground)
+    ) {
+        val isLandscape = maxWidth > maxHeight
+
+        if (isLandscape) {
+            TftLandscapeView(
+                displaySpeed = displaySpeed,
+                speedUnit = speedUnit,
+                displayDistance = displayDistance,
+                distanceUnit = distanceUnit,
+                avgSpeedDisplay = avgSpeedDisplay,
+                maxSpeedDisplay = maxSpeedDisplay,
+                timeDisplay = timeDisplay,
+                speedKmh = speedKmh,
+                rpm = simulatedRpm,
+                gearDisplay = gearDisplay,
+                totalOdometer = totalOdometerDisplay,
+                currentTimeString = currentTimeString,
+                isSpeedAlert = isSpeedAlert,
+                isGpsLost = isGpsLost,
+                pauseState = pauseState,
+                bikeName = bikeName,
+                accuracyMeters = accuracyMeters,
+                isMetric = isMetric,
+                isIdle = isIdle,
+                keepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                onNavigateToSettings = onNavigateToSettings,
+                onStartClick = onStartClick,
+                onPauseClick = onPauseClick,
+                onResumeClick = onResumeClick,
+                onStopConfirmed = onStopConfirmed,
+                onSwitchToMap = onSwitchToMap,
+                palette = palette
+            )
+        } else {
+            TftPortraitView(
+                displaySpeed = displaySpeed,
+                speedUnit = speedUnit,
+                displayDistance = displayDistance,
+                distanceUnit = distanceUnit,
+                avgSpeedDisplay = avgSpeedDisplay,
+                maxSpeedDisplay = maxSpeedDisplay,
+                timeDisplay = timeDisplay,
+                speedKmh = speedKmh,
+                rpm = simulatedRpm,
+                gearDisplay = gearDisplay,
+                totalOdometer = totalOdometerDisplay,
+                currentTimeString = currentTimeString,
+                isSpeedAlert = isSpeedAlert,
+                isGpsLost = isGpsLost,
+                pauseState = pauseState,
+                bikeName = bikeName,
+                accuracyMeters = accuracyMeters,
+                isMetric = isMetric,
+                isIdle = isIdle,
+                keepScreenOn = keepScreenOn,
+                onToggleKeepScreenOn = onToggleKeepScreenOn,
+                onNavigateToSettings = onNavigateToSettings,
+                onStartClick = onStartClick,
+                onPauseClick = onPauseClick,
+                onResumeClick = onResumeClick,
+                onStopConfirmed = onStopConfirmed,
+                onSwitchToMap = onSwitchToMap,
+                palette = palette
+            )
+        }
+    }
+}
+
+// ============================================================
+// LANDSCAPE VIEW (Exact AiM Casing + Screen proportions)
+// ============================================================
+@Composable
+private fun TftLandscapeView(
+    displaySpeed: Double,
+    speedUnit: String,
+    displayDistance: Double,
+    distanceUnit: String,
+    avgSpeedDisplay: Double,
+    maxSpeedDisplay: Double,
+    timeDisplay: String,
+    speedKmh: Double,
+    rpm: Double,
+    gearDisplay: String,
+    totalOdometer: Int,
+    currentTimeString: String,
+    isSpeedAlert: Boolean,
+    isGpsLost: Boolean,
+    pauseState: PauseState,
+    bikeName: String?,
+    accuracyMeters: Float,
+    isMetric: Boolean,
+    isIdle: Boolean,
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onStartClick: () -> Unit,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    onSwitchToMap: () -> Unit,
+    palette: CockpitThemePalette
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(4.dp)
+            .clip(ChamferedBezelShape)
+            .background(TftBezelBg)
+            .border(2.dp, TftBezelBorder, ChamferedBezelShape)
+            .padding(6.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // TOP BEZEL BAR: Left Turn Indicator + 10 Shift LEDs + Right Turn Indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(18.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Left Turn Arrow
+                TurnIndicatorArrow(isLeft = true, isActive = true)
+
+                // 10 Shift LEDs (Green -> Yellow -> Red)
+                ShiftLightArray(
+                    rpm = rpm,
+                    maxRpm = 16000.0,
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(12.dp)
+                        .padding(horizontal = 24.dp)
+                )
+
+                // Right Turn Arrow
+                TurnIndicatorArrow(isLeft = false, isActive = true)
+            }
+
+            // MAIN INNER SCREEN
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black)
+                    .border(1.dp, Color(0xFF161922), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // LEFT BEZEL COLUMN: Indicator Lamps Stack & Buttons
+                TftLeftIndicatorColumn(
+                    isNeutral = gearDisplay == "N",
+                    isGpsLost = isGpsLost,
+                    pauseState = pauseState,
+                    modifier = Modifier
+                        .width(42.dp)
+                        .fillMaxHeight()
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // CENTER-LEFT: Tachometer Arc Gauge + Center Gear + Speed Readout
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1.15f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val gaugeSize = minOf(maxWidth, maxHeight) * 0.98f
+
+                    TftTachometerArc(
+                        rpm = rpm,
+                        maxRpm = 16000.0,
+                        modifier = Modifier.size(gaugeSize)
+                    )
+
+                    // Large Gear Indicator in Center of Arc
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.align(Alignment.Center)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(gaugeSize * 0.38f)
+                                .clip(CircleShape)
+                                .background(Color(0xFF070B12).copy(alpha = 0.85f))
+                                .border(
+                                    1.5.dp,
+                                    if (gearDisplay == "N") TftGreen.copy(alpha = 0.7f) else TftCyan.copy(alpha = 0.5f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = gearDisplay,
+                                color = if (gearDisplay == "N") TftGreen else TftWhite,
+                                fontSize = (gaugeSize.value * 0.22f).sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    // Large Digital Speedometer positioned below/right of the arc
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 6.dp, end = 12.dp)
+                    ) {
+                        Text(
+                            text = displaySpeed.roundToInt().toString(),
+                            color = if (isSpeedAlert) TftRed else TftWhite,
+                            fontSize = (gaugeSize.value * 0.32f).sp,
+                            fontWeight = FontWeight.Black,
+                            fontStyle = FontStyle.Italic,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = (gaugeSize.value * 0.32f).sp
+                        )
+                        Text(
+                            text = speedUnit,
+                            color = TftCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // RIGHT: Telemetry Rows (Total Odo, Trip A, Trip B, Bar Gauge, Split/Temp)
+                Column(
+                    modifier = Modifier
+                        .weight(1.05f)
+                        .fillMaxHeight()
+                        .padding(vertical = 2.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Odometer Totale
+                    TftAiMTelemetryRow(
+                        value = totalOdometer.toString(),
+                        label = "ODOMETRO TOTALE   $distanceUnit",
+                        valueColor = TftWhite
+                    )
+
+                    // Trip A (Ride Distance)
+                    TftAiMTelemetryRow(
+                        value = String.format(Locale.US, "%.1f", displayDistance),
+                        label = "TRIP A   $distanceUnit",
+                        valueColor = TftWhite
+                    )
+
+                    // Trip B (Moving Time / Duration)
+                    TftAiMTelemetryRow(
+                        value = timeDisplay,
+                        label = "TRIP B   TIME",
+                        valueColor = TftWhite
+                    )
+
+                    // Instant Fuel / Consumption Bar Gauge
+                    InstantFuelConsumptionBar(
+                        speedKmh = speedKmh,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                    )
+
+                    // G-DNS / Lap & Temp row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "2",
+                                color = TftWhite,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "G-DNS",
+                                color = TftCyan,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "28",
+                                color = TftWhite,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "°C",
+                                color = TftCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // RIGHT BEZEL COLUMN: Warning Lamps & Button markings
+                TftRightWarningColumn(
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier
+                        .width(42.dp)
+                        .fillMaxHeight()
+                )
+            }
+
+            // BOTTOM BAR: Fuel Level Bar + Temperatures + Controls + GPS Info Line + AiM Logo
+            TftLandscapeBottomBar(
+                currentTimeString = currentTimeString,
+                isGpsLost = isGpsLost,
+                accuracyMeters = accuracyMeters,
+                bikeName = bikeName,
+                isIdle = isIdle,
+                pauseState = pauseState,
+                onStartClick = onStartClick,
+                onPauseClick = onPauseClick,
+                onResumeClick = onResumeClick,
+                onStopConfirmed = onStopConfirmed,
+                onSwitchToMap = onSwitchToMap,
+                palette = palette,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+// ============================================================
+// PORTRAIT VIEW (AiM Casing adapted for vertical phone mount)
+// ============================================================
+@Composable
+private fun TftPortraitView(
+    displaySpeed: Double,
+    speedUnit: String,
+    displayDistance: Double,
+    distanceUnit: String,
+    avgSpeedDisplay: Double,
+    maxSpeedDisplay: Double,
+    timeDisplay: String,
+    speedKmh: Double,
+    rpm: Double,
+    gearDisplay: String,
+    totalOdometer: Int,
+    currentTimeString: String,
+    isSpeedAlert: Boolean,
+    isGpsLost: Boolean,
+    pauseState: PauseState,
+    bikeName: String?,
+    accuracyMeters: Float,
+    isMetric: Boolean,
+    isIdle: Boolean,
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onStartClick: () -> Unit,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    onSwitchToMap: () -> Unit,
+    palette: CockpitThemePalette
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(4.dp)
+            .clip(ChamferedBezelShape)
+            .background(TftBezelBg)
+            .border(2.dp, TftBezelBorder, ChamferedBezelShape)
+            .padding(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // TOP BEZEL: Shift Light Bar + Turn Arrows
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TurnIndicatorArrow(isLeft = true, isActive = true)
+
+                ShiftLightArray(
+                    rpm = rpm,
+                    maxRpm = 16000.0,
+                    isSpeedAlert = isSpeedAlert,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(13.dp)
+                        .padding(horizontal = 14.dp)
+                )
+
+                TurnIndicatorArrow(isLeft = false, isActive = true)
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // STATUS INDICATOR ROW (TC, N, Engine, Oil, Battery, Map)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "TC",
+                        color = TftYellow,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "N",
+                        color = if (gearDisplay == "N") TftGreen else TftDimGray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Thermostat,
+                        contentDescription = "Coolant",
+                        tint = TftCyan,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.BatteryAlert,
+                        contentDescription = "Battery",
+                        tint = TftRed,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    IconButton(
+                        onClick = onToggleKeepScreenOn,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
+                            contentDescription = "Keep Screen On",
+                            tint = if (keepScreenOn) TftCyan else TftGray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onNavigateToSettings,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = TftGray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.dp, TftCyan.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .clickable { onSwitchToMap() },
+                        color = Color(0xFF0F131D)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = "Map",
+                                tint = TftCyan,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "MAP",
+                                color = TftWhite,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // CENTER: Tachometer Arc + Gear Indicator + Digital Speed
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1.3f),
+                contentAlignment = Alignment.Center
+            ) {
+                val gaugeSize = minOf(maxWidth, maxHeight) * 0.96f
+
+                TftTachometerArc(
+                    rpm = rpm,
+                    maxRpm = 16000.0,
+                    modifier = Modifier.size(gaugeSize)
+                )
+
+                // Large Gear readout in center of Arc
+                Box(
+                    modifier = Modifier
+                        .size(gaugeSize * 0.36f)
+                        .clip(CircleShape)
+                        .background(Color(0xFF06090E).copy(alpha = 0.9f))
+                        .border(
+                            1.5.dp,
+                            if (gearDisplay == "N") TftGreen.copy(alpha = 0.7f) else TftCyan.copy(alpha = 0.5f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = gearDisplay,
+                        color = if (gearDisplay == "N") TftGreen else TftWhite,
+                        fontSize = (gaugeSize.value * 0.22f).sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                // Digital Speedometer Readout directly below gear hub
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 4.dp)
+                ) {
+                    Text(
+                        text = displaySpeed.roundToInt().toString(),
+                        color = if (isSpeedAlert) TftRed else TftWhite,
+                        fontSize = (gaugeSize.value * 0.30f).sp,
+                        fontWeight = FontWeight.Black,
+                        fontStyle = FontStyle.Italic,
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = (gaugeSize.value * 0.30f).sp
+                    )
+                    Text(
+                        text = speedUnit,
+                        color = TftCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 2.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // TELEMETRY PANEL (Odometro Totale, Trip A, Trip B, Instant Fuel Bar)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black)
+                    .border(1.dp, Color(0xFF151822), RoundedCornerShape(6.dp))
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TftAiMTelemetryField(
+                        value = totalOdometer.toString(),
+                        label = "ODOMETRO $distanceUnit",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    TftAiMTelemetryField(
+                        value = String.format(Locale.US, "%.1f", displayDistance),
+                        label = "TRIP A $distanceUnit",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    TftAiMTelemetryField(
+                        value = timeDisplay,
+                        label = "TRIP B TIME",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                InstantFuelConsumptionBar(
+                    speedKmh = speedKmh,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // BOTTOM STATUS LINE (Fuel Bar, Temps, GPS, Date)
+            TftPortraitBottomInfo(
+                currentTimeString = currentTimeString,
+                isGpsLost = isGpsLost,
+                accuracyMeters = accuracyMeters,
+                bikeName = bikeName,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // CONTROLS (Glove-friendly Start or Pause/Resume + 2-sec Hold-to-Stop)
+            if (isIdle) {
+                Button(
+                    onClick = onStartClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = TftCyan)
+                ) {
+                    Text(
+                        text = "START RIDE",
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 2.sp
+                    )
+                }
+            } else {
+                ThemedCockpitControlsRow(
+                    isPaused = pauseState.isPaused,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onStopConfirmed = onStopConfirmed,
+                    palette = palette,
+                    cornerRadius = 6.dp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // AiM Oval Logo centered at bottom bezel
+            AiMOvalLogo()
+        }
+    }
+}
+
+// ============================================================
+// TACHOMETER ARC GAUGE (AiM MXS 0..16 x1000 RPM Curved Arc)
+// ============================================================
+@Composable
+private fun TftTachometerArc(
+    rpm: Double,
+    maxRpm: Double,
+    modifier: Modifier = Modifier
+) {
+    val rpmRatio = (rpm / maxRpm).coerceIn(0.0, 1.0).toFloat()
+    val animatedSweep by animateFloatAsState(
+        targetValue = rpmRatio * 260f,
+        animationSpec = tween(durationMillis = 200),
+        label = "tachometerSweep"
+    )
+
+    val textMeasurer = rememberTextMeasurer()
+
+    Canvas(modifier = modifier) {
+        val canvasSize = size.minDimension
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val outerRadius = canvasSize * 0.44f
+        val arcStrokeWidth = canvasSize * 0.08f
+        val innerRadius = outerRadius - arcStrokeWidth
+
+        val startAngle = 140f
+        val sweepAngle = 260f
+
+        // Dim background track
+        drawArc(
+            color = Color(0xFF10141D),
+            startAngle = startAngle,
+            sweepAngle = sweepAngle,
+            useCenter = false,
+            topLeft = Offset(center.x - outerRadius, center.y - outerRadius),
+            size = Size(outerRadius * 2, outerRadius * 2),
+            style = Stroke(width = arcStrokeWidth, cap = StrokeCap.Butt)
+        )
+
+        // Active cyan segmented arc
+        drawArc(
+            color = TftCyan,
+            startAngle = startAngle,
+            sweepAngle = animatedSweep,
+            useCenter = false,
+            topLeft = Offset(center.x - outerRadius, center.y - outerRadius),
+            size = Size(outerRadius * 2, outerRadius * 2),
+            style = Stroke(width = arcStrokeWidth, cap = StrokeCap.Butt)
+        )
+
+        // Subtle glow effect
+        if (animatedSweep > 10f) {
+            drawArc(
+                color = TftCyan.copy(alpha = 0.2f),
+                startAngle = startAngle,
+                sweepAngle = animatedSweep,
+                useCenter = false,
+                topLeft = Offset(center.x - outerRadius, center.y - outerRadius),
+                size = Size(outerRadius * 2, outerRadius * 2),
+                style = Stroke(width = arcStrokeWidth * 1.5f, cap = StrokeCap.Butt)
+            )
+        }
+
+        // Segment block dividers (black radial gaps between blocks)
+        val totalSegments = 32
+        for (i in 0..totalSegments) {
+            val angleDeg = startAngle + (sweepAngle * i / totalSegments)
+            val angleRad = angleDeg * PI.toFloat() / 180f
+
+            val r1 = innerRadius - 2f
+            val r2 = outerRadius + 2f
+
+            val p1 = Offset(center.x + r1 * cos(angleRad), center.y + r1 * sin(angleRad))
+            val p2 = Offset(center.x + r2 * cos(angleRad), center.y + r2 * sin(angleRad))
+
+            drawLine(
+                color = Color.Black,
+                start = p1,
+                end = p2,
+                strokeWidth = 3f
+            )
+        }
+
+        // RPM numbers 0, 2, 4, 6, 8, 10, 12, 14, 16 around the perimeter
+        val rpmTicks = 16
+        for (i in 0..rpmTicks step 2) {
+            val angleDeg = startAngle + (sweepAngle * i / rpmTicks)
+            val angleRad = angleDeg * PI.toFloat() / 180f
+
+            val labelRadius = outerRadius + canvasSize * 0.05f
+            val labelPos = Offset(
+                center.x + labelRadius * cos(angleRad),
+                center.y + labelRadius * sin(angleRad)
+            )
+
+            val isRedline = i >= 13
+            val measuredText = textMeasurer.measure(
+                text = i.toString(),
+                style = TextStyle(
+                    color = if (isRedline) TftRed else TftWhite,
+                    fontSize = (canvasSize * 0.038f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            )
+
+            drawText(
+                textLayoutResult = measuredText,
+                topLeft = Offset(
+                    labelPos.x - measuredText.size.width / 2f,
+                    labelPos.y - measuredText.size.height / 2f
+                )
+            )
+        }
+    }
+}
+
+// ============================================================
+// 10 SHIFT LIGHT ARRAY (Green -> Yellow -> Red)
+// ============================================================
+@Composable
+private fun ShiftLightArray(
+    rpm: Double,
+    maxRpm: Double,
+    isSpeedAlert: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val ratio = (rpm / maxRpm).coerceIn(0.0, 1.0).toFloat()
+    val totalLeds = 10
+
+    val infiniteTransition = rememberInfiniteTransition(label = "shiftFlash")
+    val flashAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 150),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "flashAlpha"
+    )
+
+    Canvas(modifier = modifier) {
+        val gap = 4f
+        val ledWidth = (size.width - (totalLeds - 1) * gap) / totalLeds
+        val ledHeight = size.height
+
+        for (i in 0 until totalLeds) {
+            val ledThreshold = (i + 1f) / totalLeds
+            val isLit = ratio >= ledThreshold
+
+            val ledColor = when {
+                i < 4 -> TftGreen       // 4 Green
+                i < 7 -> TftYellow      // 3 Yellow
+                else -> TftRed          // 3 Red
+            }
+
+            val finalColor = when {
+                isSpeedAlert && i >= 7 -> ledColor.copy(alpha = flashAlpha)
+                isLit -> ledColor
+                else -> ledColor.copy(alpha = 0.12f)
+            }
+
+            val x = i * (ledWidth + gap)
+            drawRoundRect(
+                color = finalColor,
+                topLeft = Offset(x, 0f),
+                size = Size(ledWidth, ledHeight),
+                cornerRadius = CornerRadius(2f, 2f)
+            )
+
+            if (isLit) {
+                drawRoundRect(
+                    color = ledColor.copy(alpha = 0.35f),
+                    topLeft = Offset(x - 1f, -1f),
+                    size = Size(ledWidth + 2f, ledHeight + 2f),
+                    cornerRadius = CornerRadius(3f, 3f)
+                )
+            }
+        }
+    }
+}
+
+// ============================================================
+// TURN INDICATOR ARROW (< and >)
+// ============================================================
+@Composable
+private fun TurnIndicatorArrow(isLeft: Boolean, isActive: Boolean) {
+    Canvas(modifier = Modifier.size(16.dp, 14.dp)) {
+        val path = Path()
+        if (isLeft) {
+            path.moveTo(size.width, 0f)
+            path.lineTo(0f, size.height / 2f)
+            path.lineTo(size.width, size.height)
+            path.close()
+        } else {
+            path.moveTo(0f, 0f)
+            path.lineTo(size.width, size.height / 2f)
+            path.lineTo(0f, size.height)
+            path.close()
+        }
+        drawPath(
+            path = path,
+            color = if (isActive) TftGreen else TftDimGray
+        )
+    }
+}
+
+// ============================================================
+// LEFT BEZEL COLUMN (TC, N, Battery, Oil, ABS & Button labels)
+// ============================================================
+@Composable
+private fun TftLeftIndicatorColumn(
+    isNeutral: Boolean,
+    isGpsLost: Boolean,
+    pauseState: PauseState,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "MENU\n<<",
+            color = TftGray,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            textAlign = TextAlign.Center
+        )
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // TC indicator
+            Text(
+                text = "TC",
+                color = TftYellow,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace
+            )
+
+            // N (Neutral) glowing green
+            Text(
+                text = "N",
+                color = if (isNeutral) TftGreen else TftDimGray,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace
+            )
+
+            // High Beam (Dim blue)
+            Icon(
+                imageVector = Icons.Default.FlashOn,
+                contentDescription = "Beam",
+                tint = TftBlue.copy(alpha = 0.5f),
+                modifier = Modifier.size(14.dp)
+            )
+
+            // Battery (Red)
+            Icon(
+                imageVector = Icons.Default.BatteryAlert,
+                contentDescription = "Battery",
+                tint = TftRed,
+                modifier = Modifier.size(14.dp)
+            )
+
+            // ABS (Yellow)
+            Text(
+                text = "ABS",
+                color = TftYellow,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        Text(
+            text = ">>",
+            color = TftGray,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+// ============================================================
+// RIGHT BEZEL COLUMN (High Beam, Warning & Button labels)
+// ============================================================
+@Composable
+private fun TftRightWarningColumn(
+    isSpeedAlert: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "MEM\nOK",
+            color = TftGray,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            textAlign = TextAlign.Center
+        )
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // High Beam (Bright blue)
+            Icon(
+                imageVector = Icons.Default.FlashOn,
+                contentDescription = "High Beam",
+                tint = TftBlue,
+                modifier = Modifier.size(15.dp)
+            )
+
+            // Engine MIL (Yellow)
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Engine Check",
+                tint = TftYellow,
+                modifier = Modifier.size(15.dp)
+            )
+
+            // Master Warning (Red)
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(if (isSpeedAlert) TftRed else TftRed.copy(alpha = 0.4f))
+            )
+        }
+
+        Text(
+            text = "VIEW\nQUIT",
+            color = TftGray,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ============================================================
+// TELEMETRY ROW (AiM Style: Large White Number + Cyan Label)
+// ============================================================
+@Composable
+private fun TftAiMTelemetryRow(
+    value: String,
+    label: String,
+    valueColor: Color = TftWhite,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.End
+    ) {
+        Text(
+            text = value,
+            color = valueColor,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
+            lineHeight = 24.sp
+        )
+        Text(
+            text = label,
+            color = TftCyan,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun TftAiMTelemetryField(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            color = TftWhite,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = label,
+            color = TftCyan,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+// ============================================================
+// INSTANT FUEL CONSUMPTION BAR (Horizontal Segmented 0..50 KM/L)
+// ============================================================
+@Composable
+private fun InstantFuelConsumptionBar(
+    speedKmh: Double,
+    modifier: Modifier = Modifier
+) {
+    // Simulated instant consumption ratio
+    val consumptionRatio = (speedKmh / 120.0).coerceIn(0.1, 0.85).toFloat()
+
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(TftYellow)
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "QS OFF",
+                    color = Color.Black,
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            Text(
+                text = "INSTANT FUEL CONSUMPTION   KM/L",
+                color = TftGray,
+                fontSize = 7.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Horizontal Segmented Bar
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+        ) {
+            val totalBlocks = 20
+            val gap = 2f
+            val blockWidth = (size.width - (totalBlocks - 1) * gap) / totalBlocks
+
+            for (i in 0 until totalBlocks) {
+                val blockThreshold = (i + 1f) / totalBlocks
+                val isLit = consumptionRatio >= blockThreshold
+
+                val color = when {
+                    i < 14 -> TftCyan
+                    i < 18 -> TftYellow
+                    else -> TftRed
+                }
+
+                val x = i * (blockWidth + gap)
+                drawRect(
+                    color = if (isLit) color else Color(0xFF131720),
+                    topLeft = Offset(x, 0f),
+                    size = Size(blockWidth, size.height)
+                )
+            }
+        }
+    }
+}
+
+// ============================================================
+// LANDSCAPE BOTTOM BAR (Fuel gauge, temps, controls, live clock)
+// ============================================================
+@Composable
+private fun TftLandscapeBottomBar(
+    currentTimeString: String,
+    isGpsLost: Boolean,
+    accuracyMeters: Float,
+    bikeName: String?,
+    isIdle: Boolean,
+    pauseState: PauseState,
+    onStartClick: () -> Unit,
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopConfirmed: () -> Unit,
+    onSwitchToMap: () -> Unit,
+    palette: CockpitThemePalette,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        // Upper row: Fuel Level, Coolant Temp, Intake Temp, Map & Controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Fuel Level Gauge + Remaining Range
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Segmented Fuel Bar
+                Canvas(modifier = Modifier.size(70.dp, 8.dp)) {
+                    val segments = 8
+                    val segW = size.width / segments
+                    for (i in 0 until segments) {
+                        val color = if (i < 2) TftRed else if (i < 6) TftYellow else TftGreen
+                        drawRect(
+                            color = color,
+                            topLeft = Offset(i * segW + 1f, 0f),
+                            size = Size(segW - 2f, size.height)
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.LocalGasStation,
+                    contentDescription = "Fuel",
+                    tint = TftYellow,
+                    modifier = Modifier.size(12.dp)
+                )
+
+                Text(
+                    text = "-> 525 KM",
+                    color = TftWhite,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            // Temperatures: Coolant + Ambient
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Coolant Temp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "105 °C",
+                        color = TftCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Default.Thermostat,
+                        contentDescription = "Coolant",
+                        tint = TftCyan,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+
+                // Air Temp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "25 °C",
+                        color = TftWhite,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Default.Thermostat,
+                        contentDescription = "Air",
+                        tint = TftWhite,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            }
+
+            // Interactive Controls Row (Glove friendly 56dp targets)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .border(1.2.dp, TftCyan.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                        .clickable { onSwitchToMap() },
+                    color = Color(0xFF0C101A)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Map,
+                            contentDescription = "Map",
+                            tint = TftCyan,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "MAP",
+                            color = TftWhite,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                if (isIdle) {
+                    Button(
+                        onClick = onStartClick,
+                        modifier = Modifier.height(36.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = TftCyan)
+                    ) {
+                        Text(
+                            text = "START",
+                            color = Color.Black,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                } else {
+                    ThemedCockpitControlsRow(
+                        isPaused = pauseState.isPaused,
+                        onPauseClick = onPauseClick,
+                        onResumeClick = onResumeClick,
+                        onStopConfirmed = onStopConfirmed,
+                        palette = palette,
+                        cornerRadius = 4.dp,
+                        modifier = Modifier.width(220.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        // Lower strip: GPS Status + AiM Logo + Clock
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Left: GPS status
+            Text(
+                text = if (isGpsLost) "GPS: LOST" else "GPS: GOOD (±${accuracyMeters.roundToInt()}M)",
+                color = if (isGpsLost) TftRed else TftGreen,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+
+            // Center: AiM Logo Oval Badge
+            AiMOvalLogo()
+
+            // Right: Live Clock
+            Text(
+                text = currentTimeString.ifEmpty { "23.08.2026 11:35 PM" },
+                color = TftGray,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+// ============================================================
+// PORTRAIT BOTTOM INFO (Fuel, temps, GPS, Date)
+// ============================================================
+@Composable
+private fun TftPortraitBottomInfo(
+    currentTimeString: String,
+    isGpsLost: Boolean,
+    accuracyMeters: Float,
+    bikeName: String?,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.Black)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Fuel
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocalGasStation,
+                    contentDescription = "Fuel",
+                    tint = TftYellow,
+                    modifier = Modifier.size(11.dp)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "-> 525 KM",
+                    color = TftWhite,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            // Temps
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "105 °C",
+                    color = TftCyan,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "25 °C",
+                    color = TftWhite,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isGpsLost) "GPS: LOST" else "GPS: GOOD",
+                color = if (isGpsLost) TftRed else TftGreen,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+
+            Text(
+                text = currentTimeString.ifEmpty { "23.08.2026 11:35 PM" },
+                color = TftGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+// ============================================================
+// AiM OVAL LOGO (Bottom center bezel emblem)
+// ============================================================
+@Composable
+private fun AiMOvalLogo() {
+    Box(
+        modifier = Modifier
+            .size(44.dp, 16.dp)
+            .border(1.2.dp, Color(0xFFD4D4D8), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Aim",
+            color = Color.White,
+            fontSize = 9.sp,
+            fontStyle = FontStyle.Italic,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.SansSerif,
+            letterSpacing = (-0.5).sp
+        )
+    }
+}

@@ -688,7 +688,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Theme Mode Card
+            // Theme Mode Card — Single Racing TFT Theme
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -703,56 +703,34 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Theme Mode",
+                            text = "Dashboard Theme",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-
-                    ThemeMode.entries.forEach { mode ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.setThemeMode(mode) }
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = themeMode == mode,
-                                onClick = { viewModel.setThemeMode(mode) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = true,
+                            onClick = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Racing TFT (AiM MXS Style)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = when (mode) {
-                                        ThemeMode.TRACK_DAY -> "Track Day (Corse Scarlet & Carbon)"
-                                        ThemeMode.DESERT_RALLY -> "Desert Rally (Dakar Sand & Khaki)"
-                                        ThemeMode.NEON_CYBER -> "Neon Cyberpunk (Tokyo Night & Cyan)"
-                                        ThemeMode.RETRO_CLASSIC -> "Retro Classic (Smiths Chrono & British Green)"
-                                        ThemeMode.STEALTH_HUD -> "Stealth HUD (Fighter Jet Collimator & OLED Black)"
-                                        ThemeMode.ADVENTURE_TOURING -> "Adventure Touring (Globe Explorer & Altimeter)"
-                                        ThemeMode.CUSTOM_BOBBER -> "Custom Bobber (American V-Twin 180° Billet Arc)"
-                                        ThemeMode.NIGHT_CRUISER -> "Night Cruiser (Midnight Horizon & Starlight Blue)"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (themeMode == mode) FontWeight.Bold else FontWeight.Normal
-                                )
-                                Text(
-                                    text = when (mode) {
-                                        ThemeMode.TRACK_DAY -> "Superbike panoramic TFT display, shift-light bar & carbon fiber"
-                                        ThemeMode.DESERT_RALLY -> "Dakar navigation tower, dual-trip master & CAP compass ribbon"
-                                        ThemeMode.NEON_CYBER -> "Holographic hexagonal tachometer, laser sweep & audio equalizer"
-                                        ThemeMode.RETRO_CLASSIC -> "Physical sweeping needle gauge, roller drum odometer & jewel lamps"
-                                        ThemeMode.STEALTH_HUD -> "Collimator reticle, vertical airspeed tape & phosphor green on OLED black"
-                                        ThemeMode.ADVENTURE_TOURING -> "GS Alpine split cluster, live altimeter climb graph & dual expedition trip"
-                                        ThemeMode.CUSTOM_BOBBER -> "180° semi-circular billet sweep gauge, stamped digits & engine rumble bar"
-                                        ThemeMode.NIGHT_CRUISER -> "Ambient glowing horizon beam, floating soft-diffuse blue & zero glare"
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = "AiM-inspired circular speed arc, LED shift-light bar & live telemetry grid",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

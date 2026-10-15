@@ -56,9 +56,9 @@ class SettingsRepository @Inject constructor(
     val themeMode: Flow<ThemeMode> = dataStore.data.map { prefs ->
         val raw = prefs[Keys.THEME_MODE]
         try {
-            if (raw != null) ThemeMode.valueOf(raw) else ThemeMode.TRACK_DAY
+            if (raw != null) ThemeMode.valueOf(raw) else ThemeMode.RACING_TFT
         } catch (_: Exception) {
-            ThemeMode.TRACK_DAY
+            ThemeMode.RACING_TFT
         }
     }
 

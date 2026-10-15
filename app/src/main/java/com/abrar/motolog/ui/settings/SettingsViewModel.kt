@@ -93,7 +93,7 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.TRACK_DAY)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.RACING_TFT)
 
     val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)

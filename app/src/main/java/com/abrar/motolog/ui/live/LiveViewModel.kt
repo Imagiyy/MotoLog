@@ -90,7 +90,7 @@ class LiveViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = ThemeMode.TRACK_DAY
+            initialValue = ThemeMode.RACING_TFT
         )
 
     init {

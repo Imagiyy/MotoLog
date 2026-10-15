@@ -120,7 +120,7 @@ fun RetroLiveMap(
     onSwitchToCockpit: () -> Unit,
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
     modifier: Modifier = Modifier,
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RETRO_CLASSIC),
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
     isIdle: Boolean = false,
     onStartClick: () -> Unit = {}
 ) {
