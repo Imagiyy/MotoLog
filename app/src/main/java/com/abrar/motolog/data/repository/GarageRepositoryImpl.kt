@@ -287,7 +287,8 @@ class GarageRepositoryImpl @Inject constructor(
             )
         }
 
-        bikeDao.updateMileageReset(bikeId, currentOdometerKm, now)
+        bikeDao.updateMileageReset(bikeId, 0.0, now)
+        setOdometer(bikeId, 0.0)
         if (clearLogs) {
             fuelLogDao.deleteLogsForBike(bikeId)
         }

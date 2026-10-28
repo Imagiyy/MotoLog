@@ -281,7 +281,13 @@ fun BikeDetailScreen(
     }
 
     if (uiState.isAddFuelDialogOpen) {
-        val lastLogOdo = uiState.fuelLogs.firstOrNull()?.odometerKm
+        val resetEpoch = uiState.bike?.mileageResetEpochMs
+        val activeLogs = if (resetEpoch != null) {
+            uiState.fuelLogs.filter { it.timestampEpochMs >= resetEpoch }
+        } else {
+            uiState.fuelLogs
+        }
+        val lastLogOdo = activeLogs.firstOrNull()?.odometerKm
         AddEditFuelLogDialog(
             log = null,
             defaultOdometerKm = uiState.currentOdometerKm,
@@ -664,7 +670,9 @@ private fun FuelTabContent(
                 currencySymbol = uiState.currencySymbol,
                 useMetricUnits = uiState.useMetricUnits,
                 currentOdometerKm = uiState.currentOdometerKm,
-                latestFuelLog = uiState.fuelLogs.firstOrNull(),
+                latestFuelLog = uiState.bike?.mileageResetEpochMs?.let { resetEpoch ->
+                    uiState.fuelLogs.firstOrNull { it.timestampEpochMs >= resetEpoch }
+                } ?: uiState.fuelLogs.firstOrNull(),
                 mileageResetOdometerKm = uiState.bike?.mileageResetOdometerKm,
                 onResetMileage = onResetMileage,
                 onClearReset = onClearReset
@@ -1015,7 +1023,7 @@ private fun ResetMileageDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "This will archive your current period stats into 'Previous Mileage Cycles' and reset active fuel tracking to zero (0.0 km/l, 0.0 L, ₹0.0).\n\nFuture rides and fuel fills will calculate fresh from ${String.format(Locale.US, "%,.1f %s", userOdo, distUnit)}.",
+                    text = "This will archive your current period stats into 'Previous Mileage Cycles' and reset active fuel tracking and odometer to zero (0.0 km/l, 0.0 L, 0.0 $distUnit).\n\nFuture rides and fuel fills will calculate fresh from 0.0 $distUnit.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -1523,7 +1531,7 @@ private fun AddEditFuelLogDialog(
     var tripText by rememberSaveable { mutableStateOf(String.format(Locale.US, "%.1f", initialDisplayTrip)) }
     var litresText by rememberSaveable { mutableStateOf(log?.litres?.toString().orEmpty()) }
     var costText by rememberSaveable { mutableStateOf(log?.totalCost?.toString().orEmpty()) }
-    var isFullTank by rememberSaveable { mutableStateOf(log?.isFullTank ?: true) }
+    var isFullTank by rememberSaveable { mutableStateOf(log?.isFullTank ?: false) }
     var notes by rememberSaveable { mutableStateOf(log?.notes.orEmpty()) }
 
     // Parse values

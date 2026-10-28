@@ -270,6 +270,7 @@ class BikeDetailViewModelTest {
 
         assertFalse(viewModel.uiState.value.isResetMileageDialogOpen)
         assertEquals(10_500.0, fakeGarageRepository.resetOdometerCalled!!, 0.001)
+        assertEquals(0.0, viewModel.uiState.value.currentOdometerKm, 0.001)
         assertFalse(fakeGarageRepository.resetClearLogsCalled)
     }
 
@@ -428,13 +429,14 @@ class BikeDetailViewModelTest {
         override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean) {
             resetOdometerCalled = currentOdometerKm
             resetClearLogsCalled = clearLogs
+            bikeOdoFlow.value = 0.0
             if (clearLogs) {
                 fuelLogs.clear()
                 fuelLogsFlow.value = emptyList()
             }
             val b = bikeFlow.value
             if (b != null) {
-                bikeFlow.value = b.copy(mileageResetOdometerKm = currentOdometerKm, mileageResetEpochMs = System.currentTimeMillis())
+                bikeFlow.value = b.copy(mileageResetOdometerKm = 0.0, mileageResetEpochMs = System.currentTimeMillis())
             }
         }
 
