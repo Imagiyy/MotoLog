@@ -5,18 +5,26 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.FileDownload
@@ -34,13 +43,19 @@ import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PauseCircleOutline
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.font.FontStyle
 import com.abrar.motolog.shared.domain.model.MapThemePreference
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -110,8 +125,10 @@ fun SettingsScreen(
     val speedAlertStyle by viewModel.speedAlertStyle.collectAsStateWithLifecycle()
     val autoPauseEnabled by viewModel.autoPauseEnabled.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val defaultMapTheme by viewModel.defaultMapTheme.collectAsStateWithLifecycle()
+    val dashboardTextColor by viewModel.dashboardTextColor.collectAsStateWithLifecycle()
+    val dashboardBgColor by viewModel.dashboardBgColor.collectAsStateWithLifecycle()
+    val dashboardAccentColor by viewModel.dashboardAccentColor.collectAsStateWithLifecycle()
+    val dashboardComponentColor by viewModel.dashboardComponentColor.collectAsStateWithLifecycle()
     val voiceAnnouncementsEnabled by viewModel.voiceAnnouncementsEnabled.collectAsStateWithLifecycle()
     val thermalEcoMode by viewModel.thermalEcoMode.collectAsStateWithLifecycle()
     val activeBikes by viewModel.activeBikes.collectAsStateWithLifecycle()
@@ -122,6 +139,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showLicensesScreen by remember { mutableStateOf(false) }
+    var hexDialogTarget by remember { mutableStateOf<String?>(null) }
 
     if (showLicensesScreen) {
         LicensesScreen(onNavigateBack = { showLicensesScreen = false })
@@ -688,65 +706,18 @@ fun SettingsScreen(
                 }
             }
 
-            // Theme Mode Card — Single Racing TFT Theme
+            // Dashboard Color Customization Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Brightness4,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Dashboard Theme",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = true,
-                            onClick = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = "Racing TFT (AiM MXS Style)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "AiM-inspired circular speed arc, LED shift-light bar & live telemetry grid",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ============================================================
-            // Default Map Background
-            // ============================================================
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Map,
+                            imageVector = Icons.Default.Palette,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
@@ -754,47 +725,210 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Default Map Background",
+                                text = "Dashboard Colors",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Choose default map background for live tracking & history",
+                                text = "Customize cockpit text, background, and gauge components",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
 
-                    MapThemePreference.entries.forEach { pref ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.setDefaultMapTheme(pref) }
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    // Live Mini Preview of Cockpit Colors
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(dashboardBgColor))
+                            .border(1.5.dp, Color(dashboardAccentColor), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            RadioButton(
-                                selected = defaultMapTheme == pref,
-                                onClick = { viewModel.setDefaultMapTheme(pref) }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
+                            // Mini shift light row preview
+                            Row(
+                                modifier = Modifier.fillMaxWidth(0.7f),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                repeat(7) { i ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(4.dp)
+                                            .padding(horizontal = 2.dp)
+                                            .clip(RoundedCornerShape(1.dp))
+                                            .background(
+                                                when {
+                                                    i < 3 -> Color(dashboardAccentColor)
+                                                    i < 5 -> Color(0xFFFFEA00)
+                                                    else -> Color(0xFFFF1744)
+                                                }
+                                            )
+                                    )
+                                }
+                            }
+
+                            // Sample speedometer readout
+                            Row(
+                                verticalAlignment = Alignment.Bottom,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
                                 Text(
-                                    text = when (pref) {
-                                        MapThemePreference.DARK -> "Dark Background (Night & AMOLED)"
-                                        MapThemePreference.LIGHT -> "White Background (High Daylight Contrast)"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (defaultMapTheme == pref) FontWeight.Bold else FontWeight.Normal
+                                    text = "0",
+                                    color = Color(dashboardTextColor),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontStyle = FontStyle.Italic,
+                                    fontFamily = FontFamily.Monospace,
+                                    lineHeight = 28.sp
                                 )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = pref.description,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "KM/H",
+                                    color = Color(dashboardTextColor).copy(alpha = 0.85f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(bottom = 2.dp)
                                 )
                             }
+
+                            // Sample component container
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(dashboardComponentColor))
+                                    .border(0.8.dp, Color(dashboardAccentColor).copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = "0.0 KM",
+                                        color = Color(dashboardTextColor),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Text(
+                                        text = "DISTANCE",
+                                        color = Color(dashboardTextColor).copy(alpha = 0.65f),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceAround
+                                    ) {
+                                        Text(text = "TOP 0.0", color = Color(dashboardTextColor), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                                        Text(text = "TIME 00:00", color = Color(dashboardTextColor), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                                        Text(text = "AVG 0.0", color = Color(dashboardTextColor), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                    // 1. Text Color Selector
+                    ColorSelectorRow(
+                        title = "Text Color",
+                        description = "Applies to all speed digits, units, telemetry stats, and labels",
+                        selectedColor = dashboardTextColor,
+                        palette = listOf(
+                            0xFFFFFFFFL, // Pure White
+                            0xFF00E5FFL, // Electric Cyan
+                            0xFF00E676L, // Neon Lime
+                            0xFFFFB300L, // Sunlight Amber
+                            0xFFFFEA00L, // Bright Yellow
+                            0xFFFF9100L, // Blaze Orange
+                            0xFFFF1744L, // Hot Red
+                            0xFF40C4FFL  // Sky Blue
+                        ),
+                        onColorSelected = { viewModel.setDashboardTextColor(it) },
+                        onCustomClick = { hexDialogTarget = "text" }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                    // 2. Background Color Selector
+                    ColorSelectorRow(
+                        title = "Background Color",
+                        description = "Dashboard screen and outer casing background",
+                        selectedColor = dashboardBgColor,
+                        palette = listOf(
+                            0xFF000000L, // AMOLED Pure Black
+                            0xFF030508L, // Deep Racing TFT
+                            0xFF080C14L, // Midnight Navy
+                            0xFF121316L, // Carbon Charcoal
+                            0xFF1A1E24L, // Dark Slate
+                            0xFF0A140FL  // Racing Deep Green
+                        ),
+                        onColorSelected = { viewModel.setDashboardBgColor(it) },
+                        onCustomClick = { hexDialogTarget = "bg" }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                    // 3. Gauge & Accent Color Selector
+                    ColorSelectorRow(
+                        title = "Gauge & Accent Color",
+                        description = "Speed arc sweep, shift LEDs, border highlights, and indicators",
+                        selectedColor = dashboardAccentColor,
+                        palette = listOf(
+                            0xFF00D4E5L, // Electric Cyan
+                            0xFF00E676L, // Racing Green
+                            0xFFFF9100L, // Moto Orange
+                            0xFFFF1744L, // Sport Red
+                            0xFFFFFF00L, // Superbike Yellow
+                            0xFFD500F9L, // Neon Violet
+                            0xFFFFFFFFL  // Monochrome White
+                        ),
+                        onColorSelected = { viewModel.setDashboardAccentColor(it) },
+                        onCustomClick = { hexDialogTarget = "accent" }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                    // 4. Component Surface Color Selector
+                    ColorSelectorRow(
+                        title = "Component Surface Color",
+                        description = "Telemetry box, stats cards, and inner containers",
+                        selectedColor = dashboardComponentColor,
+                        palette = listOf(
+                            0xFF000000L, // Deep AMOLED
+                            0xFF0D0F14L, // Bezel Charcoal
+                            0xFF141720L, // Surface Slate
+                            0xFF1C2028L, // Carbon Gray
+                            0xFF242933L  // Dark Metallic
+                        ),
+                        onColorSelected = { viewModel.setDashboardComponentColor(it) },
+                        onCustomClick = { hexDialogTarget = "component" }
+                    )
+
+                    // Reset button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { viewModel.resetDashboardColors() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Reset to Defaults")
                         }
                     }
                 }
@@ -1014,6 +1148,91 @@ fun SettingsScreen(
     // ============================================================
     // DIALOGS
     // ============================================================
+
+    // Custom HEX Color Dialog
+    hexDialogTarget?.let { target ->
+        val targetName = when (target) {
+            "text" -> "Text Color"
+            "bg" -> "Background Color"
+            "accent" -> "Gauge & Accent Color"
+            else -> "Component Surface Color"
+        }
+        val currentTargetColor = when (target) {
+            "text" -> dashboardTextColor
+            "bg" -> dashboardBgColor
+            "accent" -> dashboardAccentColor
+            else -> dashboardComponentColor
+        }
+        val currentHex = String.format("%06X", currentTargetColor and 0xFFFFFFL)
+        var inputHex by remember(target) { mutableStateOf(currentHex) }
+        val parsedColor: Long? = remember(inputHex) {
+            val clean = inputHex.removePrefix("#").trim()
+            if (clean.length == 6) {
+                clean.toLongOrNull(16)?.let { 0xFF000000L or it }
+            } else null
+        }
+
+        AlertDialog(
+            onDismissRequest = { hexDialogTarget = null },
+            title = { Text("Custom $targetName") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Enter a 6-digit hex code (e.g. 00E5FF or #FFFFFF):",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = inputHex,
+                        onValueChange = { inputHex = it.uppercase() },
+                        singleLine = true,
+                        label = { Text("HEX Color") },
+                        prefix = { Text("#") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(parsedColor ?: currentTargetColor))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        )
+                        Text(
+                            text = if (parsedColor != null) "Preview ready" else "Enter 6 valid hex characters",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (parsedColor != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        parsedColor?.let { color ->
+                            when (target) {
+                                "text" -> viewModel.setDashboardTextColor(color)
+                                "bg" -> viewModel.setDashboardBgColor(color)
+                                "accent" -> viewModel.setDashboardAccentColor(color)
+                                "component" -> viewModel.setDashboardComponentColor(color)
+                            }
+                        }
+                        hexDialogTarget = null
+                    },
+                    enabled = parsedColor != null
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { hexDialogTarget = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     // Currency Dialog
     if (showCurrencyDialog) {
@@ -1371,6 +1590,77 @@ private fun BikeAssignmentDropdown(
                         onBikeSelected(bike.id)
                         expanded = false
                     }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorSelectorRow(
+    title: String,
+    description: String,
+    selectedColor: Long,
+    palette: List<Long>,
+    onColorSelected: (Long) -> Unit,
+    onCustomClick: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            palette.forEach { colorValue ->
+                val isSelected = (selectedColor and 0xFFFFFFL) == (colorValue and 0xFFFFFFL)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(colorValue))
+                        .border(
+                            width = if (isSelected) 2.5.dp else 1.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        )
+                        .clickable { onColorSelected(colorValue) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = if (Color(colorValue).luminance() > 0.5f) Color.Black else Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = onCustomClick,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Text(
+                    text = "+ HEX",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

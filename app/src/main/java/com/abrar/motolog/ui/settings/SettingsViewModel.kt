@@ -96,7 +96,19 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), ThemeMode.RACING_TFT)
 
     val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository.defaultMapTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT)
+
+    val dashboardTextColor: StateFlow<Long> = settingsRepository.dashboardTextColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_DASHBOARD_TEXT_COLOR)
+
+    val dashboardBgColor: StateFlow<Long> = settingsRepository.dashboardBgColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_DASHBOARD_BG_COLOR)
+
+    val dashboardAccentColor: StateFlow<Long> = settingsRepository.dashboardAccentColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_DASHBOARD_ACCENT_COLOR)
+
+    val dashboardComponentColor: StateFlow<Long> = settingsRepository.dashboardComponentColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR)
 
     val voiceAnnouncementsEnabled: StateFlow<Boolean> = settingsRepository.voiceAnnouncementsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
@@ -164,6 +176,26 @@ class SettingsViewModel @Inject constructor(
 
     fun setDefaultMapTheme(pref: com.abrar.motolog.shared.domain.model.MapThemePreference) {
         viewModelScope.launch { settingsRepository.setDefaultMapTheme(pref) }
+    }
+
+    fun setDashboardTextColor(color: Long) {
+        viewModelScope.launch { settingsRepository.setDashboardTextColor(color) }
+    }
+
+    fun setDashboardBgColor(color: Long) {
+        viewModelScope.launch { settingsRepository.setDashboardBgColor(color) }
+    }
+
+    fun setDashboardAccentColor(color: Long) {
+        viewModelScope.launch { settingsRepository.setDashboardAccentColor(color) }
+    }
+
+    fun setDashboardComponentColor(color: Long) {
+        viewModelScope.launch { settingsRepository.setDashboardComponentColor(color) }
+    }
+
+    fun resetDashboardColors() {
+        viewModelScope.launch { settingsRepository.resetDashboardColors() }
     }
 
     fun setVoiceAnnouncementsEnabled(enabled: Boolean) {

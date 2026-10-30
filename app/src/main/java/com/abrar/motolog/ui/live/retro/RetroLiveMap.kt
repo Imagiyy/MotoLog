@@ -118,7 +118,7 @@ fun RetroLiveMap(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
-    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
+    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
     isIdle: Boolean = false,

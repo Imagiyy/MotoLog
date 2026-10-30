@@ -83,7 +83,35 @@ class LiveViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
+            initialValue = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT
+        )
+
+    val dashboardTextColor: StateFlow<Long> = settingsRepository.dashboardTextColor
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = SettingsRepository.DEFAULT_DASHBOARD_TEXT_COLOR
+        )
+
+    val dashboardBgColor: StateFlow<Long> = settingsRepository.dashboardBgColor
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = SettingsRepository.DEFAULT_DASHBOARD_BG_COLOR
+        )
+
+    val dashboardAccentColor: StateFlow<Long> = settingsRepository.dashboardAccentColor
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = SettingsRepository.DEFAULT_DASHBOARD_ACCENT_COLOR
+        )
+
+    val dashboardComponentColor: StateFlow<Long> = settingsRepository.dashboardComponentColor
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR
         )
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode

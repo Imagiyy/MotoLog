@@ -67,24 +67,31 @@ data class CockpitThemePalette(
     val isLight: Boolean = false
 )
 
-fun getCockpitThemePalette(themeMode: ThemeMode?, isSystemDark: Boolean = true): CockpitThemePalette {
+fun getCockpitThemePalette(
+    themeMode: ThemeMode? = null,
+    isSystemDark: Boolean = true,
+    textColor: Color = Color(0xFFF5F5F7),
+    backgroundColor: Color = RacingTftBackground,
+    accentColor: Color = RacingTftCyan,
+    componentColor: Color = RacingTftSurface
+): CockpitThemePalette {
     return CockpitThemePalette(
-        background = RacingTftBackground,
-        surface = RacingTftSurface,
-        surfaceBorder = RacingTftCyan,
+        background = backgroundColor,
+        surface = componentColor,
+        surfaceBorder = accentColor,
         bezelOuter = Color(0xFF1A1D27),
-        bezelInner = RacingTftCyan,
+        bezelInner = accentColor,
         dialFace = Color(0xFF0A0D15),
-        dialText = Color(0xFFF5F5F7),
-        tickMajor = RacingTftCyan,
+        dialText = textColor,
+        tickMajor = accentColor,
         tickMinor = Color(0xFF6B7280),
-        needle = RacingTftCyan,
-        needleGradientStart = Color(0xFF004D54),
-        needleGradientEnd = RacingTftCyan,
-        primaryAccent = RacingTftCyan,
+        needle = accentColor,
+        needleGradientStart = accentColor.copy(alpha = 0.4f),
+        needleGradientEnd = accentColor,
+        primaryAccent = accentColor,
         secondaryAccent = RacingTftGreen,
-        hubColor = Color(0xFF0E1118),
-        hubCenter = RacingTftCyan
+        hubColor = componentColor,
+        hubCenter = accentColor
     )
 }
 

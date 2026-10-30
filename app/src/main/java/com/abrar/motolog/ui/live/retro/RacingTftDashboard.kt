@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -62,6 +63,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
@@ -136,6 +138,19 @@ val ChamferedBezelShape = GenericShape { size, _ ->
  * - Lap / Split indicator and Ambient air temperature readout
  * - Bottom strip: Fuel gauge with pump icon, Coolant temp, Intake temp,
  *   GPS health status, bike name / status info line, and live date/clock.
+ */
+/**
+ * Dynamic custom colors for the Cockpit Dashboard.
+ */
+data class DashboardCustomColors(
+    val textColor: Color = Color(0xFFFFFFFF),
+    val backgroundColor: Color = Color(0xFF030508),
+    val accentColor: Color = Color(0xFF00D4E5),
+    val componentColor: Color = Color(0xFF0D0F14)
+)
+
+/**
+ * AiM MXS Racing TFT Dashboard for MotoLog.
  *
  * Full responsive compatibility for both Landscape and Portrait orientations.
  */
@@ -159,10 +174,9 @@ fun RacingTftDashboard(
     keepScreenOn: Boolean = false,
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
+    palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
+    customColors: DashboardCustomColors = DashboardCustomColors()
 ) {
-    var showOverallStats by remember { mutableStateOf(false) }
-
     // Live clock ticker
     var currentTimeString by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -180,23 +194,14 @@ fun RacingTftDashboard(
     val distanceUnit = if (isMetric) "KM" else "MI"
     val maxScale = if (isMetric) 240.0 else 150.0
 
-    val avgSpeedDisplay = if (showOverallStats) {
-        if (isMetric) stats.avgOverallSpeedKmh else stats.avgOverallSpeedKmh * 0.621371
-    } else {
-        if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
-    }
+    val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
-    val timeDisplay = CockpitUtils.formatDurationMs(
-        if (showOverallStats) stats.elapsedTimeMs else stats.movingTimeMs
-    )
-
-    // Total Odometer (baseline + current distance)
-    val totalOdometerDisplay = 127558 + totalDistanceKm.roundToInt()
+    val totalElapsedTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(TftBackground)
+            .background(customColors.backgroundColor)
     ) {
         val isLandscape = maxWidth > maxHeight
 
@@ -206,12 +211,11 @@ fun RacingTftDashboard(
                 speedUnit = speedUnit,
                 displayDistance = displayDistance,
                 distanceUnit = distanceUnit,
-                avgSpeedDisplay = avgSpeedDisplay,
+                avgSpeedDisplay = avgMovingSpeedDisplay,
                 maxSpeedDisplay = maxSpeedDisplay,
-                timeDisplay = timeDisplay,
+                timeDisplay = totalElapsedTimeDisplay,
                 speedKmh = speedKmh,
                 maxScale = maxScale,
-                totalOdometer = totalOdometerDisplay,
                 currentTimeString = currentTimeString,
                 isSpeedAlert = isSpeedAlert,
                 isGpsLost = isGpsLost,
@@ -228,7 +232,8 @@ fun RacingTftDashboard(
                 onResumeClick = onResumeClick,
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
-                palette = palette
+                palette = palette,
+                customColors = customColors
             )
         } else {
             TftPortraitView(
@@ -236,12 +241,11 @@ fun RacingTftDashboard(
                 speedUnit = speedUnit,
                 displayDistance = displayDistance,
                 distanceUnit = distanceUnit,
-                avgSpeedDisplay = avgSpeedDisplay,
+                avgSpeedDisplay = avgMovingSpeedDisplay,
                 maxSpeedDisplay = maxSpeedDisplay,
-                timeDisplay = timeDisplay,
+                timeDisplay = totalElapsedTimeDisplay,
                 speedKmh = speedKmh,
                 maxScale = maxScale,
-                totalOdometer = totalOdometerDisplay,
                 currentTimeString = currentTimeString,
                 isSpeedAlert = isSpeedAlert,
                 isGpsLost = isGpsLost,
@@ -258,7 +262,8 @@ fun RacingTftDashboard(
                 onResumeClick = onResumeClick,
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
-                palette = palette
+                palette = palette,
+                customColors = customColors
             )
         }
     }
@@ -278,7 +283,6 @@ private fun TftLandscapeView(
     timeDisplay: String,
     speedKmh: Double,
     maxScale: Double,
-    totalOdometer: Int,
     currentTimeString: String,
     isSpeedAlert: Boolean,
     isGpsLost: Boolean,
@@ -295,15 +299,16 @@ private fun TftLandscapeView(
     onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
-    palette: CockpitThemePalette
+    palette: CockpitThemePalette,
+    customColors: DashboardCustomColors
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(4.dp)
             .clip(ChamferedBezelShape)
-            .background(TftBezelBg)
-            .border(2.dp, TftBezelBorder, ChamferedBezelShape)
+            .background(customColors.backgroundColor)
+            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), ChamferedBezelShape)
             .padding(6.dp)
     ) {
         Column(
@@ -343,8 +348,8 @@ private fun TftLandscapeView(
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color.Black)
-                    .border(1.dp, Color(0xFF161922), RoundedCornerShape(6.dp))
+                    .background(customColors.componentColor)
+                    .border(1.dp, customColors.accentColor.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -354,7 +359,8 @@ private fun TftLandscapeView(
                     pauseState = pauseState,
                     modifier = Modifier
                         .width(42.dp)
-                        .fillMaxHeight()
+                        .fillMaxHeight(),
+                    textColor = customColors.textColor.copy(alpha = 0.65f)
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))
@@ -372,6 +378,7 @@ private fun TftLandscapeView(
                         currentSpeed = displaySpeed,
                         maxSpeed = maxScale,
                         isSpeedAlert = isSpeedAlert,
+                        accentColor = customColors.accentColor,
                         modifier = Modifier.size(gaugeSize)
                     )
 
@@ -383,7 +390,7 @@ private fun TftLandscapeView(
                     ) {
                         Text(
                             text = displaySpeed.roundToInt().toString(),
-                            color = if (isSpeedAlert) TftRed else TftWhite,
+                            color = if (isSpeedAlert) TftRed else customColors.textColor,
                             fontSize = (gaugeSize.value * 0.38f).sp,
                             fontWeight = FontWeight.Black,
                             fontStyle = FontStyle.Italic,
@@ -393,7 +400,7 @@ private fun TftLandscapeView(
                         )
                         Text(
                             text = speedUnit,
-                            color = TftCyan,
+                            color = customColors.textColor.copy(alpha = 0.85f),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
@@ -405,41 +412,87 @@ private fun TftLandscapeView(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // RIGHT: Telemetry Rows (Total Odo, Trip A, Trip B, Bar Gauge, Split/Temp)
+                // RIGHT: Telemetry Rows (Distance Prominent + Top Speed, Total Time, Moving Avg Row + G-DNS/Temp)
                 Column(
                     modifier = Modifier
                         .weight(1.05f)
                         .fillMaxHeight()
-                        .padding(vertical = 2.dp),
+                        .padding(vertical = 4.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Odometer Totale
-                    TftAiMTelemetryRow(
-                        value = totalOdometer.toString(),
-                        label = "ODOMETRO TOTALE   $distanceUnit",
-                        valueColor = TftWhite
+                    // Prominent Distance
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = String.format(Locale.US, "%.1f", displayDistance),
+                                color = customColors.textColor,
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                lineHeight = 28.sp
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = distanceUnit,
+                                color = customColors.textColor.copy(alpha = 0.8f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                        }
+                        Text(
+                            text = "DISTANCE",
+                            color = customColors.textColor.copy(alpha = 0.65f),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+
+                    HorizontalDivider(
+                        color = customColors.accentColor.copy(alpha = 0.15f),
+                        thickness = 1.dp
                     )
 
-                    // Trip A (Ride Distance)
-                    TftAiMTelemetryRow(
-                        value = String.format(Locale.US, "%.1f", displayDistance),
-                        label = "TRIP A   $distanceUnit",
-                        valueColor = TftWhite
-                    )
+                    // Row of values: Top Speed | Total Time | Moving Avg
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TelemetryStatItem(
+                            value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                            unit = speedUnit,
+                            label = "TOP SPEED",
+                            textColor = customColors.textColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TelemetryStatItem(
+                            value = timeDisplay,
+                            unit = "",
+                            label = "TOTAL TIME",
+                            textColor = customColors.textColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TelemetryStatItem(
+                            value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                            unit = speedUnit,
+                            label = "MOVING AVG",
+                            textColor = customColors.textColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
-                    // Trip B (Moving Time / Duration)
-                    TftAiMTelemetryRow(
-                        value = timeDisplay,
-                        label = "TRIP B   TIME",
-                        valueColor = TftWhite
-                    )
-
-                    // Instant Fuel / Consumption Bar Gauge
-                    InstantFuelConsumptionBar(
-                        speedKmh = speedKmh,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(28.dp)
+                    HorizontalDivider(
+                        color = customColors.accentColor.copy(alpha = 0.15f),
+                        thickness = 1.dp
                     )
 
                     // G-DNS / Lap & Temp row
@@ -451,15 +504,15 @@ private fun TftLandscapeView(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = "2",
-                                color = TftWhite,
-                                fontSize = 20.sp,
+                                color = customColors.textColor,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "G-DNS",
-                                color = TftCyan,
+                                color = customColors.accentColor,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
@@ -469,15 +522,15 @@ private fun TftLandscapeView(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = "28",
-                                color = TftWhite,
-                                fontSize = 20.sp,
+                                color = customColors.textColor,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace
                             )
                             Spacer(modifier = Modifier.width(2.dp))
                             Text(
                                 text = "°C",
-                                color = TftCyan,
+                                color = customColors.accentColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
@@ -493,7 +546,8 @@ private fun TftLandscapeView(
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
                         .width(42.dp)
-                        .fillMaxHeight()
+                        .fillMaxHeight(),
+                    textColor = customColors.textColor.copy(alpha = 0.65f)
                 )
             }
 
@@ -511,6 +565,7 @@ private fun TftLandscapeView(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 palette = palette,
+                customColors = customColors,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
@@ -533,7 +588,6 @@ private fun TftPortraitView(
     timeDisplay: String,
     speedKmh: Double,
     maxScale: Double,
-    totalOdometer: Int,
     currentTimeString: String,
     isSpeedAlert: Boolean,
     isGpsLost: Boolean,
@@ -550,15 +604,16 @@ private fun TftPortraitView(
     onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
-    palette: CockpitThemePalette
+    palette: CockpitThemePalette,
+    customColors: DashboardCustomColors
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(4.dp)
             .clip(ChamferedBezelShape)
-            .background(TftBezelBg)
-            .border(2.dp, TftBezelBorder, ChamferedBezelShape)
+            .background(customColors.backgroundColor)
+            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), ChamferedBezelShape)
             .padding(8.dp)
     ) {
         Column(
@@ -597,7 +652,7 @@ private fun TftPortraitView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color.Black)
+                    .background(customColors.componentColor)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -605,7 +660,7 @@ private fun TftPortraitView(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "TC",
-                        color = TftYellow,
+                        color = customColors.textColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace
@@ -613,7 +668,7 @@ private fun TftPortraitView(
                     Icon(
                         imageVector = Icons.Default.Thermostat,
                         contentDescription = "Coolant",
-                        tint = TftCyan,
+                        tint = customColors.accentColor,
                         modifier = Modifier.size(13.dp)
                     )
                     Icon(
@@ -635,7 +690,7 @@ private fun TftPortraitView(
                         Icon(
                             imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
                             contentDescription = "Keep Screen On",
-                            tint = if (keepScreenOn) TftCyan else TftGray,
+                            tint = if (keepScreenOn) customColors.accentColor else customColors.textColor.copy(alpha = 0.5f),
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -647,7 +702,7 @@ private fun TftPortraitView(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = TftGray,
+                            tint = customColors.textColor.copy(alpha = 0.6f),
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -656,9 +711,9 @@ private fun TftPortraitView(
                         modifier = Modifier
                             .height(24.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .border(1.dp, TftCyan.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
                             .clickable { onSwitchToMap() },
-                        color = Color(0xFF0F131D)
+                        color = customColors.componentColor
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 6.dp),
@@ -668,12 +723,12 @@ private fun TftPortraitView(
                             Icon(
                                 imageVector = Icons.Default.Map,
                                 contentDescription = "Map",
-                                tint = TftCyan,
+                                tint = customColors.accentColor,
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
                                 text = "MAP",
-                                color = TftWhite,
+                                color = customColors.textColor,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
@@ -685,7 +740,7 @@ private fun TftPortraitView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // CENTER: Speed Arc Gauge with Large Digital Speedometer at Center
+            // CENTER: Speed Arc Gauge with Large Digital Speedometer at Center (Preserving size of 0)
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -698,6 +753,7 @@ private fun TftPortraitView(
                     currentSpeed = displaySpeed,
                     maxSpeed = maxScale,
                     isSpeedAlert = isSpeedAlert,
+                    accentColor = customColors.accentColor,
                     modifier = Modifier.size(gaugeSize)
                 )
 
@@ -709,7 +765,7 @@ private fun TftPortraitView(
                 ) {
                     Text(
                         text = displaySpeed.roundToInt().toString(),
-                        color = if (isSpeedAlert) TftRed else TftWhite,
+                        color = if (isSpeedAlert) TftRed else customColors.textColor,
                         fontSize = (gaugeSize.value * 0.36f).sp,
                         fontWeight = FontWeight.Black,
                         fontStyle = FontStyle.Italic,
@@ -719,7 +775,7 @@ private fun TftPortraitView(
                     )
                     Text(
                         text = speedUnit,
-                        color = TftCyan,
+                        color = customColors.textColor.copy(alpha = 0.85f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -731,45 +787,85 @@ private fun TftPortraitView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // TELEMETRY PANEL (Odometro Totale, Trip A, Trip B, Instant Fuel Bar)
+            // TELEMETRY PANEL: Distance (Prominent) + Row of (Top Speed, Total Time, Moving Avg)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.Black)
-                    .border(1.dp, Color(0xFF151822), RoundedCornerShape(6.dp))
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(customColors.componentColor)
+                    .border(1.dp, customColors.accentColor.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                // Distance prominently placed below the speedometer
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = String.format(Locale.US, "%.1f", displayDistance),
+                            color = customColors.textColor,
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 32.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = distanceUnit,
+                            color = customColors.textColor.copy(alpha = 0.8f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
+                    Text(
+                        text = "DISTANCE",
+                        color = customColors.textColor.copy(alpha = 0.65f),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+
+                HorizontalDivider(
+                    color = customColors.accentColor.copy(alpha = 0.15f),
+                    thickness = 1.dp
+                )
+
+                // Row of values below Distance: Top Speed | Total Time | Moving Avg
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TftAiMTelemetryField(
-                        value = totalOdometer.toString(),
-                        label = "ODOMETRO $distanceUnit",
+                    TelemetryStatItem(
+                        value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
+                        unit = speedUnit,
+                        label = "TOP SPEED",
+                        textColor = customColors.textColor,
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TftAiMTelemetryField(
-                        value = String.format(Locale.US, "%.1f", displayDistance),
-                        label = "TRIP A $distanceUnit",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TftAiMTelemetryField(
+                    TelemetryStatItem(
                         value = timeDisplay,
-                        label = "TRIP B TIME",
+                        unit = "",
+                        label = "TOTAL TIME",
+                        textColor = customColors.textColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TelemetryStatItem(
+                        value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
+                        unit = speedUnit,
+                        label = "MOVING AVG",
+                        textColor = customColors.textColor,
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                InstantFuelConsumptionBar(
-                    speedKmh = speedKmh,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(24.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -780,6 +876,7 @@ private fun TftPortraitView(
                 isGpsLost = isGpsLost,
                 accuracyMeters = accuracyMeters,
                 bikeName = bikeName,
+                customColors = customColors,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -793,11 +890,11 @@ private fun TftPortraitView(
                         .fillMaxWidth()
                         .height(58.dp),
                     shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = TftCyan)
+                    colors = ButtonDefaults.buttonColors(containerColor = customColors.accentColor)
                 ) {
                     Text(
                         text = "START RIDE",
-                        color = Color.Black,
+                        color = if (customColors.accentColor.luminance() > 0.5f) Color.Black else Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
@@ -832,6 +929,7 @@ private fun TftSpeedArcGauge(
     currentSpeed: Double,
     maxSpeed: Double,
     isSpeedAlert: Boolean,
+    accentColor: Color = Color(0xFF00D4E5),
     modifier: Modifier = Modifier
 ) {
     val speedRatio = (currentSpeed / maxSpeed).coerceIn(0.0, 1.0).toFloat()
@@ -862,8 +960,8 @@ private fun TftSpeedArcGauge(
             style = Stroke(width = arcStrokeWidth, cap = StrokeCap.Butt)
         )
 
-        // Active cyan segmented arc (turns red if speed alert)
-        val arcColor = if (isSpeedAlert) TftRed else TftCyan
+        // Active cyan/accent segmented arc (turns red if speed alert)
+        val arcColor = if (isSpeedAlert) TftRed else accentColor
         drawArc(
             color = arcColor,
             startAngle = startAngle,
@@ -1006,6 +1104,7 @@ private fun TurnIndicatorArrow(isLeft: Boolean, isActive: Boolean) {
 private fun TftLeftIndicatorColumn(
     isGpsLost: Boolean,
     pauseState: PauseState,
+    textColor: Color = TftGray,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1015,7 +1114,7 @@ private fun TftLeftIndicatorColumn(
     ) {
         Text(
             text = "MENU\n<<",
-            color = TftGray,
+            color = textColor,
             fontSize = 8.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
@@ -1063,7 +1162,7 @@ private fun TftLeftIndicatorColumn(
 
         Text(
             text = ">>",
-            color = TftGray,
+            color = textColor,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
@@ -1077,6 +1176,7 @@ private fun TftLeftIndicatorColumn(
 @Composable
 private fun TftRightWarningColumn(
     isSpeedAlert: Boolean,
+    textColor: Color = TftGray,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1086,7 +1186,7 @@ private fun TftRightWarningColumn(
     ) {
         Text(
             text = "MEM\nOK",
-            color = TftGray,
+            color = textColor,
             fontSize = 8.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
@@ -1124,11 +1224,58 @@ private fun TftRightWarningColumn(
 
         Text(
             text = "VIEW\nQUIT",
-            color = TftGray,
+            color = textColor,
             fontSize = 8.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun TelemetryStatItem(
+    value: String,
+    unit: String,
+    label: String,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = value,
+                color = textColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                lineHeight = 18.sp
+            )
+            if (unit.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = unit,
+                    color = textColor.copy(alpha = 0.75f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(bottom = 1.dp)
+                )
+            }
+        }
+        Text(
+            text = label,
+            color = textColor.copy(alpha = 0.6f),
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            letterSpacing = 0.8.sp
         )
     }
 }
@@ -1286,6 +1433,7 @@ private fun TftLandscapeBottomBar(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     palette: CockpitThemePalette,
+    customColors: DashboardCustomColors = DashboardCustomColors(),
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -1323,7 +1471,7 @@ private fun TftLandscapeBottomBar(
 
                 Text(
                     text = "-> 525 KM",
-                    color = TftWhite,
+                    color = customColors.textColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
@@ -1339,7 +1487,7 @@ private fun TftLandscapeBottomBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "105 °C",
-                        color = TftCyan,
+                        color = customColors.accentColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace
@@ -1348,7 +1496,7 @@ private fun TftLandscapeBottomBar(
                     Icon(
                         imageVector = Icons.Default.Thermostat,
                         contentDescription = "Coolant",
-                        tint = TftCyan,
+                        tint = customColors.accentColor,
                         modifier = Modifier.size(13.dp)
                     )
                 }
@@ -1357,7 +1505,7 @@ private fun TftLandscapeBottomBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "25 °C",
-                        color = TftWhite,
+                        color = customColors.textColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace
@@ -1366,7 +1514,7 @@ private fun TftLandscapeBottomBar(
                     Icon(
                         imageVector = Icons.Default.Thermostat,
                         contentDescription = "Air",
-                        tint = TftWhite,
+                        tint = customColors.textColor,
                         modifier = Modifier.size(13.dp)
                     )
                 }
@@ -1381,9 +1529,9 @@ private fun TftLandscapeBottomBar(
                     modifier = Modifier
                         .height(34.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .border(1.2.dp, TftCyan.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                        .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
                         .clickable { onSwitchToMap() },
-                    color = Color(0xFF0C101A)
+                    color = customColors.componentColor
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp),
@@ -1393,12 +1541,12 @@ private fun TftLandscapeBottomBar(
                         Icon(
                             imageVector = Icons.Default.Map,
                             contentDescription = "Map",
-                            tint = TftCyan,
+                            tint = customColors.accentColor,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "MAP",
-                            color = TftWhite,
+                            color = customColors.textColor,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
@@ -1411,11 +1559,11 @@ private fun TftLandscapeBottomBar(
                         onClick = onStartClick,
                         modifier = Modifier.height(36.dp),
                         shape = RoundedCornerShape(4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = TftCyan)
+                        colors = ButtonDefaults.buttonColors(containerColor = customColors.accentColor)
                     ) {
                         Text(
                             text = "START",
-                            color = Color.Black,
+                            color = if (customColors.accentColor.luminance() > 0.5f) Color.Black else Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace
@@ -1460,7 +1608,7 @@ private fun TftLandscapeBottomBar(
             // Right: Live Clock
             Text(
                 text = currentTimeString.ifEmpty { "23.08.2026 11:35 PM" },
-                color = TftGray,
+                color = customColors.textColor.copy(alpha = 0.65f),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -1478,12 +1626,13 @@ private fun TftPortraitBottomInfo(
     isGpsLost: Boolean,
     accuracyMeters: Float,
     bikeName: String?,
+    customColors: DashboardCustomColors = DashboardCustomColors(),
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(Color.Black)
+            .background(customColors.componentColor)
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(
@@ -1502,7 +1651,7 @@ private fun TftPortraitBottomInfo(
                 Spacer(modifier = Modifier.width(3.dp))
                 Text(
                     text = "-> 525 KM",
-                    color = TftWhite,
+                    color = customColors.textColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
@@ -1513,14 +1662,14 @@ private fun TftPortraitBottomInfo(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "105 °C",
-                    color = TftCyan,
+                    color = customColors.accentColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
                 Text(
                     text = "25 °C",
-                    color = TftWhite,
+                    color = customColors.textColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
@@ -1545,7 +1694,7 @@ private fun TftPortraitBottomInfo(
 
             Text(
                 text = currentTimeString.ifEmpty { "23.08.2026 11:35 PM" },
-                color = TftGray,
+                color = customColors.textColor.copy(alpha = 0.6f),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace

@@ -81,8 +81,8 @@ class RideDetailViewModel @Inject constructor(
         ?: MutableStateFlow(true).asStateFlow()
 
     val defaultMapTheme: StateFlow<com.abrar.motolog.shared.domain.model.MapThemePreference> = settingsRepository?.defaultMapTheme
-        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.DARK)
-        ?: MutableStateFlow(com.abrar.motolog.shared.domain.model.MapThemePreference.DARK).asStateFlow()
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT)
+        ?: MutableStateFlow(com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT).asStateFlow()
 
     private val rideId: Long = runCatching {
         savedStateHandle.toRoute<RideDetailRoute>().rideId

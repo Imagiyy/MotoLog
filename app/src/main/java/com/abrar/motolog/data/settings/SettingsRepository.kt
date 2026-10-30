@@ -47,11 +47,22 @@ class SettingsRepository @Inject constructor(
         val BATTERY_GUIDANCE_SEEN = booleanPreferencesKey("battery_guidance_seen")
         val CURRENT_BIKE_ID = longPreferencesKey("current_bike_id")
         val DEFAULT_MAP_THEME = stringPreferencesKey("default_map_theme")
+        val DASHBOARD_TEXT_COLOR = longPreferencesKey("dashboard_text_color")
+        val DASHBOARD_BG_COLOR = longPreferencesKey("dashboard_bg_color")
+        val DASHBOARD_ACCENT_COLOR = longPreferencesKey("dashboard_accent_color")
+        val DASHBOARD_COMPONENT_COLOR = longPreferencesKey("dashboard_component_color")
     }
 
     // ============================================================
-    // Theme
+    // Theme & Custom Colors
     // ============================================================
+
+    companion object {
+        const val DEFAULT_DASHBOARD_TEXT_COLOR = 0xFFFFFFFFL
+        const val DEFAULT_DASHBOARD_BG_COLOR = 0xFF030508L
+        const val DEFAULT_DASHBOARD_ACCENT_COLOR = 0xFF00D4E5L
+        const val DEFAULT_DASHBOARD_COMPONENT_COLOR = 0xFF0D0F14L
+    }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { prefs ->
         val raw = prefs[Keys.THEME_MODE]
@@ -71,15 +82,64 @@ class SettingsRepository @Inject constructor(
     val defaultMapTheme: Flow<com.abrar.motolog.shared.domain.model.MapThemePreference> = dataStore.data.map { prefs ->
         val raw = prefs[Keys.DEFAULT_MAP_THEME]
         try {
-            if (raw != null) com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(raw) else com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
+            if (raw != null) com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(raw) else com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT
         } catch (_: Exception) {
-            com.abrar.motolog.shared.domain.model.MapThemePreference.DARK
+            com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT
         }
     }
 
     suspend fun setDefaultMapTheme(pref: com.abrar.motolog.shared.domain.model.MapThemePreference) {
         dataStore.edit { prefs ->
             prefs[Keys.DEFAULT_MAP_THEME] = pref.name
+        }
+    }
+
+    val dashboardTextColor: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[Keys.DASHBOARD_TEXT_COLOR] ?: DEFAULT_DASHBOARD_TEXT_COLOR
+    }
+
+    suspend fun setDashboardTextColor(color: Long) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DASHBOARD_TEXT_COLOR] = color
+        }
+    }
+
+    val dashboardBgColor: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[Keys.DASHBOARD_BG_COLOR] ?: DEFAULT_DASHBOARD_BG_COLOR
+    }
+
+    suspend fun setDashboardBgColor(color: Long) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DASHBOARD_BG_COLOR] = color
+        }
+    }
+
+    val dashboardAccentColor: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[Keys.DASHBOARD_ACCENT_COLOR] ?: DEFAULT_DASHBOARD_ACCENT_COLOR
+    }
+
+    suspend fun setDashboardAccentColor(color: Long) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DASHBOARD_ACCENT_COLOR] = color
+        }
+    }
+
+    val dashboardComponentColor: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[Keys.DASHBOARD_COMPONENT_COLOR] ?: DEFAULT_DASHBOARD_COMPONENT_COLOR
+    }
+
+    suspend fun setDashboardComponentColor(color: Long) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DASHBOARD_COMPONENT_COLOR] = color
+        }
+    }
+
+    suspend fun resetDashboardColors() {
+        dataStore.edit { prefs ->
+            prefs.remove(Keys.DASHBOARD_TEXT_COLOR)
+            prefs.remove(Keys.DASHBOARD_BG_COLOR)
+            prefs.remove(Keys.DASHBOARD_ACCENT_COLOR)
+            prefs.remove(Keys.DASHBOARD_COMPONENT_COLOR)
         }
     }
 

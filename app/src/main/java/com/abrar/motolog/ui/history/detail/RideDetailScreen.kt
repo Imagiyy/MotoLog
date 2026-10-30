@@ -230,7 +230,7 @@ private fun RideDetailContent(
     isSplitsLoading: Boolean,
     showOverallStats: Boolean,
     useMetricUnits: Boolean = true,
-    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.DARK,
+    defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     onToggleStatsMode: () -> Unit,
     onChangeBike: () -> Unit
 ) {

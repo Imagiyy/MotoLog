@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Stop
 import com.abrar.motolog.shared.domain.model.PauseState
 import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.ui.live.retro.RacingTftDashboard
+import com.abrar.motolog.ui.live.retro.DashboardCustomColors
 import com.abrar.motolog.ui.live.retro.RetroHoldToStopButton
 import com.abrar.motolog.ui.live.retro.RetroLiveMap
 import com.abrar.motolog.ui.theme.JewelAmber
@@ -129,7 +130,29 @@ fun LiveScreen(
     val batteryGuidanceSeen by viewModel.batteryGuidanceSeen.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
-    val palette = remember(themeMode, isSystemDark) { getCockpitThemePalette(themeMode, isSystemDark) }
+    val dashboardTextColor by viewModel.dashboardTextColor.collectAsStateWithLifecycle()
+    val dashboardBgColor by viewModel.dashboardBgColor.collectAsStateWithLifecycle()
+    val dashboardAccentColor by viewModel.dashboardAccentColor.collectAsStateWithLifecycle()
+    val dashboardComponentColor by viewModel.dashboardComponentColor.collectAsStateWithLifecycle()
+
+    val customColors = remember(dashboardTextColor, dashboardBgColor, dashboardAccentColor, dashboardComponentColor) {
+        DashboardCustomColors(
+            textColor = Color(dashboardTextColor),
+            backgroundColor = Color(dashboardBgColor),
+            accentColor = Color(dashboardAccentColor),
+            componentColor = Color(dashboardComponentColor)
+        )
+    }
+    val palette = remember(themeMode, isSystemDark, customColors) {
+        getCockpitThemePalette(
+            themeMode = themeMode,
+            isSystemDark = isSystemDark,
+            textColor = customColors.textColor,
+            backgroundColor = customColors.backgroundColor,
+            accentColor = customColors.accentColor,
+            componentColor = customColors.componentColor
+        )
+    }
 
     val haptic = LocalHapticFeedback.current
     val handleStart: () -> Unit = {
@@ -263,6 +286,7 @@ fun LiveScreen(
                     onStopConfirmed = { viewModel.stopTracking() },
                     onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
                     palette = palette,
+                    customColors = customColors,
                     modifier = modifier.fillMaxSize()
                 )
             }
@@ -325,6 +349,7 @@ fun LiveScreen(
                     onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                     onNavigateToSettings = onNavigateToSettings,
                     palette = palette,
+                    customColors = customColors,
                     modifier = modifier.fillMaxSize()
                 )
             }
@@ -634,7 +659,7 @@ private fun TftWaitingForGpsView(
     val tftGray = Color(0xFF6B7280)
     val tftWhite = Color(0xFFF5F5F7)
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .background(
                 Brush.verticalGradient(

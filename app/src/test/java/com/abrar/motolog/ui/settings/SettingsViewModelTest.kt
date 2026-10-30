@@ -119,6 +119,21 @@ class SettingsViewModelTest {
         viewModel.speedAlertEnabled.test {
             assertFalse(awaitItem())
         }
+        viewModel.defaultMapTheme.test {
+            assertEquals(com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT, awaitItem())
+        }
+        viewModel.dashboardTextColor.test {
+            assertEquals(SettingsRepository.DEFAULT_DASHBOARD_TEXT_COLOR, awaitItem())
+        }
+        viewModel.dashboardBgColor.test {
+            assertEquals(SettingsRepository.DEFAULT_DASHBOARD_BG_COLOR, awaitItem())
+        }
+        viewModel.dashboardAccentColor.test {
+            assertEquals(SettingsRepository.DEFAULT_DASHBOARD_ACCENT_COLOR, awaitItem())
+        }
+        viewModel.dashboardComponentColor.test {
+            assertEquals(SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR, awaitItem())
+        }
     }
 
     @Test
@@ -191,6 +206,34 @@ class SettingsViewModelTest {
 
         assertTrue(viewModel.voiceAnnouncementsEnabled.value)
         assertTrue(viewModel.thermalEcoMode.value)
+    }
+
+    @Test
+    fun dashboardColors_canBeUpdatedAndReset() = runTest(testDispatcher) {
+        viewModel.dashboardTextColor.launchIn(backgroundScope)
+        viewModel.dashboardBgColor.launchIn(backgroundScope)
+        viewModel.dashboardAccentColor.launchIn(backgroundScope)
+        viewModel.dashboardComponentColor.launchIn(backgroundScope)
+        advanceUntilIdle()
+
+        viewModel.setDashboardTextColor(0xFFFFEE00L)
+        viewModel.setDashboardBgColor(0xFF001122L)
+        viewModel.setDashboardAccentColor(0xFFFF3366L)
+        viewModel.setDashboardComponentColor(0xFF223344L)
+        advanceUntilIdle()
+
+        assertEquals(0xFFFFEE00L, viewModel.dashboardTextColor.value)
+        assertEquals(0xFF001122L, viewModel.dashboardBgColor.value)
+        assertEquals(0xFFFF3366L, viewModel.dashboardAccentColor.value)
+        assertEquals(0xFF223344L, viewModel.dashboardComponentColor.value)
+
+        viewModel.resetDashboardColors()
+        advanceUntilIdle()
+
+        assertEquals(SettingsRepository.DEFAULT_DASHBOARD_TEXT_COLOR, viewModel.dashboardTextColor.value)
+        assertEquals(SettingsRepository.DEFAULT_DASHBOARD_BG_COLOR, viewModel.dashboardBgColor.value)
+        assertEquals(SettingsRepository.DEFAULT_DASHBOARD_ACCENT_COLOR, viewModel.dashboardAccentColor.value)
+        assertEquals(SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR, viewModel.dashboardComponentColor.value)
     }
 
     @Test
