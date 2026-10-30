@@ -324,4 +324,74 @@ class RideCalculatorTest {
         assertEquals(120.0, calculator.stats.totalDistanceMeters, 2.0)
         assertEquals(36.0, calculator.stats.currentSpeedKmh, 0.5)
     }
+
+    @Test
+    fun invalidNonFiniteCoordinates_rejected() {
+        val calculator = RideCalculator()
+        val nanPoint = GpsPoint(1000L, Double.NaN, 77.0000, 10f, 5f)
+        val resNan = calculator.process(nanPoint)
+        assertTrue(resNan is PointFilterResult.Rejected)
+        assertEquals(RejectionReason.INVALID_COORDINATES, (resNan as PointFilterResult.Rejected).reason)
+
+        val outOfBounds = GpsPoint(2000L, 95.0, 77.0000, 10f, 5f)
+        val resBounds = calculator.process(outOfBounds)
+        assertTrue(resBounds is PointFilterResult.Rejected)
+        assertEquals(RejectionReason.INVALID_COORDINATES, (resBounds as PointFilterResult.Rejected).reason)
+
+        val infPoint = GpsPoint(3000L, 12.0000, Double.POSITIVE_INFINITY, 10f, 5f)
+        val resInf = calculator.process(infPoint)
+        assertTrue(resInf is PointFilterResult.Rejected)
+        assertEquals(RejectionReason.INVALID_COORDINATES, (resInf as PointFilterResult.Rejected).reason)
+    }
+
+    @Test
+    fun signalGap_resetsAutoPauseDelayCountdown() {
+        val stateMachine = AutoPauseStateMachine(autoPauseEnabled = true)
+        val calculator = RideCalculator(autoPauseStateMachine = stateMachine)
+
+        // Point 1: Moving
+        calculator.process(GpsPoint(1000L, 12.0000, 77.0000, 10f, 3f))
+        // Point 2: Stationary (2s later)
+        calculator.process(GpsPoint(3000L, 12.0001, 77.0000, 0f, 3f))
+
+        // Signal gap of 30 seconds occurs!
+        val gapPoint = GpsPoint(33_000L, 12.0001, 77.0000, 0f, 3f)
+        val res = calculator.process(gapPoint)
+
+        assertTrue(res is PointFilterResult.Accepted)
+        // Must NOT have auto-paused based on time elapsed during the signal blackout!
+        assertEquals(com.abrar.motolog.shared.domain.model.PauseState.RECORDING, (res as PointFilterResult.Accepted).pauseState)
+    }
+
+    @Test
+    fun signalGap_beforeStartConfirmation_resetsOrigin() {
+        val calculator = RideCalculator()
+        // Point 1 at origin
+        calculator.process(GpsPoint(1000L, 12.0000, 77.0000, 5f, 3f))
+
+        // Signal gap: phone reappears 500m away after a 60-second gap
+        val farLat = 12.0000 + (500.0 / 111_139.0)
+        val p2 = calculator.process(GpsPoint(61_000L, farLat, 77.0000, 5f, 3f))
+
+        assertTrue(p2 is PointFilterResult.Accepted)
+        // Since continuity was broken by a signal gap before 100m confirmation,
+        // it must NOT confirm start and claim 500m across the blackout!
+        assertEquals(0.0, calculator.stats.totalDistanceMeters, 0.001)
+    }
+
+    @Test
+    fun manualPause_isNotOverwrittenBySubsequentNormalGpsFixes() {
+        val calculator = RideCalculator()
+        calculator.process(GpsPoint(1000L, 12.0000, 77.0000, 10f, 3f))
+
+        // User manually pauses
+        val pauseState = calculator.manualPause()
+        assertEquals(com.abrar.motolog.shared.domain.model.PauseState.MANUALLY_PAUSED, pauseState)
+
+        // Next normal GPS fix arrives with isPaused = false
+        val p2 = calculator.process(GpsPoint(2000L, 12.0001, 77.0000, 10f, 3f, isPaused = false))
+        assertTrue(p2 is PointFilterResult.Accepted)
+        // Must remain MANUALLY_PAUSED!
+        assertEquals(com.abrar.motolog.shared.domain.model.PauseState.MANUALLY_PAUSED, (p2 as PointFilterResult.Accepted).pauseState)
+    }
 }

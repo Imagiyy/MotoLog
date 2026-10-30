@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MotoLog Full Audit Report</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.45; color: #202124; margin: 42px; }
+h1 { color: #17365d; font-size: 28px; border-bottom: 3px solid #17365d; padding-bottom: 8px; }
+h2 { color: #1f4e79; font-size: 21px; border-bottom: 1px solid #9fbad0; padding-bottom: 4px; margin-top: 30px; }
+h3 { color: #2f5597; font-size: 16px; margin-top: 22px; }
+p { margin: 7px 0; }
+li { margin: 4px 0; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; font-size: 11px; }
+th { background: #d9eaf7; color: #17365d; }
+th, td { border: 1px solid #9aa8b2; padding: 6px; vertical-align: top; }
+.critical { background: #f4cccc; border-left: 4px solid #990000; padding: 9px 12px; margin: 10px 0; }
+.high { background: #fce4d6; border-left: 4px solid #c00000; padding: 9px 12px; margin: 10px 0; }
+.medium { background: #fff2cc; border-left: 4px solid #bf9000; padding: 9px 12px; margin: 10px 0; }
+.formula { background: #f1f5f8; border-left: 4px solid #2f5597; padding: 9px 12px; margin: 10px 0; font-family: "Courier New", monospace; }
+.small { font-size: 11px; color: #555; }
+.pagebreak { page-break-before: always; }
+code { font-family: "Courier New", monospace; background: #f1f1f1; padding: 1px 3px; }
+</style>
+</head>
+<body>
+
+<h1>MotoLog / Ride Tracker<br>Full Technical Audit Report</h1>
+<p><b>Project:</b> MotoLog motorcycle ride tracker</p>
+<p><b>Repository:</b> <code>/home/abrar/Documents/Websites/ride_tracker</code></p>
+<p><b>Audit scope:</b> Android application, Kotlin Multiplatform shared module, persistence, tracking service, GPX/CSV/backup flows, permissions, build configuration, tests and generated lint reports.</p>
+<p><b>Audit status:</b> Read-only audit. No source files were modified.</p>
+
+<h2>Executive summary</h2>
+<p>The project has a solid architecture, a substantial shared-domain test suite, good separation between Android and shared logic, and successful debug/release builds. The GPS calculation engine is thoughtfully designed and tested.</p>
+<p>The main weakness is that the most failure-sensitive code is outside the tested pure-domain layer: foreground-service lifecycle, persistence batching, backup restoration, import validation and Android process death. Those areas currently permit data loss, privacy-policy violations or inconsistent state under realistic conditions.</p>
+
+<div class="critical"><b>Most urgent issues:</b>
+<ol>
+<li>Device-transfer backup rules can transfer the entire application root, potentially including GPS databases.</li>
+<li>Starting and stopping a ride can race before <code>activeRideId</code> has been assigned.</li>
+<li>Restore can delete existing user data before proving that the backup is complete and valid.</li>
+<li>Unlimited point buffering can grow without bound if Room writes fail or stall.</li>
+<li>Service destruction does not flush pending points or finalize an active ride.</li>
+<li>GPX import accepts invalid coordinates and can create corrupt rides.</li>
+</ol>
+</div>
+
+<h2>Validation performed</h2>
+<ul>
+<li>Inspected Android manifest, backup rules, Gradle configuration, module structure and source/test inventory.</li>
+<li>Inspected tracking, GPS filtering, persistence, backup, GPX import/export and recovery paths.</li>
+<li>Ran the existing unit-test task successfully.</li>
+<li>Built the release APK successfully.</li>
+<li>Reviewed generated Android lint findings and warnings.</li>
+</ul>
+<p>Passing tests and a successful release build do not prove correct behavior under process death, storage failure, malformed imports, backup corruption or real GPS callback behavior.</p>
+
+<h2>Severity summary</h2>
+<table>
+<tr><th>Severity</th><th>Count</th><th>Meaning</th></tr>
+<tr><td>Critical</td><td>3</td><td>Can expose private location data, destroy user data or corrupt core ride state.</td></tr>
+<tr><td>High</td><td>8</td><td>Can cause substantial data loss, incorrect tracking or unsafe behavior in realistic conditions.</td></tr>
+<tr><td>Medium</td><td>16+</td><td>Correctness, resilience, maintainability, compatibility or test-coverage weaknesses.</td></tr>
+</table>
+
+<h2>Critical and high-priority findings</h2>
+<table>
+<tr><th>#</th><th>Severity</th><th>File / lines</th><th>Finding</th><th>Impact</th></tr>
+<tr><td>1</td><td>Critical</td><td>res/xml/data_extraction_rules.xml:7-10</td><td>Device-transfer rules include root/.</td><td>GPS databases and private ride data may be included in device-transfer backups.</td></tr>
+<tr><td>2</td><td>Critical</td><td>service/TrackingService.kt:138-222, 500-526</td><td>Start/stop race around activeRideId.</td><td>Invalid or orphaned rides; inconsistent service state.</td></tr>
+<tr><td>3</td><td>Critical</td><td>data/io/BackupManager.kt:243-267</td><td>Restore deletes data before validating all entries.</td><td>Malformed backup can wipe the current database.</td></tr>
+<tr><td>4</td><td>High</td><td>service/TrackingService.kt:96-97, 593-607</td><td>Unlimited point queue with no write-failure recovery.</td><td>Memory growth, point loss and stuck rides.</td></tr>
+<tr><td>5</td><td>High</td><td>service/TrackingService.kt:775-791</td><td>onDestroy does not flush or finalize tracking.</td><td>Recent points are lost and rides may remain ACTIVE.</td></tr>
+<tr><td>6</td><td>High</td><td>data/io/GpxImporter.kt:105-106, 145-157</td><td>GPX coordinates are not range- or finiteness-validated.</td><td>Invalid map data and corrupted calculations.</td></tr>
+<tr><td>7</td><td>High</td><td>ui/settings/SettingsViewModel.kt:349-403</td><td>GPX import is not transactional across tracks.</td><td>Partial imports remain after a later failure.</td></tr>
+<tr><td>8</td><td>High</td><td>service/TrackingService.kt:237-258, 395-410</td><td>Poor-quality callbacks reset GPS-loss timing.</td><td>GPS can appear available while no usable fixes are recorded.</td></tr>
+</table>
+
+<h3>1. Privacy leak through device-transfer backup</h3>
+<p><b>Location:</b> <code>app/src/main/res/xml/data_extraction_rules.xml:7-10</code></p>
+<pre>&lt;device-transfer&gt;
+    &lt;include domain="root" path="." /&gt;
+&lt;/device-transfer&gt;</pre>
+<p>The database is excluded from cloud backup, but the entire application root is explicitly included for device transfer. Depending on Android's device-transfer implementation, this can transfer Room database files, GPS points, ride history, preferences and temporary files.</p>
+<p>This conflicts with the documented privacy claim that location data remains on-device.</p>
+<p><b>Recommended fix:</b> Use a narrow allowlist. Exclude the database from both cloud backup and device transfer, or explicitly document that device migration transfers ride data. Verify behavior on API 31+ devices.</p>
+
+<h3>2. Start/stop race can use an invalid ride ID</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/service/TrackingService.kt:138-222, 500-526</code></p>
+<p><code>handleStart()</code> sets <code>isTracking</code> before launching asynchronous initialization. The database ride is inserted later. A stop command can arrive while <code>activeRideId</code> is still <code>0L</code>.</p>
+<p>Possible outcomes include stopping a nonexistent ride, leaving an active ride behind, starting GPS collection after stop, or writing inconsistent final metadata.</p>
+<p><b>Recommended fix:</b> Add explicit Idle/Starting/Tracking/Stopping states, store and cancel the startup job, validate <code>activeRideId &gt; 0</code>, check state after suspension points, and serialize service commands through a mutex or actor.</p>
+
+<h3>3. Restore can wipe data from an incomplete archive</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/data/io/BackupManager.kt:198-247, 248-267</code></p>
+<p>The restore parser treats every archive entry except the manifest as optional. It then deletes all current tables before inserting whichever entries were found. An archive containing only a manifest can therefore clear existing data and restore nothing.</p>
+<p>The manifest counts are parsed but not compared against the actual arrays. Foreign keys, duplicate IDs, timestamps, coordinates and enum values are also not fully validated before deletion.</p>
+<p><b>Recommended fix:</b> Require every expected entry, validate format version and manifest counts, validate relationships and values, stage the import in a temporary database or transaction, and only replace current data after validation succeeds.</p>
+
+<h3>4. Unlimited point buffering can cause memory growth</h3>
+<p><b>Location:</b> <code>TrackingService.kt:96-97, 593-607</code></p>
+<pre>private val pointChannel = Channel&lt;RidePointEntity&gt;(Channel.UNLIMITED)</pre>
+<p>If the Room batch writer fails, the location collector continues enqueueing points. Because the channel is unlimited, a long ride can grow the heap until the process is killed.</p>
+<p><b>Recommended fix:</b> Use a bounded channel, define backpressure behavior, retry database writes with backoff, expose persistence failure to the UI/notification, and stop safely if the data cannot be persisted.</p>
+
+<h3>5. Service destruction loses pending tracking data</h3>
+<p><b>Location:</b> <code>TrackingService.kt:775-791</code></p>
+<p><code>onDestroy()</code> cancels the service scope but does not drain the point channel, await the batch writer, checkpoint final stats or mark the ride as interrupted/recoverable.</p>
+<p><b>Recommended fix:</b> Stop callbacks first, drain and persist the queue, checkpoint the ride, mark it recoverable, then cancel jobs. Since Android may kill a process without calling <code>onDestroy()</code>, persist frequently enough to keep the loss window bounded.</p>
+
+<h3>6. START_NOT_STICKY conflicts with documented recovery</h3>
+<p><b>Location:</b> <code>TrackingService.kt:122-132</code></p>
+<p>The service returns <code>START_NOT_STICKY</code>, so Android will not recreate it after process termination. This does not provide continuous tracking recovery; at most, the UI may later discover an incomplete ride.</p>
+<p><b>Recommended fix:</b> Decide whether the desired behavior is recover-later or resume-after-process-death. Use the appropriate restart mode, persist safe state, and avoid silently resuming location tracking without valid permission and user intent.</p>
+
+<h3>7. GPS loss detection is reset by poor-quality fixes</h3>
+<p><b>Location:</b> <code>TrackingService.kt:237-258, 395-410</code></p>
+<p><code>lastLocationPointTime</code> is updated before accuracy validation. A stream of inaccurate callbacks therefore prevents the signal-loss timeout from firing. The GPS-lost flag is also cleared before the fix is accepted.</p>
+<p><b>Recommended fix:</b> Track callback time and last-valid-fix time separately. Clear GPS-lost only after a fix passes validation and is accepted by the calculation engine.</p>
+
+<h3>8. GPX import accepts invalid coordinates</h3>
+<p><b>Location:</b> <code>GpxImporter.kt:105-106, 145-157</code></p>
+<p>The parser checks only whether latitude and longitude parse as doubles. It does not enforce finite values or legal geographic ranges.</p>
+<p><b>Recommended fix:</b> Require finite latitude in [-90, 90] and longitude in [-180, 180]. Add tests for NaN, infinity, missing coordinates and out-of-range values. Reuse a common validator for live GPS, GPX import and backup restore.</p>
+
+<h3>9. GPX parser silently degrades XML security</h3>
+<p><b>Location:</b> <code>GpxImporter.kt:41-45</code></p>
+<p>Security feature configuration failures are silently ignored. If a parser does not support a requested feature, parsing continues without proving that XXE/entity protections are active.</p>
+<p><b>Recommended fix:</b> Enable secure processing, restrict external access, reject DOCTYPE declarations, treat mandatory feature failures as parse failures, and add XXE/entity-expansion regression tests.</p>
+
+<h3>10. GPX import is not transactional</h3>
+<p><b>Location:</b> <code>SettingsViewModel.kt:349-403</code></p>
+<p>Multiple tracks are saved one at a time. If a later track fails, earlier tracks remain saved and the user receives only a generic failure message.</p>
+<p><b>Recommended fix:</b> Validate all tracks first, then insert the entire import inside a repository-level Room transaction. Roll back the complete import on failure.</p>
+
+<h3>11. ZIP limits are applied after unrestricted reads</h3>
+<p><b>Location:</b> <code>BackupManager.kt:211-227</code> and <code>inspectBackup():166-184</code></p>
+<p>ZIP metadata sizes can be unknown. The code calls <code>readBytes()</code> before reliably enforcing decompressed-size limits. <code>inspectBackup()</code> has no size limit at all.</p>
+<p><b>Recommended fix:</b> Read entries through a bounded stream, abort during reading when the entry or total archive limit is exceeded, reject duplicate/unexpected entries, and enforce a maximum entry count.</p>
+
+<h3>12. Backup creation is not a consistent snapshot</h3>
+<p><b>Location:</b> <code>BackupManager.kt:100-104</code></p>
+<p>Each table is read sequentially. If a ride is active, the manifest, rides and points can represent different moments and may not correspond to one coherent database state.</p>
+<p><b>Recommended fix:</b> Read all tables in a Room transaction or prohibit backups during active recording. Define and test snapshot semantics.</p>
+
+<h3>13. Restore settings are outside database atomicity</h3>
+<p><b>Location:</b> <code>BackupManager.kt:269-290</code></p>
+<p>Database restoration is transactional only when a database instance is available. Settings are applied afterward and invalid enum values are silently ignored.</p>
+<p><b>Recommended fix:</b> Validate all settings before modifying anything, return explicit errors, and add a restore journal or rollback strategy for the unavoidable Room/DataStore boundary.</p>
+
+<h2>Medium-priority correctness findings</h2>
+
+<h3>14. Live and persisted timestamps use different clocks</h3>
+<p><b>Location:</b> <code>TrackingService.kt:264-275, 310-319</code></p>
+<p>The calculator uses elapsed realtime where available, while persisted points use wall-clock epoch time. Recovery replays wall-clock timestamps. Clock changes can therefore produce different gap detection, elapsed time, speed and auto-pause behavior after recovery.</p>
+<p><b>Recommendation:</b> Persist both epoch time for display/export and monotonic elapsed time for calculations and recovery.</p>
+
+<h3>15. Silent exception swallowing hides data-integrity failures</h3>
+<p>Broad or silent catches occur in tracking, settings, backup restore, import and UI paths, including <code>TrackingService.kt</code>, <code>SettingsRepository.kt</code>, <code>BackupManager.kt</code> and <code>SettingsViewModel.kt</code>.</p>
+<p>Best-effort handling is reasonable for optional audio or haptics, but persistence, restore and state transitions must log structured failures and surface user-visible errors where appropriate.</p>
+
+<h3>16. Live GPS coordinates are not explicitly validated</h3>
+<p><b>Location:</b> <code>FusedLocationSource.kt:60-74</code>, <code>TrackingService.kt:270-278</code></p>
+<p>Accuracy is checked, but latitude, longitude, finite values, timestamp plausibility and elapsed-realtime validity are not explicitly checked before entering the engine.</p>
+<p><b>Recommendation:</b> Add a shared <code>LocationValidator</code> used by all ingestion paths.</p>
+
+<h3>17. Ride recovery may differ from live results</h3>
+<p><b>Location:</b> <code>TrackingRepositoryImpl.kt:75-110</code></p>
+<p>Recovery replays stored points but does not preserve all runtime calculator state, such as pending start confirmation, pause state history, max-speed confirmation state and the original timestamp basis.</p>
+<p><b>Recommendation:</b> Persist periodic calculator checkpoints or enough metadata to make replay deterministic.</p>
+
+<h3>18. RideCalculator assumes valid coordinates</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:147-150</code></p>
+<p>The shared engine directly calculates Haversine distance. Because it is reusable across Android, iOS and import flows, it should reject invalid coordinates itself rather than relying only on callers.</p>
+
+<h3>19. GPX point limit is global rather than per-track</h3>
+<p><b>Location:</b> <code>GpxImporter.kt:67, 146-163</code></p>
+<p>A large first track can consume the whole 100,000-point budget and truncate later tracks. The warning does not identify which track was truncated.</p>
+<p><b>Recommendation:</b> Enforce per-track and total-file limits and report omitted points per track.</p>
+
+<h3>20. GPX files without timestamps receive 1970 timestamps</h3>
+<p><b>Location:</b> <code>GpxImporter.kt:154</code></p>
+<pre>timestampEpochMs = ptTimeMs ?: (currentPoints.size * 1000L)</pre>
+<p>These synthetic values are later used as ride start and end times. Timestamp-less imports can therefore appear as rides from January 1970 and sort incorrectly.</p>
+<p><b>Recommendation:</b> Use a separate relative-time representation or assign an import-time anchor while marking timestamps as synthetic.</p>
+
+<h3>21. Imported tracks are not normalized</h3>
+<p>The parser does not sort timestamps, reject duplicate timestamps, warn about backward time, or split non-monotonic segments. The calculator may reject points while the database still stores the original invalid sequence.</p>
+<p><b>Recommendation:</b> Normalize and validate the entire track before calculating or saving it.</p>
+
+<h3>22. Backup archives have no integrity checksum</h3>
+<p><b>Location:</b> <code>BackupManager.kt:36-46, 96-160</code></p>
+<p>The manifest contains counts but no per-entry hash, archive checksum or authentication. Corrupted or manually edited archives can be partially accepted.</p>
+<p><b>Recommendation:</b> Add per-entry SHA-256, byte lengths, required-entry declarations and optional authenticated encryption for sensitive location backups.</p>
+
+<h3>23. Backups omit mileage cycles and persisted settings</h3>
+<p><b>Locations:</b> <code>app/src/main/java/com/abrar/motolog/data/io/BackupManager.kt:37-61, 100-159, 248-260</code> and <code>app/src/main/java/com/abrar/motolog/data/local/MotoLogDatabase.kt:28-38</code></p>
+<p>The database contains mileage-cycle records, but <code>BackupManager</code> does not inject a mileage-cycle DAO and does not serialize or restore that table. The backup settings model also omits persisted values such as voice announcements, thermal eco mode, disclaimer acceptance, battery-guidance state and dashboard colors.</p>
+<p><b>Impact:</b> A backup advertised as complete silently loses mileage history and preferences.</p>
+<p><b>Recommendation:</b> Add every persisted entity and setting to a versioned backup format. Add round-trip tests that compare all tables and preferences before and after restore.</p>
+
+<h3>24. Calculator state is accessed concurrently without confinement</h3>
+<p><b>Locations:</b> <code>app/src/main/java/com/abrar/motolog/service/TrackingService.kt:73-94, 185-321, 407-466, 630-650</code> and <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:35-47</code></p>
+<p>Location collection mutates the non-thread-safe <code>RideCalculator</code> from one coroutine while pause/resume commands, stop, checkpointing and statistics reads can occur from other coroutines or threads.</p>
+<p><b>Impact:</b> Race-dependent statistics, lost pause commands, inconsistent snapshots and nondeterministic ride state.</p>
+<p><b>Recommendation:</b> Confine all calculator access to one coroutine/actor or protect it with a mutex. Apply the same rule to <code>AutoPauseStateMachine</code> and <code>SpeedAlertEngine</code>.</p>
+
+<h3>25. Rejected GPS samples are persisted as valid route points</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/service/TrackingService.kt:267-321</code></p>
+<p>When <code>RideCalculator.process()</code> returns <code>Rejected</code>, the service substitutes a zero-speed state but still creates and sends a <code>RidePointEntity</code> with <code>isGap = false</code>.</p>
+<p><b>Impact:</b> Maps and GPX/CSV exports can contain rejected teleportation, timestamp, acceleration or poor-accuracy samples even though summary statistics excluded them. Recovery may replay those samples and produce different results.</p>
+<p><b>Recommendation:</b> Do not persist rejected points, or add an explicit rejected flag and exclude rejected samples consistently from maps, exports, recovery, elevation and graph calculations.</p>
+
+<h3>26. Manual pause is automatically cancelled by the next GPS fix</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:185-192</code></p>
+<p>Any ordinary point with <code>isPaused == false</code> calls <code>manualResume()</code> when the state is <code>MANUALLY_PAUSED</code>. Live <code>GpsPoint</code> instances are created without an explicit paused flag, so the next fix can cancel a user-requested pause.</p>
+<p><b>Impact:</b> Manual pause may last only until the next GPS update; distance and time can be recorded while the rider believes tracking is paused.</p>
+<p><b>Recommendation:</b> Separate explicit pause/resume commands from per-point pause metadata. Manual pause must remain active until an explicit resume action.</p>
+
+<h3>27. GPS gaps can immediately trigger auto-pause</h3>
+<p><b>Locations:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:152-192</code> and <code>AutoPauseStateMachine.kt:40-57</code></p>
+<p>A point after a long signal gap is passed to the auto-pause state machine with its later timestamp. The low-speed timer before the blackout can therefore be treated as continuous across the gap.</p>
+<p><b>Impact:</b> A ride can become auto-paused immediately after GPS recovery even though no verified stationary period occurred.</p>
+<p><b>Recommendation:</b> Reset or suspend the low-speed timer across gaps and add a regression test.</p>
+
+<h3>28. Duplicate-coordinate route can make RDP downsampling non-terminating</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RouteDownsampler.kt:130-151</code></p>
+<p>For identical coordinates, perpendicular distance remains zero and the selected index can remain equal to the start index. If the algorithm pushes the same interval back onto its stack, it can loop indefinitely.</p>
+<p><b>Impact:</b> CPU exhaustion, UI freeze or ANR while preparing a stationary or duplicate-point route.</p>
+<p><b>Recommendation:</b> Recurse only when <code>maxIndex &gt; start &amp;&amp; maxIndex &lt; end</code>. Treat degenerate intervals as terminal and add duplicate-coordinate tests.</p>
+
+<h3>29. Route downsampler can violate maxPoints</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RouteDownsampler.kt:49-109</code></p>
+<p>Protected points are always retained, but the code does not handle the case where protected points alone exceed <code>maxPoints</code>. The retry loop can terminate while returning an oversized route.</p>
+<p><b>Impact:</b> Memory and rendering limits are not guaranteed on routes with many gap or pause boundaries.</p>
+<p><b>Recommendation:</b> Define a prioritization policy for protected points or explicitly report that the requested limit is impossible.</p>
+
+<h3>30. Non-finite GPS values can corrupt statistics</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:104-109, 147-181</code></p>
+<p>The engine does not reject non-finite accuracy, coordinate, speed or altitude values, and does not enforce geographic ranges. NaN can bypass ordinary comparisons and propagate through Haversine distance, speed checks and totals.</p>
+<p><b>Recommendation:</b> Reject non-finite values and enforce latitude [-90, 90], longitude [-180, 180], non-negative accuracy and non-negative speed where applicable.</p>
+
+<h3>31. Start confirmation can cross a GPS gap</h3>
+<p><b>Location:</b> <code>shared/src/commonMain/kotlin/com/abrar/motolog/shared/domain/engine/RideCalculator.kt:224-241</code></p>
+<p>Start confirmation uses origin-to-current displacement even when the current point follows a signal gap. A large displacement after a blackout can confirm a ride even though no distance across the gap was credited.</p>
+<p><b>Recommendation:</b> Do not use gap or paused points for confirmation, or reset the confirmation origin after a gap.</p>
+
+<h3>32. Release artifact is optionally unsigned</h3>
+<p><b>Location:</b> <code>app/build.gradle.kts:32-73</code></p>
+<p>Release signing is applied only when a local keystore exists. The available release artifact is an unsigned APK and no signed app bundle is produced. This allows a release build to succeed while producing an artifact that cannot be uploaded to Google Play.</p>
+<p><b>Recommendation:</b> Make publish tasks fail closed when signing is unavailable. Configure CI signing secrets, build <code>bundleRelease</code>, and verify signatures, versioning, alignment and artifact checksums.</p>
+
+<h3>33. Notification actions are functionally ignored</h3>
+<p><b>Locations:</b> <code>app/src/main/java/com/abrar/motolog/service/RideNotificationManager.kt:111-126</code>, <code>MaintenanceNotificationManager.kt:130-138</code> and <code>MainActivity.kt:27-37</code></p>
+<p>Notifications put stop and bike-navigation extras into intents, but <code>MainActivity</code> does not consume them in <code>onCreate()</code> or <code>onNewIntent()</code>.</p>
+<p><b>Impact:</b> “Stop (In-App)” can open the default screen without stopping the ride, and maintenance notifications may not navigate to the selected bike.</p>
+<p><b>Recommendation:</b> Handle extras in both activity entry points and dispatch the requested action or navigation destination.</p>
+
+<h3>34. Notification permission retry can show the wrong denial dialog</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/ui/live/LiveScreen.kt:188-215, 543-554</code></p>
+<p>When location permission is already granted and only notification permission is requested, the callback checks missing location keys in the returned permission map. The code can incorrectly conclude that location permission was denied and show the wrong permanent-denial dialog.</p>
+<p><b>Recommendation:</b> Check current permissions using <code>checkSelfPermission()</code> and use a separate notification-only result path.</p>
+
+<h2>Build and maintenance findings</h2>
+
+<h3>23. Target SDK is behind the latest platform level</h3>
+<p><b>Location:</b> <code>app/build.gradle.kts:21</code></p>
+<p>The application targets SDK 36 while compiling with SDK 37. Lint reports an old-target warning. This is not currently a build failure, but it can affect platform compatibility, Play Store requirements, foreground-service behavior and permission semantics.</p>
+<p><b>Recommendation:</b> Update the target SDK when the toolchain supports it and test on current Android versions.</p>
+
+<h3>24. Dependency versions need scheduled review</h3>
+<p>Lint identifies newer versions for Kotlin, Android Gradle Plugin, DataStore, Navigation Compose, AndroidX, WorkManager, Play Services Location, MapLibre, kotlinx-datetime, serialization, coroutines and testing libraries.</p>
+<p>These are not automatically defects. Use staged dependency updates, run the full suite and verify MapLibre native ABI compatibility after upgrades.</p>
+
+<h3>25. Deprecated Compose TabRow API</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/ui/garage/detail/BikeDetailScreen.kt:173</code></p>
+<p>The current Compose version recommends <code>PrimaryTabRow</code> or <code>SecondaryTabRow</code>. Migrate and add UI tests for selection and accessibility semantics.</p>
+
+<h3>26. Compose modifier-order warnings</h3>
+<p>Lint reports modifier-parameter ordering issues in <code>BikeDetailScreen.kt</code>, <code>CockpitSharedComponents.kt</code>, <code>HistoryScreen.kt</code>, <code>RacingTftDashboard.kt</code>, <code>RetroLiveMap.kt</code> and <code>RouteMap.kt</code>.</p>
+<p>Fixing these improves consistency and reduces future lint noise.</p>
+
+<h3>27. Locale is cached statically</h3>
+<p><b>Location:</b> <code>app/src/main/java/com/abrar/motolog/ui/util/FormatUtils.kt:13-14</code></p>
+<p>Lint reports that caching <code>Locale.getDefault()</code> in a static final field will not react to an in-process locale change.</p>
+<p><b>Recommendation:</b> Resolve the locale when formatting or use a configuration-aware formatter.</p>
+
+<h3>28. Missing monochrome launcher icons</h3>
+<p><b>Location:</b> <code>app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml</code> and <code>ic_launcher_round.xml</code></p>
+<p>Add monochrome adaptive icon layers for Android themed icons.</p>
+
+<h3>29. Unused drawable resources</h3>
+<p>Lint identifies unused launcher-related drawable resources. Remove them or connect them to the intended icon/theme selection flow.</p>
+
+<h3>30. Privacy-policy and network declarations need alignment</h3>
+<p>The application documentation describes zero cloud tracking and device-only location storage, but the map implementation uses network-backed map styles/tiles. The project documentation also contains placeholder or potentially incorrect external URLs.</p>
+<p><b>Recommendation:</b> Document all network endpoints and data flows accurately, verify that map requests do not transmit precise ride history, replace placeholder URLs before release, and align the privacy policy, Play Console declarations and in-app disclosures with actual runtime behavior.</p>
+
+<h2>Testing gaps</h2>
+<p>The pure shared-domain tests are a strength, but the highest-risk Android paths need substantially more coverage.</p>
+<h3>Tracking service lifecycle</h3>
+<ul>
+<li>Start followed immediately by stop.</li>
+<li>Duplicate start and pause/resume during startup.</li>
+<li>Process death before ride insertion completes.</li>
+<li>Stop during a batch write.</li>
+<li>Concurrent pause/resume/checkpoint access to the calculator.</li>
+<li>Permission revocation during tracking.</li>
+</ul>
+<h3>Persistence failures</h3>
+<ul>
+<li>Room insert failure, database lock and disk-full conditions.</li>
+<li>Batch writer coroutine failure.</li>
+<li>Bounded queue behavior under sustained GPS input.</li>
+<li>Recovery after an interrupted ride.</li>
+<li>Rejected GPS samples are absent from stored routes.</li>
+</ul>
+<h3>GPS behavior</h3>
+<ul>
+<li>Repeated poor-accuracy callbacks.</li>
+<li>No callbacks and unavailable provider.</li>
+<li>Invalid fix recovery after prolonged loss.</li>
+<li>Wall-clock changes during a ride.</li>
+</ul>
+<h3>GPX and XML security</h3>
+<ul>
+<li>XXE and entity-expansion payloads.</li>
+<li>Invalid coordinates, NaN and infinity.</li>
+<li>Large compressed XML and deep nesting.</li>
+<li>Missing timestamps and multiple tracks over the point limit.</li>
+<li>Duplicate coordinates and protected points exceeding downsampling limits.</li>
+</ul>
+<h3>Backup and restore</h3>
+<ul>
+<li>Missing required entries.</li>
+<li>Wrong manifest counts.</li>
+<li>Invalid foreign keys and duplicate IDs.</li>
+<li>Invalid enum values.</li>
+<li>ZIP bombs and corrupted archives.</li>
+<li>Rollback after partial restore failure.</li>
+<li>Concurrent backup during active recording.</li>
+<li>Round-trip preservation of mileage cycles and every persisted setting.</li>
+</ul>
+<h3>Device-level tests</h3>
+<ul>
+<li>Android 14+ foreground-service startup.</li>
+<li>Screen-off and battery-saver tracking.</li>
+<li>Notification action handling.</li>
+<li>App process kill and device reboot.</li>
+<li>Low storage and locale changes.</li>
+<li>iOS shared-module tests in macOS CI.</li>
+</ul>
+
+<h2>Recommended remediation order</h2>
+<h3>Phase 1 - Protect user data and safety</h3>
+<ol>
+<li>Fix device-transfer backup rules.</li>
+<li>Validate backups completely before deleting data.</li>
+<li>Make GPX import transactional.</li>
+<li>Add bounded ZIP streaming and integrity validation.</li>
+<li>Validate GPX and live GPS coordinates.</li>
+<li>Fix start/stop service race conditions.</li>
+</ol>
+<h3>Phase 2 - Prevent tracking data loss</h3>
+<ol>
+<li>Replace the unlimited point channel with bounded backpressure.</li>
+<li>Add retry and error-state handling to the batch writer.</li>
+<li>Flush or checkpoint on shutdown.</li>
+<li>Implement the intended service restart/recovery behavior.</li>
+<li>Persist monotonic timestamps for deterministic recovery.</li>
+<li>Add an interrupted/recoverable ride state.</li>
+</ol>
+<h3>Phase 3 - Improve correctness and observability</h3>
+<ol>
+<li>Fix GPS-loss handling for poor-quality callbacks.</li>
+<li>Remove silent exception swallowing around restore and persistence.</li>
+<li>Add structured logging and user-visible failure states.</li>
+<li>Normalize GPX timestamps and point ordering.</li>
+<li>Add lifecycle, import, backup and device tests.</li>
+</ol>
+<h3>Phase 4 - Maintenance and polish</h3>
+<ol>
+<li>Update deprecated Compose APIs.</li>
+<li>Fix locale caching.</li>
+<li>Add monochrome launcher icons.</li>
+<li>Remove unused resources.</li>
+<li>Review dependency and target SDK updates.</li>
+<li>Run iOS shared-module tests in macOS CI.</li>
+</ol>
+
+<h2>Final assessment</h2>
+<p>MotoLog is structurally promising and has a good foundation in its shared calculation engine. It is not yet production-ready for a data-sensitive tracking application because the service lifecycle, persistence failure paths, backup restore path and import validation are not sufficiently defensive.</p>
+<p>Addressing Phase 1 and Phase 2 should be considered mandatory before release. Phase 3 is required for reliable diagnostics and support, while Phase 4 improves long-term maintainability and platform compatibility.</p>
+
+<p class="small"><b>Audit note:</b> Severity reflects likely user impact and exploitability under realistic operating conditions. Recommendations should be implemented with focused regression tests and validated on physical Android devices, not only JVM unit tests.</p>
+</body>
+</html>

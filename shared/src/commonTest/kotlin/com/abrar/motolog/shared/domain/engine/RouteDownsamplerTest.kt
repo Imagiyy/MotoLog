@@ -110,4 +110,33 @@ class RouteDownsamplerTest {
         assertEquals(points.first(), result.first())
         assertEquals(points.last(), result.last())
     }
+
+    @Test
+    fun duplicateCoordinatesRoute_terminatesQuicklyAndSafely() {
+        // 100 identical coordinates (stationary jitter or parked bike)
+        val points = (0 until 100).map { i ->
+            createPoint(lat = 12.9716, lon = 77.5946, timestamp = i * 1000L)
+        }
+
+        val result = RouteDownsampler.downsample(points, toleranceMeters = 5.0, maxPoints = 20)
+        assertTrue(result.isNotEmpty())
+        assertTrue(result.size <= 20)
+    }
+
+    @Test
+    fun maxPointsIsStrictlyEnforcedEvenWithManyProtectedPoints() {
+        // 200 points where every odd point has isGap = true (creating ~200 protected points)
+        val points = (0 until 200).map { i ->
+            createPoint(
+                lat = 12.0 + i * 0.001,
+                lon = 77.0 + i * 0.001,
+                timestamp = i * 1000L,
+                isGap = i % 2 != 0
+            )
+        }
+
+        val maxAllowed = 30
+        val result = RouteDownsampler.downsample(points, toleranceMeters = 5.0, maxPoints = maxAllowed)
+        assertTrue(result.size <= maxAllowed, "Expected <= $maxAllowed points, got ${result.size}")
+    }
 }

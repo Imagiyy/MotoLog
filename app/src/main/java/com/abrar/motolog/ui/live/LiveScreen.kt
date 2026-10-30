@@ -188,17 +188,24 @@ fun LiveScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        // Fix #34: Check actual permission state with ContextCompat so notification-only
+        // requests don't misinterpret omitted location keys as location denial.
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION]
+            ?: (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION]
+            ?: (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+
         val notifGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions[Manifest.permission.POST_NOTIFICATIONS] == true
+            permissions[Manifest.permission.POST_NOTIFICATIONS]
+                ?: (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
         } else true
 
         when {
             fineGranted && notifGranted -> {
                 handleStart()
             }
-            coarseGranted && fineGranted.not() -> {
+            coarseGranted && !fineGranted -> {
                 showApproximatePermissionDialog = true
             }
             fineGranted && !notifGranted -> {

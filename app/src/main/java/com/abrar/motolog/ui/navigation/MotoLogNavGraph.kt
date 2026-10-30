@@ -62,6 +62,11 @@ data class BikeDetailRoute(val bikeId: Long)
 @Serializable
 data class RideDetailRoute(val rideId: Long)
 
+sealed interface NavIntentEvent {
+    data class NavigateToBike(val bikeId: Long) : NavIntentEvent
+    data object RequestStopRide : NavIntentEvent
+}
+
 /**
  * Bottom navigation destinations for MotoLog.
  */
@@ -80,10 +85,34 @@ enum class TopLevelDestination(
  * Main navigation graph with bottom navigation bar.
  */
 @Composable
-fun MotoLogNavGraph() {
+fun MotoLogNavGraph(
+    navEvent: NavIntentEvent? = null,
+    onNavEventConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    androidx.compose.runtime.LaunchedEffect(navEvent) {
+        when (val event = navEvent) {
+            is NavIntentEvent.NavigateToBike -> {
+                navController.navigate(BikeDetailRoute(event.bikeId)) {
+                    launchSingleTop = true
+                }
+                onNavEventConsumed()
+            }
+            is NavIntentEvent.RequestStopRide -> {
+                navController.navigate(LiveRoute) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                }
+                onNavEventConsumed()
+            }
+            null -> {}
+        }
+    }
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE

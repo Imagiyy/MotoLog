@@ -60,15 +60,35 @@ class FusedLocationSource @Inject constructor(
             override fun onLocationResult(result: LocationResult) {
                 _isLocationAvailable.value = true
                 for (location in result.locations) {
+                    val lat = location.latitude
+                    val lon = location.longitude
+                    // Fix #16: Validate coordinates and finiteness
+                    if (lat.isNaN() || lat.isInfinite() || lat < -90.0 || lat > 90.0 ||
+                        lon.isNaN() || lon.isInfinite() || lon < -180.0 || lon > 180.0) {
+                        continue
+                    }
+
+                    val speedMps = if (location.hasSpeed() && !location.speed.isNaN() && !location.speed.isInfinite() && location.speed >= 0f) {
+                        location.speed
+                    } else null
+
+                    val accuracyMeters = if (location.hasAccuracy() && !location.accuracy.isNaN() && !location.accuracy.isInfinite() && location.accuracy > 0f) {
+                        location.accuracy
+                    } else Float.MAX_VALUE
+
+                    val altitudeMeters = if (location.hasAltitude() && !location.altitude.isNaN() && !location.altitude.isInfinite()) {
+                        location.altitude
+                    } else null
+
                     val point = LocationPoint(
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        speedMps = if (location.hasSpeed()) location.speed else null,
-                        accuracyMeters = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE,
+                        latitude = lat,
+                        longitude = lon,
+                        speedMps = speedMps,
+                        accuracyMeters = accuracyMeters,
                         timestamp = if (location.time > 0L) location.time else System.currentTimeMillis(),
-                        altitudeMeters = if (location.hasAltitude()) location.altitude else null,
+                        altitudeMeters = altitudeMeters,
                         elapsedTimestampMs = location.elapsedRealtimeNanos / 1_000_000L,
-                        bearingDegrees = if (location.hasBearing()) location.bearing else null
+                        bearingDegrees = if (location.hasBearing() && !location.bearing.isNaN() && !location.bearing.isInfinite()) location.bearing else null
                     )
                     trySend(point)
                 }

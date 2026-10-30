@@ -102,6 +102,17 @@ class RideCalculator(
      * Process a single GPS point in real time.
      */
     fun process(point: GpsPoint): PointFilterResult {
+        // 0. Finiteness & Coordinate Bounds Validation (Fix #30)
+        if (point.latitude.isNaN() || point.latitude.isInfinite() || point.latitude < -90.0 || point.latitude > 90.0 ||
+            point.longitude.isNaN() || point.longitude.isInfinite() || point.longitude < -180.0 || point.longitude > 180.0 ||
+            point.accuracyMeters.isNaN() || point.accuracyMeters.isInfinite() || point.accuracyMeters < 0.0f ||
+            (point.speedMps != null && (point.speedMps.isNaN() || point.speedMps.isInfinite() || point.speedMps < 0.0f)) ||
+            (point.altitudeMeters != null && (point.altitudeMeters.isNaN() || point.altitudeMeters.isInfinite()))
+        ) {
+            rejectedPointCount++
+            return PointFilterResult.Rejected(RejectionReason.INVALID_COORDINATES)
+        }
+
         // 1. Accuracy Check
         if (point.accuracyMeters > minAccuracyMeters) {
             rejectedPointCount++
@@ -153,6 +164,15 @@ class RideCalculator(
         val isGap = deltaMs > gapThresholdMs || point.isGap
         if (isGap) {
             gapCount++
+            // Fix #27: Reset stationary countdown across GPS gap
+            autoPauseStateMachine.onGpsGap()
+
+            // Fix #31: Do not cross a GPS gap for start confirmation
+            if (!isConfirmed) {
+                originPoint = point
+                pendingDistanceMeters = 0.0
+                pendingMovingTimeMs = 0L
+            }
         }
 
         // 4. Speed Spike Check (Implied distance / time) - skip across gaps
@@ -182,11 +202,12 @@ class RideCalculator(
             }
         }
 
-        // 7. Auto-Pause and Manual Pause State Machine Evaluation
+        // 7. Auto-Pause and Manual Pause State Machine Evaluation (Fix #26)
         val pauseState = if (point.isPaused) {
             autoPauseStateMachine.manualPause()
         } else {
-            if (autoPauseStateMachine.pauseState == PauseState.MANUALLY_PAUSED) {
+            // Only resume if transitioning from a point that was recorded as paused
+            if (last.isPaused && autoPauseStateMachine.pauseState == PauseState.MANUALLY_PAUSED) {
                 autoPauseStateMachine.manualResume(point.timestampEpochMs)
             }
             autoPauseStateMachine.onSpeedUpdate(calculatedSpeedKmh, point.timestampEpochMs)

@@ -10,25 +10,36 @@ import java.util.Locale
  */
 object FormatUtils {
 
-    private val DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a", Locale.getDefault())
-    private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+    private fun getDateTimeFormatter(locale: Locale = Locale.getDefault()): DateTimeFormatter =
+        DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a", locale)
+
+    private fun getDateFormatter(locale: Locale = Locale.getDefault()): DateTimeFormatter =
+        DateTimeFormatter.ofPattern("MMM d, yyyy", locale)
 
     /**
      * Formats an epoch timestamp in milliseconds to a human-readable date and time.
      */
-    fun formatDateTime(epochMs: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+    fun formatDateTime(
+        epochMs: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        locale: Locale = Locale.getDefault()
+    ): String {
         if (epochMs <= 0L) return "Unknown date"
         val instant = Instant.ofEpochMilli(epochMs)
-        return DATE_TIME_FORMATTER.format(instant.atZone(zoneId))
+        return getDateTimeFormatter(locale).format(instant.atZone(zoneId))
     }
 
     /**
      * Formats an epoch timestamp in milliseconds to date only (e.g. "Sep 20, 2026").
      */
-    fun formatDate(epochMs: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+    fun formatDate(
+        epochMs: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        locale: Locale = Locale.getDefault()
+    ): String {
         if (epochMs <= 0L) return "Unknown date"
         val instant = Instant.ofEpochMilli(epochMs)
-        return DATE_FORMATTER.format(instant.atZone(zoneId))
+        return getDateFormatter(locale).format(instant.atZone(zoneId))
     }
 
     /**

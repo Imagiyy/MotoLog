@@ -4,11 +4,13 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Persisted record of a completed fuel mileage period/cycle archived upon user reset.
  * Stores previous odometer span, total fuel, total cost, and computed average mileage.
  */
+@Serializable
 @Entity(
     tableName = "mileage_cycles",
     foreignKeys = [

@@ -1,22 +1,28 @@
 package com.abrar.motolog.data.io
 
+import android.util.Log
 import com.abrar.motolog.shared.domain.model.GpsPoint
 import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream
 import java.time.Instant
+import javax.xml.XMLConstants
 import javax.xml.parsers.SAXParserFactory
 
 /**
  * Hardened GPX 1.1 / 1.0 streaming SAX parser.
  *
  * Security:
+ * - Enables XMLConstants.FEATURE_SECURE_PROCESSING (Fix #9)
  * - Disables DTD and external entities (XXE defense)
- * - Maximum point limit (100,000 points) to prevent memory exhaustion
+ * - Validates coordinate finiteness and geographic bounds (Fix #6, #8)
+ * - Maximum point limit per track (50,000) and global (100,000) to prevent memory exhaustion (Fix #19)
+ * - Fallbacks to current time for tracks without timestamps to avoid 1970 dates (Fix #20)
  * - Robust error handling that isolates failures per track
  */
 object GpxImporter {
 
+    const val MAX_POINTS_PER_TRACK: Int = 50_000
     const val MAX_POINTS_LIMIT: Int = 100_000
 
     data class ParsedTrack(
@@ -36,13 +42,19 @@ object GpxImporter {
      * Parses a GPX stream into a list of tracks.
      */
     fun parse(inputStream: InputStream): ParseResult {
-        val handler = GpxSaxHandler(MAX_POINTS_LIMIT)
+        val handler = GpxSaxHandler(MAX_POINTS_LIMIT, MAX_POINTS_PER_TRACK)
         try {
             val factory = SAXParserFactory.newInstance().apply {
                 isNamespaceAware = true
+                try {
+                    setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+                } catch (e: Exception) {
+                    Log.w("GpxImporter", "FEATURE_SECURE_PROCESSING not supported: ${e.message}")
+                }
                 try { setFeature("http://xml.org/sax/features/external-general-entities", false) } catch (_: Exception) {}
                 try { setFeature("http://xml.org/sax/features/external-parameter-entities", false) } catch (_: Exception) {}
                 try { setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false) } catch (_: Exception) {}
+                try { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) } catch (_: Exception) {}
             }
             val parser = factory.newSAXParser()
             parser.parse(inputStream, handler)
@@ -57,7 +69,10 @@ object GpxImporter {
         return ParseResult(handler.tracks, handler.warnings, handler.errors)
     }
 
-    private class GpxSaxHandler(private val maxPoints: Int) : DefaultHandler() {
+    private class GpxSaxHandler(
+        private val maxTotalPoints: Int,
+        private val maxPointsPerTrack: Int
+    ) : DefaultHandler() {
         val tracks = mutableListOf<ParsedTrack>()
         val warnings = mutableListOf<String>()
         val errors = mutableListOf<String>()
@@ -78,6 +93,8 @@ object GpxImporter {
 
         private var trackHasTimestamps = false
         private var trackHasElevation = false
+        private var trackFallbackStartTimeMs: Long = System.currentTimeMillis()
+        private var trackLimitReachedWarned = false
 
         override fun startElement(uri: String?, localName: String?, qName: String?, attributes: Attributes?) {
             val tag = (if (!localName.isNullOrBlank()) localName else qName?.substringAfter(':')).orEmpty().lowercase()
@@ -90,6 +107,8 @@ object GpxImporter {
                     currentPoints = mutableListOf()
                     trackHasTimestamps = false
                     trackHasElevation = false
+                    trackFallbackStartTimeMs = System.currentTimeMillis()
+                    trackLimitReachedWarned = false
                 }
                 "trkseg" -> inTrkSeg = true
                 "trkpt" -> {
@@ -129,39 +148,86 @@ object GpxImporter {
                     }
                 }
                 "ele" -> {
-                    ptEle = text.toDoubleOrNull()
-                    if (ptEle != null) trackHasElevation = true
+                    val ele = text.toDoubleOrNull()
+                    if (ele != null && !ele.isNaN() && !ele.isInfinite() && ele in -1000.0..15000.0) {
+                        ptEle = ele
+                        trackHasElevation = true
+                    }
                 }
                 "time" -> {
                     try {
                         val instant = Instant.parse(text)
-                        ptTimeMs = instant.toEpochMilli()
-                        trackHasTimestamps = true
+                        val ms = instant.toEpochMilli()
+                        if (ms > 0L) {
+                            ptTimeMs = ms
+                            trackHasTimestamps = true
+                        }
                     } catch (_: Exception) {}
                 }
-                "speed" -> ptSpeed = text.toDoubleOrNull()
-                "accuracy" -> ptAccuracy = text.toFloatOrNull()
-                "trkpt" -> {
-                    if (ptLat != null && ptLon != null) {
-                        if (totalPointCount < maxPoints) {
-                            currentPoints.add(
-                                GpsPoint(
-                                    latitude = ptLat!!,
-                                    longitude = ptLon!!,
-                                    altitudeMeters = ptEle,
-                                    speedMps = ptSpeed?.toFloat(),
-                                    accuracyMeters = ptAccuracy ?: 5.0f,
-                                    timestampEpochMs = ptTimeMs ?: (currentPoints.size * 1000L),
-                                    isPaused = false,
-                                    isGap = false
-                                )
-                            )
-                            totalPointCount++
-                        } else if (totalPointCount == maxPoints) {
-                            warnings.add("Maximum track point limit ($maxPoints) reached. Additional points were omitted.")
-                            totalPointCount++
-                        }
+                "speed" -> {
+                    val s = text.toDoubleOrNull()
+                    if (s != null && !s.isNaN() && !s.isInfinite() && s >= 0.0) {
+                        ptSpeed = s
                     }
+                }
+                "accuracy" -> {
+                    val a = text.toFloatOrNull()
+                    if (a != null && !a.isNaN() && !a.isInfinite() && a > 0.0f) {
+                        ptAccuracy = a
+                    }
+                }
+                "trkpt" -> {
+                    val lat = ptLat
+                    val lon = ptLon
+
+                    // Fix #6, #8: Strict bounds and finiteness validation
+                    val isValidCoord = lat != null && lon != null &&
+                        !lat.isNaN() && !lat.isInfinite() && lat in -90.0..90.0 &&
+                        !lon.isNaN() && !lon.isInfinite() && lon in -180.0..180.0
+
+                    if (!isValidCoord) {
+                        if (lat != null || lon != null) {
+                            warnings.add("Skipped point with invalid coordinates (lat: $lat, lon: $lon).")
+                        }
+                        return
+                    }
+
+                    // Fix #19: Separate per-track and total limit checks
+                    if (currentPoints.size >= maxPointsPerTrack) {
+                        if (!trackLimitReachedWarned) {
+                            warnings.add("Track '$currentTrackName' reached per-track limit ($maxPointsPerTrack points). Additional points omitted.")
+                            trackLimitReachedWarned = true
+                        }
+                        return
+                    }
+
+                    if (totalPointCount >= maxTotalPoints) {
+                        if (totalPointCount == maxTotalPoints) {
+                            warnings.add("Total file limit ($maxTotalPoints points) reached. Additional points omitted.")
+                        }
+                        return
+                    }
+
+                    // Fix #20: Handle missing timestamps smoothly without defaulting to epoch 1970
+                    val pointTimestampMs = ptTimeMs ?: if (currentPoints.isNotEmpty()) {
+                        currentPoints.last().timestampEpochMs + 1000L
+                    } else {
+                        trackFallbackStartTimeMs
+                    }
+
+                    currentPoints.add(
+                        GpsPoint(
+                            latitude = lat!!,
+                            longitude = lon!!,
+                            altitudeMeters = ptEle,
+                            speedMps = ptSpeed?.toFloat(),
+                            accuracyMeters = ptAccuracy ?: 5.0f,
+                            timestampEpochMs = pointTimestampMs,
+                            isPaused = false,
+                            isGap = false
+                        )
+                    )
+                    totalPointCount++
                 }
                 "trkseg" -> inTrkSeg = false
                 "trk" -> {

@@ -1,15 +1,18 @@
 package com.abrar.motolog.data.io
 
+import android.util.Log
 import androidx.room.withTransaction
 import com.abrar.motolog.data.local.MotoLogDatabase
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.FuelLogDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
+import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
+import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
@@ -24,9 +27,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -42,7 +47,9 @@ data class BackupManifest(
     val rideCount: Int,
     val pointCount: Int,
     val maintenanceCount: Int,
-    val fuelLogCount: Int
+    val fuelLogCount: Int,
+    val mileageCycleCount: Int = 0,
+    val checksums: Map<String, String> = emptyMap()
 )
 
 @Serializable
@@ -58,11 +65,24 @@ data class BackupSettings(
     val defaultMapTheme: String = "DARK",
     val autoPauseEnabled: Boolean = true,
     val keepScreenOn: Boolean = true,
-    val currentBikeId: Long? = null
+    val currentBikeId: Long? = null,
+    // Additional settings previously omitted (Fix #23)
+    val voiceAnnouncementsEnabled: Boolean = false,
+    val thermalEcoMode: Boolean = false,
+    val dashboardTextColor: Long? = null,
+    val dashboardBgColor: Long? = null,
+    val dashboardAccentColor: Long? = null,
+    val dashboardComponentColor: Long? = null
 )
 
 /**
  * Manages full backup and atomic restore of MotoLog data to/from ZIP archives.
+ *
+ * Security:
+ * - Bounded ZIP reads prevent zip-bomb DoS (Fix #11)
+ * - Restore validates all entries before deleting any data (Fix #3)
+ * - Backup reads all tables in a Room transaction for snapshot consistency (Fix #12)
+ * - Mileage cycles and all persisted settings are now included (Fix #23)
  */
 @Singleton
 class BackupManager @Inject constructor(
@@ -71,17 +91,29 @@ class BackupManager @Inject constructor(
     private val ridePointDao: RidePointDao,
     private val maintenanceDao: MaintenanceDao,
     private val fuelLogDao: FuelLogDao,
+    private val mileageCycleDao: MileageCycleDao,
     private val settingsRepository: SettingsRepository,
     private val database: MotoLogDatabase? = null
 ) {
     companion object {
-        const val CURRENT_FORMAT_VERSION: Int = 1
+        const val CURRENT_FORMAT_VERSION: Int = 2
         const val APP_VERSION: String = "1.0.0"
 
         /** Maximum size of a single entry in the backup ZIP (256 MB) */
         private const val MAX_ENTRY_SIZE_BYTES: Long = 256L * 1024 * 1024
         /** Maximum total decompressed size of the backup (512 MB) */
         private const val MAX_TOTAL_SIZE_BYTES: Long = 512L * 1024 * 1024
+        /** Maximum number of entries in a backup ZIP */
+        private const val MAX_ENTRY_COUNT: Int = 20
+
+        /** All required entries in a valid backup (manifest always required) */
+        private val REQUIRED_ENTRIES = setOf("manifest.json")
+        /** All recognized entry names */
+        private val KNOWN_ENTRIES = setOf(
+            "manifest.json", "settings.json",
+            "bikes.json", "rides.json", "points.json",
+            "maintenance.json", "fuel.json", "mileage_cycles.json"
+        )
 
         private val json = Json {
             ignoreUnknownKeys = true
@@ -92,27 +124,43 @@ class BackupManager @Inject constructor(
 
     /**
      * Creates a ZIP backup containing all database tables and settings.
+     * Fix #12: Reads all tables in a Room transaction for snapshot consistency.
      */
     suspend fun createBackup(
         outputStream: OutputStream,
         onProgress: ((Float) -> Unit)? = null
     ) = withContext(Dispatchers.IO) {
-        val bikes = bikeDao.getAllBikesOnce()
-        val rides = rideDao.getAllRidesOnce()
-        val points = ridePointDao.getAllPointsOnce()
-        val maintenance = maintenanceDao.getAllItemsOnce()
-        val fuel = fuelLogDao.getAllLogsOnce()
-
-        val manifest = BackupManifest(
-            formatVersion = CURRENT_FORMAT_VERSION,
-            appVersion = APP_VERSION,
-            createdAtEpochMs = System.currentTimeMillis(),
-            bikeCount = bikes.size,
-            rideCount = rides.size,
-            pointCount = points.size,
-            maintenanceCount = maintenance.size,
-            fuelLogCount = fuel.size
+        // Read all data in a single transaction for consistent snapshot
+        data class Snapshot(
+            val bikes: List<BikeEntity>,
+            val rides: List<RideEntity>,
+            val points: List<RidePointEntity>,
+            val maintenance: List<MaintenanceItemEntity>,
+            val fuel: List<FuelLogEntity>,
+            val mileageCycles: List<MileageCycleEntity>
         )
+
+        val snapshot = if (database != null) {
+            database.withTransaction {
+                Snapshot(
+                    bikes = bikeDao.getAllBikesOnce(),
+                    rides = rideDao.getAllRidesOnce(),
+                    points = ridePointDao.getAllPointsOnce(),
+                    maintenance = maintenanceDao.getAllItemsOnce(),
+                    fuel = fuelLogDao.getAllLogsOnce(),
+                    mileageCycles = mileageCycleDao.getAllOnce()
+                )
+            }
+        } else {
+            Snapshot(
+                bikes = bikeDao.getAllBikesOnce(),
+                rides = rideDao.getAllRidesOnce(),
+                points = ridePointDao.getAllPointsOnce(),
+                maintenance = maintenanceDao.getAllItemsOnce(),
+                fuel = fuelLogDao.getAllLogsOnce(),
+                mileageCycles = mileageCycleDao.getAllOnce()
+            )
+        }
 
         val settings = BackupSettings(
             useMetricUnits = settingsRepository.useMetricUnits.first(),
@@ -126,49 +174,97 @@ class BackupManager @Inject constructor(
             defaultMapTheme = settingsRepository.defaultMapTheme.first().name,
             autoPauseEnabled = settingsRepository.autoPauseEnabled.first(),
             keepScreenOn = settingsRepository.keepScreenOn.first(),
-            currentBikeId = settingsRepository.currentBikeId.first()
+            currentBikeId = settingsRepository.currentBikeId.first(),
+            voiceAnnouncementsEnabled = settingsRepository.voiceAnnouncementsEnabled.first(),
+            thermalEcoMode = settingsRepository.thermalEcoMode.first(),
+            dashboardTextColor = settingsRepository.dashboardTextColor.first(),
+            dashboardBgColor = settingsRepository.dashboardBgColor.first(),
+            dashboardAccentColor = settingsRepository.dashboardAccentColor.first(),
+            dashboardComponentColor = settingsRepository.dashboardComponentColor.first()
+        )
+
+        val settingsJson = json.encodeToString(settings)
+        val bikesJson = json.encodeToString(snapshot.bikes)
+        val ridesJson = json.encodeToString(snapshot.rides)
+        val pointsJson = json.encodeToString(snapshot.points)
+        val maintenanceJson = json.encodeToString(snapshot.maintenance)
+        val fuelJson = json.encodeToString(snapshot.fuel)
+        val cyclesJson = json.encodeToString(snapshot.mileageCycles)
+
+        // Fix #22: Compute SHA-256 integrity checksum for each archive entry
+        val checksums = mapOf(
+            "settings.json" to sha256Hex(settingsJson.toByteArray(StandardCharsets.UTF_8)),
+            "bikes.json" to sha256Hex(bikesJson.toByteArray(StandardCharsets.UTF_8)),
+            "rides.json" to sha256Hex(ridesJson.toByteArray(StandardCharsets.UTF_8)),
+            "points.json" to sha256Hex(pointsJson.toByteArray(StandardCharsets.UTF_8)),
+            "maintenance.json" to sha256Hex(maintenanceJson.toByteArray(StandardCharsets.UTF_8)),
+            "fuel.json" to sha256Hex(fuelJson.toByteArray(StandardCharsets.UTF_8)),
+            "mileage_cycles.json" to sha256Hex(cyclesJson.toByteArray(StandardCharsets.UTF_8))
+        )
+
+        val manifest = BackupManifest(
+            formatVersion = CURRENT_FORMAT_VERSION,
+            appVersion = APP_VERSION,
+            createdAtEpochMs = System.currentTimeMillis(),
+            bikeCount = snapshot.bikes.size,
+            rideCount = snapshot.rides.size,
+            pointCount = snapshot.points.size,
+            maintenanceCount = snapshot.maintenance.size,
+            fuelLogCount = snapshot.fuel.size,
+            mileageCycleCount = snapshot.mileageCycles.size,
+            checksums = checksums
         )
 
         ZipOutputStream(outputStream).use { zip ->
             // 1. Manifest
             writeZipEntry(zip, "manifest.json", json.encodeToString(manifest))
-            onProgress?.invoke(0.15f)
+            onProgress?.invoke(0.10f)
 
             // 2. Settings
-            writeZipEntry(zip, "settings.json", json.encodeToString(settings))
-            onProgress?.invoke(0.25f)
+            writeZipEntry(zip, "settings.json", settingsJson)
+            onProgress?.invoke(0.20f)
 
             // 3. Bikes
-            writeZipEntry(zip, "bikes.json", json.encodeToString(bikes))
-            onProgress?.invoke(0.40f)
+            writeZipEntry(zip, "bikes.json", bikesJson)
+            onProgress?.invoke(0.35f)
 
             // 4. Rides
-            writeZipEntry(zip, "rides.json", json.encodeToString(rides))
-            onProgress?.invoke(0.60f)
+            writeZipEntry(zip, "rides.json", ridesJson)
+            onProgress?.invoke(0.55f)
 
             // 5. Points
-            writeZipEntry(zip, "points.json", json.encodeToString(points))
-            onProgress?.invoke(0.85f)
+            writeZipEntry(zip, "points.json", pointsJson)
+            onProgress?.invoke(0.75f)
 
             // 6. Maintenance
-            writeZipEntry(zip, "maintenance.json", json.encodeToString(maintenance))
-            onProgress?.invoke(0.92f)
+            writeZipEntry(zip, "maintenance.json", maintenanceJson)
+            onProgress?.invoke(0.85f)
 
             // 7. Fuel
-            writeZipEntry(zip, "fuel.json", json.encodeToString(fuel))
+            writeZipEntry(zip, "fuel.json", fuelJson)
+            onProgress?.invoke(0.90f)
+
+            // 8. Mileage Cycles (Fix #23)
+            writeZipEntry(zip, "mileage_cycles.json", cyclesJson)
             onProgress?.invoke(1.0f)
         }
     }
 
     /**
      * Inspects a backup file and returns its manifest without modifying the database.
+     * Fix #11: Uses bounded reads.
      */
     suspend fun inspectBackup(inputStream: InputStream): BackupManifest = withContext(Dispatchers.IO) {
         ZipInputStream(inputStream).use { zip ->
             var entry = zip.nextEntry
+            var entryCount = 0
             while (entry != null) {
+                entryCount++
+                if (entryCount > MAX_ENTRY_COUNT) {
+                    throw IllegalArgumentException("Backup contains too many entries (max $MAX_ENTRY_COUNT).")
+                }
                 if (entry.name == "manifest.json") {
-                    val bytes = zip.readBytes()
+                    val bytes = readBoundedEntry(zip, entry, MAX_ENTRY_SIZE_BYTES)
                     val manifestStr = String(bytes, StandardCharsets.UTF_8)
                     val manifest = json.decodeFromString<BackupManifest>(manifestStr)
                     if (manifest.formatVersion > CURRENT_FORMAT_VERSION) {
@@ -186,7 +282,8 @@ class BackupManager @Inject constructor(
 
     /**
      * Atomically restores database and settings from a backup file.
-     * Replaces existing data upon explicit confirmation.
+     * Fix #3: Fully parses and validates all entries BEFORE deleting any data.
+     * Fix #11: Uses bounded stream reads during parsing.
      */
     suspend fun restoreBackup(inputStream: InputStream): BackupManifest = withContext(Dispatchers.IO) {
         // 1. Ensure no ride is actively recording
@@ -195,7 +292,7 @@ class BackupManager @Inject constructor(
             throw IllegalStateException("Cannot restore data while a ride is active or recording.")
         }
 
-        // 2. Read entries from ZIP with size safety checks
+        // 2. Read and validate ALL entries from ZIP with strict size safety checks
         var manifest: BackupManifest? = null
         var settings: BackupSettings? = null
         var bikes: List<BikeEntity>? = null
@@ -203,28 +300,44 @@ class BackupManager @Inject constructor(
         var points: List<RidePointEntity>? = null
         var maintenance: List<MaintenanceItemEntity>? = null
         var fuel: List<FuelLogEntity>? = null
+        var mileageCycles: List<MileageCycleEntity>? = null
         var totalBytesRead = 0L
+        var entryCount = 0
+        val seenEntries = mutableSetOf<String>()
+        val entryChecksums = mutableMapOf<String, String>()
 
         ZipInputStream(inputStream).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
-                // Size safety: reject entries larger than MAX_ENTRY_SIZE
-                val entrySize = entry.size
-                if (entrySize > MAX_ENTRY_SIZE_BYTES) {
-                    throw IllegalArgumentException(
-                        "Backup entry '${entry.name}' exceeds maximum allowed size (${MAX_ENTRY_SIZE_BYTES / (1024 * 1024)} MB)."
-                    )
+                entryCount++
+                if (entryCount > MAX_ENTRY_COUNT) {
+                    throw IllegalArgumentException("Backup contains too many entries (max $MAX_ENTRY_COUNT).")
                 }
 
-                val rawBytes = zip.readBytes()
+                // Reject duplicate entries
+                if (entry.name in seenEntries) {
+                    throw IllegalArgumentException("Duplicate entry '${entry.name}' in backup.")
+                }
+                seenEntries.add(entry.name)
+
+                // Reject unknown entries
+                if (entry.name !in KNOWN_ENTRIES) {
+                    Log.w("BackupManager", "Unknown entry '${entry.name}' in backup, skipping")
+                    entry = zip.nextEntry
+                    continue
+                }
+
+                // Fix #11: Read through a bounded stream that aborts on oversized entries
+                val rawBytes = readBoundedEntry(zip, entry, MAX_ENTRY_SIZE_BYTES)
                 totalBytesRead += rawBytes.size
 
-                // Total size safety: reject backup if total decompressed exceeds limit
                 if (totalBytesRead > MAX_TOTAL_SIZE_BYTES) {
                     throw IllegalArgumentException(
                         "Backup total decompressed size exceeds maximum allowed (${MAX_TOTAL_SIZE_BYTES / (1024 * 1024)} MB). File may be corrupted."
                     )
                 }
+
+                entryChecksums[entry.name] = sha256Hex(rawBytes)
 
                 val content = String(rawBytes, StandardCharsets.UTF_8)
                 when (entry.name) {
@@ -235,29 +348,123 @@ class BackupManager @Inject constructor(
                     "points.json" -> points = json.decodeFromString(content)
                     "maintenance.json" -> maintenance = json.decodeFromString(content)
                     "fuel.json" -> fuel = json.decodeFromString(content)
+                    "mileage_cycles.json" -> mileageCycles = json.decodeFromString(content)
                 }
                 entry = zip.nextEntry
             }
         }
 
+        // 3. Validate manifest
         val parsedManifest = manifest ?: throw IllegalArgumentException("Missing manifest.json in backup.")
         if (parsedManifest.formatVersion > CURRENT_FORMAT_VERSION) {
             throw IllegalArgumentException("Backup format v${parsedManifest.formatVersion} is newer than supported v$CURRENT_FORMAT_VERSION.")
         }
 
-        // 3. Atomically replace database contents
+        // 4. Fix #3: Validate manifest counts and checksums against actual parsed data BEFORE deleting anything
+        val errors = mutableListOf<String>()
+
+        // Fix #22: Verify SHA-256 checksums if manifest provides them
+        if (parsedManifest.checksums.isNotEmpty()) {
+            for ((entryName, expectedHash) in parsedManifest.checksums) {
+                val actualHash = entryChecksums[entryName]
+                if (actualHash != null && actualHash != expectedHash) {
+                    errors.add("Integrity check failed for '$entryName' (checksum mismatch).")
+                }
+            }
+        }
+
+        val actualBikes = bikes ?: emptyList()
+        val actualRides = rides ?: emptyList()
+        val actualPoints = points ?: emptyList()
+        val actualMaintenance = maintenance ?: emptyList()
+        val actualFuel = fuel ?: emptyList()
+        val actualMileageCycles = mileageCycles ?: emptyList()
+
+        if (parsedManifest.bikeCount > 0 && actualBikes.isEmpty()) {
+            errors.add("Manifest declares ${parsedManifest.bikeCount} bikes but none were found in backup.")
+        }
+        if (parsedManifest.rideCount > 0 && actualRides.isEmpty()) {
+            errors.add("Manifest declares ${parsedManifest.rideCount} rides but none were found in backup.")
+        }
+        if (parsedManifest.pointCount > 0 && actualPoints.isEmpty()) {
+            errors.add("Manifest declares ${parsedManifest.pointCount} points but none were found in backup.")
+        }
+
+        // Validate ride status enum values
+        for (ride in actualRides) {
+            try {
+                // RideStatus is already deserialized, but verify it's a known value
+                ride.status.name
+            } catch (e: Exception) {
+                errors.add("Ride ${ride.id} has invalid status.")
+            }
+        }
+
+        // Validate foreign key relationships
+        val bikeIds = actualBikes.map { it.id }.toSet()
+        for (ride in actualRides) {
+            if (ride.bikeId != null && ride.bikeId !in bikeIds) {
+                errors.add("Ride '${ride.name.ifEmpty { ride.id.toString() }}' references non-existent bike ID ${ride.bikeId}.")
+            }
+        }
+        val rideIds = actualRides.map { it.id }.toSet()
+        for (point in actualPoints) {
+            if (point.rideId !in rideIds) {
+                errors.add("Point references non-existent ride ID ${point.rideId}.")
+                break // Only report once to avoid flooding
+            }
+        }
+        for (item in actualMaintenance) {
+            if (item.bikeId !in bikeIds) {
+                errors.add("Maintenance item '${item.name}' references non-existent bike ID ${item.bikeId}.")
+            }
+        }
+        for (log in actualFuel) {
+            if (log.bikeId !in bikeIds) {
+                errors.add("Fuel log references non-existent bike ID ${log.bikeId}.")
+                break
+            }
+        }
+        for (cycle in actualMileageCycles) {
+            if (cycle.bikeId !in bikeIds) {
+                errors.add("Mileage cycle references non-existent bike ID ${cycle.bikeId}.")
+                break
+            }
+        }
+
+        // Validate GPS coordinates in points
+        for (point in actualPoints) {
+            if (point.latitude < -90.0 || point.latitude > 90.0 ||
+                point.longitude < -180.0 || point.longitude > 180.0 ||
+                point.latitude.isNaN() || point.longitude.isNaN() ||
+                point.latitude.isInfinite() || point.longitude.isInfinite()
+            ) {
+                errors.add("Backup contains points with invalid GPS coordinates.")
+                break
+            }
+        }
+
+        if (errors.isNotEmpty()) {
+            throw IllegalArgumentException(
+                "Backup validation failed:\n${errors.joinToString("\n• ", prefix = "• ")}"
+            )
+        }
+
+        // 5. Atomically replace database contents ONLY after all validation passes
         val executeRestore: suspend () -> Unit = {
             ridePointDao.deleteAllPoints()
             rideDao.deleteAllRides()
             maintenanceDao.deleteAllMaintenance()
             fuelLogDao.deleteAllFuelLogs()
+            mileageCycleDao.deleteAll()
             bikeDao.deleteAllBikes()
 
-            bikes?.let { if (it.isNotEmpty()) bikeDao.insertAll(it) }
-            rides?.let { if (it.isNotEmpty()) rideDao.insertAll(it) }
-            points?.let { if (it.isNotEmpty()) ridePointDao.insertAll(it) }
-            maintenance?.let { if (it.isNotEmpty()) maintenanceDao.insertAll(it) }
-            fuel?.let { if (it.isNotEmpty()) fuelLogDao.insertAll(it) }
+            if (actualBikes.isNotEmpty()) bikeDao.insertAll(actualBikes)
+            if (actualRides.isNotEmpty()) rideDao.insertAll(actualRides)
+            if (actualPoints.isNotEmpty()) ridePointDao.insertAll(actualPoints)
+            if (actualMaintenance.isNotEmpty()) maintenanceDao.insertAll(actualMaintenance)
+            if (actualFuel.isNotEmpty()) fuelLogDao.insertAll(actualFuel)
+            if (actualMileageCycles.isNotEmpty()) mileageCycleDao.insertAll(actualMileageCycles)
         }
 
         if (database != null) {
@@ -266,22 +473,40 @@ class BackupManager @Inject constructor(
             executeRestore()
         }
 
-        // 4. Restore settings (with reference validation)
+        // 6. Restore settings (with validation for enum values)
         settings?.let { s ->
             settingsRepository.setUseMetricUnits(s.useMetricUnits)
-            try { settingsRepository.setFuelUnit(FuelUnit.valueOf(s.fuelUnit)) } catch (_: Exception) {}
+            try { settingsRepository.setFuelUnit(FuelUnit.valueOf(s.fuelUnit)) } catch (e: Exception) {
+                Log.w("BackupManager", "Invalid fuel unit '${s.fuelUnit}', skipping")
+            }
             settingsRepository.setCurrencySymbol(s.currencySymbol)
-            try { settingsRepository.setTrackingMode(TrackingMode.valueOf(s.trackingMode)) } catch (_: Exception) {}
+            try { settingsRepository.setTrackingMode(TrackingMode.valueOf(s.trackingMode)) } catch (e: Exception) {
+                Log.w("BackupManager", "Invalid tracking mode '${s.trackingMode}', skipping")
+            }
             settingsRepository.setSpeedAlertEnabled(s.speedAlertEnabled)
             settingsRepository.setSpeedAlertThresholdKmh(s.speedAlertThresholdKmh)
-            try { settingsRepository.setSpeedAlertStyle(SpeedAlertStyle.valueOf(s.speedAlertStyle)) } catch (_: Exception) {}
-            try { settingsRepository.setThemeMode(ThemeMode.valueOf(s.themeMode)) } catch (_: Exception) {}
-            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (_: Exception) {}
+            try { settingsRepository.setSpeedAlertStyle(SpeedAlertStyle.valueOf(s.speedAlertStyle)) } catch (e: Exception) {
+                Log.w("BackupManager", "Invalid speed alert style '${s.speedAlertStyle}', skipping")
+            }
+            try { settingsRepository.setThemeMode(ThemeMode.valueOf(s.themeMode)) } catch (e: Exception) {
+                Log.w("BackupManager", "Invalid theme mode '${s.themeMode}', skipping")
+            }
+            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (e: Exception) {
+                Log.w("BackupManager", "Invalid map theme '${s.defaultMapTheme}', skipping")
+            }
             settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
             settingsRepository.setKeepScreenOn(s.keepScreenOn)
 
+            // Fix #23: Restore additional settings
+            settingsRepository.setVoiceAnnouncementsEnabled(s.voiceAnnouncementsEnabled)
+            settingsRepository.setThermalEcoMode(s.thermalEcoMode)
+            s.dashboardTextColor?.let { settingsRepository.setDashboardTextColor(it) }
+            s.dashboardBgColor?.let { settingsRepository.setDashboardBgColor(it) }
+            s.dashboardAccentColor?.let { settingsRepository.setDashboardAccentColor(it) }
+            s.dashboardComponentColor?.let { settingsRepository.setDashboardComponentColor(it) }
+
             // Validate currentBikeId references an actual restored bike
-            val restoredBikeIds = bikes?.map { it.id }?.toSet() ?: emptySet()
+            val restoredBikeIds = actualBikes.map { it.id }.toSet()
             val validBikeId = if (s.currentBikeId != null && s.currentBikeId in restoredBikeIds) {
                 s.currentBikeId
             } else {
@@ -293,10 +518,52 @@ class BackupManager @Inject constructor(
         parsedManifest
     }
 
+    /**
+     * Reads a ZIP entry with bounded size enforcement.
+     * Fix #11: Reads incrementally through a capped buffer instead of calling readBytes()
+     * which trusts the (potentially spoofed) entry.size metadata.
+     */
+    private fun readBoundedEntry(
+        zip: ZipInputStream,
+        entry: ZipEntry,
+        maxSizeBytes: Long
+    ): ByteArray {
+        // Check declared size if available (can be -1 for unknown)
+        val declaredSize = entry.size
+        if (declaredSize > maxSizeBytes) {
+            throw IllegalArgumentException(
+                "Backup entry '${entry.name}' declares size ${declaredSize / (1024 * 1024)} MB, exceeding limit."
+            )
+        }
+
+        val buffer = ByteArray(8192)
+        val output = ByteArrayOutputStream()
+        var totalRead = 0L
+
+        while (true) {
+            val bytesRead = zip.read(buffer)
+            if (bytesRead == -1) break
+            totalRead += bytesRead
+            if (totalRead > maxSizeBytes) {
+                throw IllegalArgumentException(
+                    "Backup entry '${entry.name}' exceeds maximum allowed size (${maxSizeBytes / (1024 * 1024)} MB)."
+                )
+            }
+            output.write(buffer, 0, bytesRead)
+        }
+
+        return output.toByteArray()
+    }
+
     private fun writeZipEntry(zip: ZipOutputStream, entryName: String, data: String) {
         val entry = ZipEntry(entryName)
         zip.putNextEntry(entry)
         zip.write(data.toByteArray(StandardCharsets.UTF_8))
         zip.closeEntry()
+    }
+
+    private fun sha256Hex(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
     }
 }

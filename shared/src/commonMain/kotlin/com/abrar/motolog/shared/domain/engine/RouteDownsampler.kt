@@ -106,6 +106,16 @@ object RouteDownsampler {
             attempts++
         }
 
+        // Fix #29: Strictly enforce maxPoints limit even if protected points exceed it
+        if (result.size > maxPoints) {
+            val step = (result.size - 1).toDouble() / (maxPoints - 1)
+            val decimated = (0 until maxPoints).map { i ->
+                val idx = (i * step).toInt().coerceIn(0, result.size - 1)
+                result[idx]
+            }
+            return decimated
+        }
+
         return result
     }
 
@@ -132,7 +142,7 @@ object RouteDownsampler {
             if (end - start < 2) continue
 
             var maxDist = 0.0
-            var maxIndex = start
+            var maxIndex = -1
 
             for (i in (start + 1) until end) {
                 val dist = perpendicularDistance(
@@ -144,7 +154,8 @@ object RouteDownsampler {
                 }
             }
 
-            if (maxDist > tolerance || keep[maxIndex]) {
+            // Fix #28: Ensure maxIndex is strictly between start and end to avoid infinite loops on duplicate coords
+            if (maxIndex > start && maxIndex < end && (maxDist > tolerance || keep[maxIndex])) {
                 keep[maxIndex] = true
                 stack.addLast(start to maxIndex)
                 stack.addLast(maxIndex to end)

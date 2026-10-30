@@ -162,4 +162,54 @@ class GpxImporterTest {
         assertEquals("Track 1", parseResult.tracks[0].name)
         assertEquals("Track 2", parseResult.tracks[1].name)
     }
+
+    @Test
+    fun invalidCoordinates_areSkippedWithWarning() {
+        val badGpx = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <gpx version="1.1" creator="Test">
+                <trk>
+                    <name>Bad Coords Track</name>
+                    <trkseg>
+                        <trkpt lat="12.9716" lon="77.5946"><time>2023-11-14T22:13:20Z</time></trkpt>
+                        <trkpt lat="95.0000" lon="77.5946"><time>2023-11-14T22:13:21Z</time></trkpt>
+                        <trkpt lat="12.9720" lon="200.0000"><time>2023-11-14T22:13:22Z</time></trkpt>
+                        <trkpt lat="12.9725" lon="77.5950"><time>2023-11-14T22:13:23Z</time></trkpt>
+                    </trkseg>
+                </trk>
+            </gpx>
+        """.trimIndent()
+
+        val parseResult = GpxImporter.parse(ByteArrayInputStream(badGpx.toByteArray(Charsets.UTF_8)))
+        assertTrue(parseResult.errors.isEmpty())
+        assertEquals(1, parseResult.tracks.size)
+        // 2 bad points skipped, 2 valid points kept
+        assertEquals(2, parseResult.tracks[0].points.size)
+        assertTrue(parseResult.warnings.isNotEmpty())
+    }
+
+    @Test
+    fun missingTimestamps_fallbacksToRecentTimestampNot1970() {
+        val noTimeGpx = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <gpx version="1.1" creator="Test">
+                <trk>
+                    <name>No Time</name>
+                    <trkseg>
+                        <trkpt lat="12.9716" lon="77.5946" />
+                        <trkpt lat="12.9720" lon="77.5950" />
+                    </trkseg>
+                </trk>
+            </gpx>
+        """.trimIndent()
+
+        val parseResult = GpxImporter.parse(ByteArrayInputStream(noTimeGpx.toByteArray(Charsets.UTF_8)))
+        assertTrue(parseResult.errors.isEmpty())
+        assertEquals(1, parseResult.tracks.size)
+        val points = parseResult.tracks[0].points
+        assertEquals(2, points.size)
+        // Timestamps should be recent, definitely not around 0L (epoch 1970)
+        assertTrue(points[0].timestampEpochMs > 1_500_000_000_000L)
+        assertTrue(points[1].timestampEpochMs > points[0].timestampEpochMs)
+    }
 }

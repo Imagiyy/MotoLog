@@ -27,6 +27,7 @@ import com.abrar.motolog.shared.domain.engine.UnitConverter
 import com.abrar.motolog.shared.domain.model.FuelUnit
 import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
 import com.abrar.motolog.shared.domain.model.TrackingMode
+import androidx.room.withTransaction
 import com.abrar.motolog.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -58,7 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val rideDao: RideDao,
     private val ridePointDao: RidePointDao,
     private val backupManager: BackupManager,
-    @ApplicationContext private val context: Context? = null
+    @ApplicationContext private val context: Context? = null,
+    private val database: MotoLogDatabase? = null
 ) : ViewModel() {
 
     // ============================================================
@@ -352,57 +354,78 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                var importedCount = 0
-                for (track in pending.tracks) {
-                    val stats = RideCalculator.processAll(track.points)
-                    val startTime = track.points.firstOrNull()?.timestampEpochMs ?: System.currentTimeMillis()
-                    val endTime = track.points.lastOrNull()?.timestampEpochMs ?: (startTime + stats.elapsedTimeMs)
+                val importBlock: suspend () -> Int = {
+                    var importedCount = 0
+                    val createdRideIds = mutableListOf<Long>()
+                    try {
+                        for (track in pending.tracks) {
+                            val stats = RideCalculator.processAll(track.points)
+                            val startTime = track.points.firstOrNull()?.timestampEpochMs ?: System.currentTimeMillis()
+                            val endTime = track.points.lastOrNull()?.timestampEpochMs ?: (startTime + stats.elapsedTimeMs)
 
-                    val rawElevations = track.points.mapNotNull { it.altitudeMeters }
-                    val elevResult = if (rawElevations.size >= 2) {
-                        ElevationCalculator.calculate(rawElevations, TrackingConstants.ELEVATION_MIN_CHANGE_GPS_METERS)
-                    } else null
+                            val rawElevations = track.points.mapNotNull { it.altitudeMeters }
+                            val elevResult = if (rawElevations.size >= 2) {
+                                ElevationCalculator.calculate(rawElevations, TrackingConstants.ELEVATION_MIN_CHANGE_GPS_METERS)
+                            } else null
 
-                    val ride = RideEntity(
-                        bikeId = bikeId,
-                        name = track.name.ifBlank { "Imported Ride" },
-                        startTime = startTime,
-                        endTime = endTime,
-                        distanceMeters = stats.totalDistanceMeters,
-                        elapsedTimeMs = stats.elapsedTimeMs,
-                        movingTimeMs = stats.movingTimeMs,
-                        avgMovingSpeedMs = stats.avgMovingSpeedKmh / 3.6,
-                        overallAvgSpeedMs = stats.avgOverallSpeedKmh / 3.6,
-                        maxSpeedMs = stats.maxSpeedKmh / 3.6,
-                        elevationGainMeters = elevResult?.gainMeters ?: 0.0,
-                        elevationLossMeters = elevResult?.lossMeters ?: 0.0,
-                        elevationSource = if (elevResult != null) "gps" else "",
-                        status = RideStatus.COMPLETED,
-                        isImported = true,
-                        countsTowardOdometer = countsTowardOdometer
-                    )
+                            val ride = RideEntity(
+                                bikeId = bikeId,
+                                name = track.name.ifBlank { "Imported Ride" },
+                                startTime = startTime,
+                                endTime = endTime,
+                                distanceMeters = stats.totalDistanceMeters,
+                                elapsedTimeMs = stats.elapsedTimeMs,
+                                movingTimeMs = stats.movingTimeMs,
+                                avgMovingSpeedMs = stats.avgMovingSpeedKmh / 3.6,
+                                overallAvgSpeedMs = stats.avgOverallSpeedKmh / 3.6,
+                                maxSpeedMs = stats.maxSpeedKmh / 3.6,
+                                elevationGainMeters = elevResult?.gainMeters ?: 0.0,
+                                elevationLossMeters = elevResult?.lossMeters ?: 0.0,
+                                elevationSource = if (elevResult != null) "gps" else "",
+                                status = RideStatus.COMPLETED,
+                                isImported = true,
+                                countsTowardOdometer = countsTowardOdometer
+                            )
 
-                    val rideId = rideDao.insert(ride)
+                            val rideId = rideDao.insert(ride)
+                            createdRideIds.add(rideId)
 
-                    val pointEntities = track.points.map { pt ->
-                        RidePointEntity(
-                            rideId = rideId,
-                            timestamp = pt.timestampEpochMs,
-                            latitude = pt.latitude,
-                            longitude = pt.longitude,
-                            speedMs = pt.speedMps?.toDouble() ?: 0.0,
-                            accuracyMeters = pt.accuracyMeters,
-                            altitudeMeters = pt.altitudeMeters ?: 0.0,
-                            isPaused = pt.isPaused,
-                            isGap = pt.isGap
-                        )
+                            val pointEntities = track.points.map { pt ->
+                                RidePointEntity(
+                                    rideId = rideId,
+                                    timestamp = pt.timestampEpochMs,
+                                    latitude = pt.latitude,
+                                    longitude = pt.longitude,
+                                    speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                                    accuracyMeters = pt.accuracyMeters,
+                                    altitudeMeters = pt.altitudeMeters ?: 0.0,
+                                    isPaused = pt.isPaused,
+                                    isGap = pt.isGap
+                                )
+                            }
+
+                            ridePointDao.insertAll(pointEntities)
+                            importedCount++
+                        }
+                        importedCount
+                    } catch (e: Exception) {
+                        for (id in createdRideIds) {
+                            try {
+                                ridePointDao.deletePointsForRide(id)
+                                rideDao.getRideById(id)?.let { rideDao.delete(it) }
+                            } catch (_: Exception) {}
+                        }
+                        throw e
                     }
-
-                    ridePointDao.insertAll(pointEntities)
-                    importedCount++
                 }
 
-                _messageChannel.send("Successfully imported $importedCount ride(s).")
+                val count = if (database != null) {
+                    database.withTransaction { importBlock() }
+                } else {
+                    importBlock()
+                }
+
+                _messageChannel.send("Successfully imported $count ride(s).")
             } catch (e: Exception) {
                 _messageChannel.send("Failed to save imported rides: ${e.localizedMessage ?: e.message}")
             }

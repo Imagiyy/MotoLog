@@ -4,11 +4,13 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.FuelLogDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
+import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
+import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
@@ -49,6 +51,7 @@ class BackupManagerTest {
     private lateinit var ridePointDao: FakeRidePointDao
     private lateinit var maintenanceDao: FakeMaintenanceDao
     private lateinit var fuelLogDao: FakeFuelLogDao
+    private lateinit var mileageCycleDao: FakeMileageCycleDao
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var backupManager: BackupManager
 
@@ -59,6 +62,7 @@ class BackupManagerTest {
         ridePointDao = FakeRidePointDao()
         maintenanceDao = FakeMaintenanceDao()
         fuelLogDao = FakeFuelLogDao()
+        mileageCycleDao = FakeMileageCycleDao()
 
         val testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope,
@@ -72,6 +76,7 @@ class BackupManagerTest {
             ridePointDao = ridePointDao,
             maintenanceDao = maintenanceDao,
             fuelLogDao = fuelLogDao,
+            mileageCycleDao = mileageCycleDao,
             settingsRepository = settingsRepository,
             database = null
         )
@@ -360,5 +365,30 @@ class BackupManagerTest {
         override suspend fun insertAll(logsList: List<FuelLogEntity>) { logs.addAll(logsList) }
         override suspend fun deleteAllFuelLogs() { logs.clear() }
         override suspend fun deleteLogsForBike(bikeId: Long) { logs.removeAll { it.bikeId == bikeId } }
+    }
+
+    private class FakeMileageCycleDao : MileageCycleDao {
+        val cycles = mutableListOf<MileageCycleEntity>()
+        override fun observeCyclesForBike(bikeId: Long): Flow<List<MileageCycleEntity>> =
+            MutableStateFlow(cycles.filter { it.bikeId == bikeId })
+        override suspend fun getCyclesForBike(bikeId: Long): List<MileageCycleEntity> =
+            cycles.filter { it.bikeId == bikeId }
+        override suspend fun insert(cycle: MileageCycleEntity): Long {
+            cycles.add(cycle)
+            return cycle.id
+        }
+        override suspend fun insertAll(cycles: List<MileageCycleEntity>) {
+            this.cycles.addAll(cycles)
+        }
+        override suspend fun delete(cycle: MileageCycleEntity) {
+            cycles.remove(cycle)
+        }
+        override suspend fun deleteCyclesForBike(bikeId: Long) {
+            cycles.removeAll { it.bikeId == bikeId }
+        }
+        override suspend fun deleteAll() {
+            cycles.clear()
+        }
+        override suspend fun getAllOnce(): List<MileageCycleEntity> = cycles.toList()
     }
 }

@@ -104,6 +104,14 @@ class AutoPauseStateMachine(
     }
 
     /**
+     * Called when a GPS signal gap occurs.
+     * Resets stationary countdown so gap duration cannot trigger auto-pause.
+     */
+    fun onGpsGap() {
+        lowSpeedStartTimeMs = null
+    }
+
+    /**
      * Reset state machine to initial state.
      */
     fun reset() {
