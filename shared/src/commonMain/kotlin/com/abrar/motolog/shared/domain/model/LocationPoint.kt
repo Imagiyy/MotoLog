@@ -17,5 +17,6 @@ data class LocationPoint(
     val accuracyMeters: Float,
     val timestamp: Long,
     val altitudeMeters: Double? = null,
-    val elapsedTimestampMs: Long? = null
+    val elapsedTimestampMs: Long? = null,
+    val bearingDegrees: Float? = null
 )

@@ -40,7 +40,9 @@ sealed interface LiveUiState {
         val latitude: Double? = null,
         val longitude: Double? = null,
         val routeCoordinates: List<Pair<Double, Double>> = emptyList(),
-        val bikeName: String? = null
+        val bikeName: String? = null,
+        val altitudeMeters: Double? = null,
+        val bearingDegrees: Float? = null
     ) : LiveUiState {
 
         constructor(
@@ -53,7 +55,9 @@ sealed interface LiveUiState {
             latitude: Double? = null,
             longitude: Double? = null,
             routeCoordinates: List<Pair<Double, Double>> = emptyList(),
-            bikeName: String? = null
+            bikeName: String? = null,
+            altitudeMeters: Double? = null,
+            bearingDegrees: Float? = null
         ) : this(
             speedKmh = speedKmh,
             accuracyMeters = accuracyMeters,
@@ -65,7 +69,9 @@ sealed interface LiveUiState {
             latitude = latitude,
             longitude = longitude,
             routeCoordinates = routeCoordinates,
-            bikeName = bikeName
+            bikeName = bikeName,
+            altitudeMeters = altitudeMeters,
+            bearingDegrees = bearingDegrees
         )
     }
 

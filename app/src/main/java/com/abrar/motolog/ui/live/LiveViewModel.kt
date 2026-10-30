@@ -183,7 +183,9 @@ class LiveViewModel @Inject constructor(
                             latitude = sessionState.latitude,
                             longitude = sessionState.longitude,
                             routeCoordinates = _routePoints.value,
-                            bikeName = currentActiveBikeName
+                            bikeName = currentActiveBikeName,
+                            altitudeMeters = sessionState.altitudeMeters,
+                            bearingDegrees = sessionState.bearingDegrees
                         )
                     }
                     is TrackingSessionState.Stopped -> {

@@ -27,7 +27,9 @@ sealed interface TrackingSessionState {
         val accuracyMeters: Float = 0f,
         val isSpeedAlert: Boolean = false,
         val latitude: Double? = null,
-        val longitude: Double? = null
+        val longitude: Double? = null,
+        val altitudeMeters: Double? = null,
+        val bearingDegrees: Float? = null
     ) : TrackingSessionState {
 
         constructor(
@@ -38,7 +40,9 @@ sealed interface TrackingSessionState {
             accuracyMeters: Float = 0f,
             isSpeedAlert: Boolean = false,
             latitude: Double? = null,
-            longitude: Double? = null
+            longitude: Double? = null,
+            altitudeMeters: Double? = null,
+            bearingDegrees: Float? = null
         ) : this(
             rideId = rideId,
             isPaused = pauseState.isPaused,
@@ -48,7 +52,9 @@ sealed interface TrackingSessionState {
             accuracyMeters = accuracyMeters,
             isSpeedAlert = isSpeedAlert,
             latitude = latitude,
-            longitude = longitude
+            longitude = longitude,
+            altitudeMeters = altitudeMeters,
+            bearingDegrees = bearingDegrees
         )
     }
 

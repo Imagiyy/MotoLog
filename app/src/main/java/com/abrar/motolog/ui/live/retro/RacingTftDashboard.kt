@@ -27,8 +27,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.BatteryManager
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Battery2Bar
+import androidx.compose.material.icons.filled.Battery4Bar
+import androidx.compose.material.icons.filled.Battery5Bar
 import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
@@ -39,6 +54,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -49,12 +65,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -149,6 +169,171 @@ data class DashboardCustomColors(
     val componentColor: Color = Color(0xFF0D0F14)
 )
 
+data class BatteryState(
+    val level: Int = 100,
+    val isCharging: Boolean = false
+)
+
+@Composable
+fun rememberBatteryState(): BatteryState {
+    val context = LocalContext.current
+    var batteryState by remember {
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val intent = context.registerReceiver(null, filter)
+        val initialLevel = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val initialScale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val initialStatus = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging = initialStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+            initialStatus == BatteryManager.BATTERY_STATUS_FULL
+        val pct = if (initialLevel >= 0 && initialScale > 0) {
+            ((initialLevel * 100f) / initialScale).roundToInt()
+        } else {
+            100
+        }
+        mutableStateOf(BatteryState(pct, isCharging))
+    }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
+                    val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                    val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                    val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                    val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL
+                    val pct = if (level >= 0 && scale > 0) {
+                        ((level * 100f) / scale).roundToInt()
+                    } else {
+                        100
+                    }
+                    batteryState = BatteryState(pct, isCharging)
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+        }
+    }
+
+    return batteryState
+}
+
+data class CompassHeading(
+    val degrees: Int = 0,
+    val cardinal: String = "N"
+)
+
+private fun degreesToCardinal(degrees: Int): String {
+    val normalized = (degrees % 360 + 360) % 360
+    return when {
+        normalized >= 338 || normalized < 23 -> "N"
+        normalized < 68 -> "NE"
+        normalized < 113 -> "E"
+        normalized < 158 -> "SE"
+        normalized < 203 -> "S"
+        normalized < 248 -> "SW"
+        normalized < 293 -> "W"
+        else -> "NW"
+    }
+}
+
+@Composable
+fun rememberCompassHeading(
+    bearingDegrees: Float?,
+    speedKmh: Double
+): CompassHeading {
+    val context = LocalContext.current
+    var sensorDegrees by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(context) {
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        val rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+
+        if (sensorManager == null || rotationSensor == null) {
+            return@DisposableEffect onDispose {}
+        }
+
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
+                    val rotationMatrix = FloatArray(9)
+                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                    val orientation = FloatArray(3)
+                    SensorManager.getOrientation(rotationMatrix, orientation)
+                    val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                    val deg = ((azimuth + 360) % 360).roundToInt()
+                    sensorDegrees = deg
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+
+        sensorManager.registerListener(listener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+        onDispose {
+            sensorManager.unregisterListener(listener)
+        }
+    }
+
+    val effectiveDegrees = if (speedKmh > 3.0 && bearingDegrees != null) {
+        ((bearingDegrees.roundToInt() % 360 + 360) % 360)
+    } else {
+        sensorDegrees
+    }
+
+    return CompassHeading(
+        degrees = effectiveDegrees,
+        cardinal = degreesToCardinal(effectiveDegrees)
+    )
+}
+
+@Composable
+fun BatteryIndicator(
+    batteryState: BatteryState,
+    textColor: Color,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val icon = when {
+        batteryState.isCharging -> Icons.Default.BatteryChargingFull
+        batteryState.level >= 80 -> Icons.Default.BatteryFull
+        batteryState.level >= 50 -> Icons.Default.Battery5Bar
+        batteryState.level >= 20 -> Icons.Default.Battery4Bar
+        else -> Icons.Default.Battery2Bar
+    }
+    val iconTint = when {
+        batteryState.isCharging -> TftGreen
+        batteryState.level <= 15 -> TftRed
+        batteryState.level <= 30 -> TftYellow
+        else -> accentColor
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = "Battery ${batteryState.level}%",
+            tint = iconTint,
+            modifier = Modifier.size(15.dp)
+        )
+        Text(
+            text = "${batteryState.level}%",
+            color = textColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
 /**
  * AiM MXS Racing TFT Dashboard for MotoLog.
  *
@@ -170,6 +355,8 @@ fun RacingTftDashboard(
     onSwitchToMap: () -> Unit,
     modifier: Modifier = Modifier,
     isIdle: Boolean = false,
+    altitudeMeters: Double? = null,
+    bearingDegrees: Float? = null,
     onStartClick: () -> Unit = {},
     keepScreenOn: Boolean = false,
     onToggleKeepScreenOn: () -> Unit = {},
@@ -186,6 +373,22 @@ fun RacingTftDashboard(
             delay(1000)
         }
     }
+
+    val batteryState = rememberBatteryState()
+    val compass = rememberCompassHeading(bearingDegrees = bearingDegrees, speedKmh = speedKmh)
+    val altitudeDisplay = remember(altitudeMeters, isMetric) {
+        if (altitudeMeters != null) {
+            if (isMetric) {
+                "ALT ${altitudeMeters.roundToInt()} M"
+            } else {
+                val ft = (altitudeMeters * 3.28084).roundToInt()
+                "ALT $ft FT"
+            }
+        } else {
+            "ALT --"
+        }
+    }
+    val headingDisplay = "HDG ${compass.cardinal} ${compass.degrees}°"
 
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
@@ -233,7 +436,10 @@ fun RacingTftDashboard(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 palette = palette,
-                customColors = customColors
+                customColors = customColors,
+                batteryState = batteryState,
+                altitudeDisplay = altitudeDisplay,
+                headingDisplay = headingDisplay
             )
         } else {
             TftPortraitView(
@@ -263,7 +469,10 @@ fun RacingTftDashboard(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 palette = palette,
-                customColors = customColors
+                customColors = customColors,
+                batteryState = batteryState,
+                altitudeDisplay = altitudeDisplay,
+                headingDisplay = headingDisplay
             )
         }
     }
@@ -300,46 +509,43 @@ private fun TftLandscapeView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     palette: CockpitThemePalette,
-    customColors: DashboardCustomColors
+    customColors: DashboardCustomColors,
+    batteryState: BatteryState,
+    altitudeDisplay: String,
+    headingDisplay: String
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(4.dp)
-            .clip(ChamferedBezelShape)
+            .clip(RoundedCornerShape(16.dp))
             .background(customColors.backgroundColor)
-            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), ChamferedBezelShape)
+            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
             .padding(6.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP BEZEL BAR: Left Turn Indicator + 10 Shift LEDs + Right Turn Indicator
-            Row(
+            // TOP BEZEL BAR: Centered sleek Shift Light Array
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(18.dp)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxWidth(0.85f)
+                    .height(16.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(customColors.componentColor.copy(alpha = 0.6f))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Left Turn Arrow
-                TurnIndicatorArrow(isLeft = true, isActive = true)
-
-                // 10 Shift LEDs (Green -> Yellow -> Red based on speed)
                 ShiftLightArray(
                     currentSpeed = speedKmh,
                     maxSpeed = maxScale,
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(12.dp)
-                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth()
+                        .fillMaxHeight()
                 )
-
-                // Right Turn Arrow
-                TurnIndicatorArrow(isLeft = false, isActive = true)
             }
 
             // MAIN INNER SCREEN
@@ -412,7 +618,7 @@ private fun TftLandscapeView(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // RIGHT: Telemetry Rows (Distance Prominent + Top Speed, Total Time, Moving Avg Row + G-DNS/Temp)
+                // RIGHT: Telemetry Rows (Distance Prominent + Top Speed, Total Time, Moving Avg Row + Altitude/Heading)
                 Column(
                     modifier = Modifier
                         .weight(1.05f)
@@ -495,42 +701,44 @@ private fun TftLandscapeView(
                         thickness = 1.dp
                     )
 
-                    // G-DNS / Lap & Temp row
+                    // Altitude & Compass Heading row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "2",
-                                color = customColors.textColor,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Terrain,
+                                contentDescription = "Altitude",
+                                tint = customColors.accentColor,
+                                modifier = Modifier.size(13.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "G-DNS",
-                                color = customColors.accentColor,
-                                fontSize = 9.sp,
+                                text = altitudeDisplay,
+                                color = customColors.textColor,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )
                         }
 
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "28",
-                                color = customColors.textColor,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Explore,
+                                contentDescription = "Heading",
+                                tint = customColors.accentColor,
+                                modifier = Modifier.size(13.dp)
                             )
-                            Spacer(modifier = Modifier.width(2.dp))
                             Text(
-                                text = "°C",
-                                color = customColors.accentColor,
+                                text = headingDisplay,
+                                color = customColors.textColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
@@ -551,7 +759,7 @@ private fun TftLandscapeView(
                 )
             }
 
-            // BOTTOM BAR: Fuel Level Bar + Temperatures + Controls + GPS Info Line + AiM Logo
+            // BOTTOM BAR: Battery % + Altitude + Compass + Controls + GPS Info Line + AiM Logo
             TftLandscapeBottomBar(
                 currentTimeString = currentTimeString,
                 isGpsLost = isGpsLost,
@@ -566,6 +774,9 @@ private fun TftLandscapeView(
                 onSwitchToMap = onSwitchToMap,
                 palette = palette,
                 customColors = customColors,
+                batteryState = batteryState,
+                altitudeDisplay = altitudeDisplay,
+                headingDisplay = headingDisplay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
@@ -605,15 +816,18 @@ private fun TftPortraitView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     palette: CockpitThemePalette,
-    customColors: DashboardCustomColors
+    customColors: DashboardCustomColors,
+    batteryState: BatteryState,
+    altitudeDisplay: String,
+    headingDisplay: String
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(4.dp)
-            .clip(ChamferedBezelShape)
+            .clip(RoundedCornerShape(20.dp))
             .background(customColors.backgroundColor)
-            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), ChamferedBezelShape)
+            .border(2.dp, customColors.accentColor.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
             .padding(8.dp)
     ) {
         Column(
@@ -621,33 +835,29 @@ private fun TftPortraitView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP BEZEL: Shift Light Bar + Turn Arrows
-            Row(
+            // TOP BEZEL: Centered sleek capsule Shift Light Array
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(20.dp)
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxWidth(0.92f)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(customColors.componentColor.copy(alpha = 0.6f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
             ) {
-                TurnIndicatorArrow(isLeft = true, isActive = true)
-
                 ShiftLightArray(
                     currentSpeed = speedKmh,
                     maxSpeed = maxScale,
                     isSpeedAlert = isSpeedAlert,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(13.dp)
-                        .padding(horizontal = 14.dp)
+                        .fillMaxWidth()
+                        .fillMaxHeight()
                 )
-
-                TurnIndicatorArrow(isLeft = false, isActive = true)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // STATUS INDICATOR ROW (TC, Engine, Oil, Battery, Map, Settings)
+            // STATUS ROW: Live Phone Battery % + Keep Screen On + Settings + Map
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -657,27 +867,12 @@ private fun TftPortraitView(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "TC",
-                        color = customColors.textColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Thermostat,
-                        contentDescription = "Coolant",
-                        tint = customColors.accentColor,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Default.BatteryAlert,
-                        contentDescription = "Battery",
-                        tint = TftRed,
-                        modifier = Modifier.size(13.dp)
-                    )
-                }
+                // Live Phone Battery % with dynamic icon
+                BatteryIndicator(
+                    batteryState = batteryState,
+                    textColor = customColors.textColor,
+                    accentColor = customColors.accentColor
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -870,12 +1065,14 @@ private fun TftPortraitView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // BOTTOM STATUS LINE (Fuel Bar, Temps, GPS, Date)
+            // BOTTOM STATUS LINE (Altitude, Heading, GPS, Date)
             TftPortraitBottomInfo(
                 currentTimeString = currentTimeString,
                 isGpsLost = isGpsLost,
                 accuracyMeters = accuracyMeters,
                 bikeName = bikeName,
+                altitudeDisplay = altitudeDisplay,
+                headingDisplay = headingDisplay,
                 customColors = customColors,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1032,9 +1229,10 @@ private fun ShiftLightArray(
     )
 
     Canvas(modifier = modifier) {
-        val gap = 4f
+        val gap = 6f
         val ledWidth = (size.width - (totalLeds - 1) * gap) / totalLeds
         val ledHeight = size.height
+        val pillRadius = CornerRadius(ledHeight / 2f, ledHeight / 2f)
 
         for (i in 0 until totalLeds) {
             val ledThreshold = (i + 1f) / totalLeds
@@ -1057,7 +1255,7 @@ private fun ShiftLightArray(
                 color = finalColor,
                 topLeft = Offset(x, 0f),
                 size = Size(ledWidth, ledHeight),
-                cornerRadius = CornerRadius(2f, 2f)
+                cornerRadius = pillRadius
             )
 
             if (isLit) {
@@ -1065,7 +1263,7 @@ private fun ShiftLightArray(
                     color = ledColor.copy(alpha = 0.35f),
                     topLeft = Offset(x - 1f, -1f),
                     size = Size(ledWidth + 2f, ledHeight + 2f),
-                    cornerRadius = CornerRadius(3f, 3f)
+                    cornerRadius = CornerRadius((ledHeight + 2f) / 2f, (ledHeight + 2f) / 2f)
                 )
             }
         }
@@ -1417,7 +1615,7 @@ private fun InstantFuelConsumptionBar(
 }
 
 // ============================================================
-// LANDSCAPE BOTTOM BAR (Fuel gauge, temps, controls, live clock)
+// LANDSCAPE BOTTOM BAR (Battery, Altitude, Compass, controls, live clock)
 // ============================================================
 @Composable
 private fun TftLandscapeBottomBar(
@@ -1434,88 +1632,67 @@ private fun TftLandscapeBottomBar(
     onSwitchToMap: () -> Unit,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors = DashboardCustomColors(),
+    batteryState: BatteryState,
+    altitudeDisplay: String,
+    headingDisplay: String,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        // Upper row: Fuel Level, Coolant Temp, Intake Temp, Map & Controls
+        // Upper row: Battery %, Altitude, Compass, Map & Controls
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Fuel Level Gauge + Remaining Range
+            // Telemetry & Device Status: Battery % + Altitude + Compass Heading
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Segmented Fuel Bar
-                Canvas(modifier = Modifier.size(70.dp, 8.dp)) {
-                    val segments = 8
-                    val segW = size.width / segments
-                    for (i in 0 until segments) {
-                        val color = if (i < 2) TftRed else if (i < 6) TftYellow else TftGreen
-                        drawRect(
-                            color = color,
-                            topLeft = Offset(i * segW + 1f, 0f),
-                            size = Size(segW - 2f, size.height)
-                        )
-                    }
-                }
-
-                Icon(
-                    imageVector = Icons.Default.LocalGasStation,
-                    contentDescription = "Fuel",
-                    tint = TftYellow,
-                    modifier = Modifier.size(12.dp)
+                // Live Phone Battery %
+                BatteryIndicator(
+                    batteryState = batteryState,
+                    textColor = customColors.textColor,
+                    accentColor = customColors.accentColor
                 )
 
-                Text(
-                    text = "-> 525 KM",
-                    color = customColors.textColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-
-            // Temperatures: Coolant + Ambient
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Coolant Temp
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "105 °C",
-                        color = customColors.accentColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
+                // Current GPS Altitude
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Thermostat,
-                        contentDescription = "Coolant",
+                        imageVector = Icons.Default.Terrain,
+                        contentDescription = "Altitude",
                         tint = customColors.accentColor,
                         modifier = Modifier.size(13.dp)
                     )
-                }
-
-                // Air Temp
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "25 °C",
+                        text = altitudeDisplay,
                         color = customColors.textColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     )
-                    Spacer(modifier = Modifier.width(3.dp))
+                }
+
+                // Current Compass Heading
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Thermostat,
-                        contentDescription = "Air",
-                        tint = customColors.textColor,
+                        imageVector = Icons.Default.Explore,
+                        contentDescription = "Heading",
+                        tint = customColors.accentColor,
                         modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = headingDisplay,
+                        color = customColors.textColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
             }
@@ -1618,7 +1795,7 @@ private fun TftLandscapeBottomBar(
 }
 
 // ============================================================
-// PORTRAIT BOTTOM INFO (Fuel, temps, GPS, Date)
+// PORTRAIT BOTTOM INFO (Altitude, Heading, GPS, Date)
 // ============================================================
 @Composable
 private fun TftPortraitBottomInfo(
@@ -1626,6 +1803,8 @@ private fun TftPortraitBottomInfo(
     isGpsLost: Boolean,
     accuracyMeters: Float,
     bikeName: String?,
+    altitudeDisplay: String,
+    headingDisplay: String,
     customColors: DashboardCustomColors = DashboardCustomColors(),
     modifier: Modifier = Modifier
 ) {
@@ -1640,17 +1819,19 @@ private fun TftPortraitBottomInfo(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Fuel
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Current GPS Altitude
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.LocalGasStation,
-                    contentDescription = "Fuel",
-                    tint = TftYellow,
-                    modifier = Modifier.size(11.dp)
+                    imageVector = Icons.Default.Terrain,
+                    contentDescription = "Altitude",
+                    tint = customColors.accentColor,
+                    modifier = Modifier.size(13.dp)
                 )
-                Spacer(modifier = Modifier.width(3.dp))
                 Text(
-                    text = "-> 525 KM",
+                    text = altitudeDisplay,
                     color = customColors.textColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -1658,17 +1839,19 @@ private fun TftPortraitBottomInfo(
                 )
             }
 
-            // Temps
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "105 °C",
-                    color = customColors.accentColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
+            // Current Compass Heading
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Explore,
+                    contentDescription = "Heading",
+                    tint = customColors.accentColor,
+                    modifier = Modifier.size(13.dp)
                 )
                 Text(
-                    text = "25 °C",
+                    text = headingDisplay,
                     color = customColors.textColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -1685,7 +1868,7 @@ private fun TftPortraitBottomInfo(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (isGpsLost) "GPS: LOST" else "GPS: GOOD",
+                text = if (isGpsLost) "GPS: LOST" else "GPS: GOOD (±${accuracyMeters.roundToInt()}M)",
                 color = if (isGpsLost) TftRed else TftGreen,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,

@@ -281,6 +281,8 @@ fun LiveScreen(
                     isGpsLost = state.isGpsLost,
                     isSpeedAlert = state.isSpeedAlert,
                     bikeName = state.bikeName,
+                    altitudeMeters = state.altitudeMeters,
+                    bearingDegrees = state.bearingDegrees,
                     onPauseClick = handlePause,
                     onResumeClick = handleResume,
                     onStopConfirmed = { viewModel.stopTracking() },

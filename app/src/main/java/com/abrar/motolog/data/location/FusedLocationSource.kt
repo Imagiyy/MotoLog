@@ -67,7 +67,8 @@ class FusedLocationSource @Inject constructor(
                         accuracyMeters = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE,
                         timestamp = if (location.time > 0L) location.time else System.currentTimeMillis(),
                         altitudeMeters = if (location.hasAltitude()) location.altitude else null,
-                        elapsedTimestampMs = location.elapsedRealtimeNanos / 1_000_000L
+                        elapsedTimestampMs = location.elapsedRealtimeNanos / 1_000_000L,
+                        bearingDegrees = if (location.hasBearing()) location.bearing else null
                     )
                     trySend(point)
                 }

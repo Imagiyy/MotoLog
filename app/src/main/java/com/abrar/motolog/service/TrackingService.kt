@@ -335,7 +335,9 @@ class TrackingService : Service() {
                             accuracyMeters = locationPoint.accuracyMeters,
                             isSpeedAlert = isSpeedExceeded,
                             latitude = locationPoint.latitude,
-                            longitude = locationPoint.longitude
+                            longitude = locationPoint.longitude,
+                            altitudeMeters = altitude,
+                            bearingDegrees = locationPoint.bearingDegrees
                         )
                     )
 
