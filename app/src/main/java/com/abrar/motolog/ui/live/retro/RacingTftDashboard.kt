@@ -1110,10 +1110,7 @@ private fun TftPortraitView(
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
 
-            // AiM Oval Logo centered at bottom bezel
-            AiMOvalLogo()
         }
     }
 }
@@ -1779,8 +1776,7 @@ private fun TftLandscapeBottomBar(
                 fontFamily = FontFamily.Monospace
             )
 
-            // Center: AiM Logo Oval Badge
-            AiMOvalLogo()
+
 
             // Right: Live Clock
             Text(
@@ -1886,25 +1882,4 @@ private fun TftPortraitBottomInfo(
     }
 }
 
-// ============================================================
-// AiM OVAL LOGO (Bottom center bezel emblem)
-// ============================================================
-@Composable
-private fun AiMOvalLogo() {
-    Box(
-        modifier = Modifier
-            .size(44.dp, 16.dp)
-            .border(1.2.dp, Color(0xFFD4D4D8), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Aim",
-            color = Color.White,
-            fontSize = 9.sp,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.SansSerif,
-            letterSpacing = (-0.5).sp
-        )
-    }
-}
+
