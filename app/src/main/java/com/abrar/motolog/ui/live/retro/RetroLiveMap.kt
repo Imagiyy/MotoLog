@@ -26,11 +26,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
@@ -322,44 +320,16 @@ fun RetroLiveMap(
                 }
             }
 
-            // Top Right Action Buttons: Theme Toggle & Recenter
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Map Light / Dark Theme Mode Button
-                Surface(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .border(
-                            1.5.dp,
-                            palette.surfaceBorder.copy(alpha = 0.8f),
-                            CircleShape
-                        )
-                        .clickable { isDarkMap = !isDarkMap },
-                    color = palette.surface.copy(alpha = 0.92f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (isDarkMap) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = if (isDarkMap) "Switch to Light Map" else "Switch to Dark Map",
-                            tint = palette.primaryAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Recenter / Follow GPS Button
-                Surface(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .border(
-                            1.5.dp,
-                            if (followRider) palette.primaryAccent else palette.surfaceBorder.copy(alpha = 0.6f),
-                            CircleShape
-                        )
+            // Top Right Action: Recenter / Follow GPS Button
+            Surface(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .border(
+                        1.5.dp,
+                        if (followRider) palette.primaryAccent else palette.surfaceBorder.copy(alpha = 0.6f),
+                        CircleShape
+                    )
                         .clickable {
                             followRider = true
                             if (latitude != null && longitude != null) {
@@ -390,7 +360,6 @@ fun RetroLiveMap(
                     }
                 }
             }
-        }
 
         // Floating Retro Mini-Cockpit HUD Card at Bottom with vertical slide gesture
         Column(
