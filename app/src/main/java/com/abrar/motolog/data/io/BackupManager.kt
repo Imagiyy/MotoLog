@@ -30,6 +30,7 @@ import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
@@ -134,7 +135,7 @@ class BackupManager @Inject constructor(
         data class Snapshot(
             val bikes: List<BikeEntity>,
             val rides: List<RideEntity>,
-            val points: List<RidePointEntity>,
+            val pointCount: Int,
             val maintenance: List<MaintenanceItemEntity>,
             val fuel: List<FuelLogEntity>,
             val mileageCycles: List<MileageCycleEntity>
@@ -145,7 +146,7 @@ class BackupManager @Inject constructor(
                 Snapshot(
                     bikes = bikeDao.getAllBikesOnce(),
                     rides = rideDao.getAllRidesOnce(),
-                    points = ridePointDao.getAllPointsOnce(),
+                    pointCount = ridePointDao.getTotalPointCount(),
                     maintenance = maintenanceDao.getAllItemsOnce(),
                     fuel = fuelLogDao.getAllLogsOnce(),
                     mileageCycles = mileageCycleDao.getAllOnce()
@@ -155,7 +156,7 @@ class BackupManager @Inject constructor(
             Snapshot(
                 bikes = bikeDao.getAllBikesOnce(),
                 rides = rideDao.getAllRidesOnce(),
-                points = ridePointDao.getAllPointsOnce(),
+                pointCount = ridePointDao.getTotalPointCount(),
                 maintenance = maintenanceDao.getAllItemsOnce(),
                 fuel = fuelLogDao.getAllLogsOnce(),
                 mileageCycles = mileageCycleDao.getAllOnce()
@@ -186,68 +187,118 @@ class BackupManager @Inject constructor(
         val settingsJson = json.encodeToString(settings)
         val bikesJson = json.encodeToString(snapshot.bikes)
         val ridesJson = json.encodeToString(snapshot.rides)
-        val pointsJson = json.encodeToString(snapshot.points)
         val maintenanceJson = json.encodeToString(snapshot.maintenance)
         val fuelJson = json.encodeToString(snapshot.fuel)
         val cyclesJson = json.encodeToString(snapshot.mileageCycles)
 
-        // Fix #22: Compute SHA-256 integrity checksum for each archive entry
-        val checksums = mapOf(
-            "settings.json" to sha256Hex(settingsJson.toByteArray(StandardCharsets.UTF_8)),
-            "bikes.json" to sha256Hex(bikesJson.toByteArray(StandardCharsets.UTF_8)),
-            "rides.json" to sha256Hex(ridesJson.toByteArray(StandardCharsets.UTF_8)),
-            "points.json" to sha256Hex(pointsJson.toByteArray(StandardCharsets.UTF_8)),
-            "maintenance.json" to sha256Hex(maintenanceJson.toByteArray(StandardCharsets.UTF_8)),
-            "fuel.json" to sha256Hex(fuelJson.toByteArray(StandardCharsets.UTF_8)),
-            "mileage_cycles.json" to sha256Hex(cyclesJson.toByteArray(StandardCharsets.UTF_8))
-        )
-
-        val manifest = BackupManifest(
-            formatVersion = CURRENT_FORMAT_VERSION,
-            appVersion = APP_VERSION,
-            createdAtEpochMs = System.currentTimeMillis(),
-            bikeCount = snapshot.bikes.size,
-            rideCount = snapshot.rides.size,
-            pointCount = snapshot.points.size,
-            maintenanceCount = snapshot.maintenance.size,
-            fuelLogCount = snapshot.fuel.size,
-            mileageCycleCount = snapshot.mileageCycles.size,
-            checksums = checksums
-        )
-
         ZipOutputStream(outputStream).use { zip ->
-            // 1. Manifest
-            writeZipEntry(zip, "manifest.json", json.encodeToString(manifest))
+            // 1. Settings
+            writeZipEntry(zip, "settings.json", settingsJson)
             onProgress?.invoke(0.10f)
 
-            // 2. Settings
-            writeZipEntry(zip, "settings.json", settingsJson)
+            // 2. Bikes
+            writeZipEntry(zip, "bikes.json", bikesJson)
             onProgress?.invoke(0.20f)
 
-            // 3. Bikes
-            writeZipEntry(zip, "bikes.json", bikesJson)
+            // 3. Rides
+            writeZipEntry(zip, "rides.json", ridesJson)
             onProgress?.invoke(0.35f)
 
-            // 4. Rides
-            writeZipEntry(zip, "rides.json", ridesJson)
-            onProgress?.invoke(0.55f)
+            // 4. Points (streamed in chunks to prevent heap spikes)
+            val pointsChecksum = writePointsStreaming(zip, snapshot.pointCount, onProgress)
 
-            // 5. Points
-            writeZipEntry(zip, "points.json", pointsJson)
-            onProgress?.invoke(0.75f)
-
-            // 6. Maintenance
+            // 5. Maintenance
             writeZipEntry(zip, "maintenance.json", maintenanceJson)
+            onProgress?.invoke(0.80f)
+
+            // 6. Fuel
+            writeZipEntry(zip, "fuel.json", fuelJson)
             onProgress?.invoke(0.85f)
 
-            // 7. Fuel
-            writeZipEntry(zip, "fuel.json", fuelJson)
+            // 7. Mileage Cycles (Fix #23)
+            writeZipEntry(zip, "mileage_cycles.json", cyclesJson)
             onProgress?.invoke(0.90f)
 
-            // 8. Mileage Cycles (Fix #23)
-            writeZipEntry(zip, "mileage_cycles.json", cyclesJson)
+            // 8. Manifest with exact checksums
+            val checksums = mapOf(
+                "settings.json" to sha256Hex(settingsJson.toByteArray(StandardCharsets.UTF_8)),
+                "bikes.json" to sha256Hex(bikesJson.toByteArray(StandardCharsets.UTF_8)),
+                "rides.json" to sha256Hex(ridesJson.toByteArray(StandardCharsets.UTF_8)),
+                "points.json" to pointsChecksum,
+                "maintenance.json" to sha256Hex(maintenanceJson.toByteArray(StandardCharsets.UTF_8)),
+                "fuel.json" to sha256Hex(fuelJson.toByteArray(StandardCharsets.UTF_8)),
+                "mileage_cycles.json" to sha256Hex(cyclesJson.toByteArray(StandardCharsets.UTF_8))
+            )
+
+            val manifest = BackupManifest(
+                formatVersion = CURRENT_FORMAT_VERSION,
+                appVersion = APP_VERSION,
+                createdAtEpochMs = System.currentTimeMillis(),
+                bikeCount = snapshot.bikes.size,
+                rideCount = snapshot.rides.size,
+                pointCount = snapshot.pointCount,
+                maintenanceCount = snapshot.maintenance.size,
+                fuelLogCount = snapshot.fuel.size,
+                mileageCycleCount = snapshot.mileageCycles.size,
+                checksums = checksums
+            )
+
+            writeZipEntry(zip, "manifest.json", json.encodeToString(manifest))
             onProgress?.invoke(1.0f)
         }
+    }
+
+    private suspend fun writePointsStreaming(
+        zip: ZipOutputStream,
+        totalPoints: Int,
+        onProgress: ((Float) -> Unit)?
+    ): String {
+        val entry = java.util.zip.ZipEntry("points.json")
+        zip.putNextEntry(entry)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+
+        val countingStream = object : OutputStream() {
+            override fun write(b: Int) {
+                digest.update(b.toByte())
+                zip.write(b)
+            }
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                digest.update(b, off, len)
+                zip.write(b, off, len)
+            }
+            override fun flush() {
+                zip.flush()
+            }
+            override fun close() {
+                // Do not close zip
+            }
+        }
+        val writer = OutputStreamWriter(countingStream, StandardCharsets.UTF_8)
+        writer.write("[")
+        var offset = 0
+        val pageSize = 1000
+        var first = true
+        while (offset < totalPoints) {
+            val chunk = ridePointDao.getPointsPaged(limit = pageSize, offset = offset)
+            if (chunk.isEmpty()) break
+            for (pt in chunk) {
+                if (!first) {
+                    writer.write(",")
+                }
+                first = false
+                writer.write(json.encodeToString(pt))
+            }
+            writer.flush()
+            offset += chunk.size
+            if (totalPoints > 0) {
+                val progress = 0.35f + 0.40f * (offset.toFloat() / totalPoints.toFloat()).coerceAtMost(1f)
+                onProgress?.invoke(progress)
+            }
+        }
+        writer.write("]")
+        writer.flush()
+        zip.closeEntry()
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     /**
@@ -461,7 +512,9 @@ class BackupManager @Inject constructor(
 
             if (actualBikes.isNotEmpty()) bikeDao.insertAll(actualBikes)
             if (actualRides.isNotEmpty()) rideDao.insertAll(actualRides)
-            if (actualPoints.isNotEmpty()) ridePointDao.insertAll(actualPoints)
+            if (actualPoints.isNotEmpty()) {
+                actualPoints.chunked(1000).forEach { ridePointDao.insertAll(it) }
+            }
             if (actualMaintenance.isNotEmpty()) maintenanceDao.insertAll(actualMaintenance)
             if (actualFuel.isNotEmpty()) fuelLogDao.insertAll(actualFuel)
             if (actualMileageCycles.isNotEmpty()) mileageCycleDao.insertAll(actualMileageCycles)

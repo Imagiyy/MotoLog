@@ -203,6 +203,12 @@ private class FakeRidePointDao : RidePointDao {
     override suspend fun getAllPointsOnce(): List<RidePointEntity> =
         pointsMap.values.flatten()
 
+    override suspend fun getTotalPointCount(): Int =
+        pointsMap.values.sumOf { it.size }
+
+    override suspend fun getPointsPaged(limit: Int, offset: Int): List<RidePointEntity> =
+        pointsMap.values.flatten().drop(offset).take(limit)
+
     override suspend fun deleteAllPoints() {
         pointsMap.clear()
     }

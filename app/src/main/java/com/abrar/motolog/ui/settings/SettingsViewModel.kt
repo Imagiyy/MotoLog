@@ -217,13 +217,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val rides = rideDao.getAllRidesOnce()
-                val ridesWithPoints = rides.map { ride ->
-                    val points = ridePointDao.getPointsForRideOnce(ride.id)
-                    ride to points
-                }
-
                 ctx.contentResolver.openOutputStream(uri)?.use { stream ->
-                    GpxExporter.exportRides(ridesWithPoints, stream)
+                    GpxExporter.exportRidesStreaming(
+                        rides = rides,
+                        pointsProvider = { rideId -> ridePointDao.getPointsForRideOnce(rideId) },
+                        outputStream = stream
+                    )
                 }
                 _messageChannel.send("Exported ${rides.size} rides to GPX successfully.")
             } catch (e: Exception) {
@@ -252,16 +251,15 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val rides = rideDao.getAllRidesOnce()
-                val ridesWithPoints = rides.map { ride ->
-                    val points = ridePointDao.getPointsForRideOnce(ride.id)
-                    ride to points
-                }
-
                 val exportDir = File(ctx.cacheDir, "exports").apply { mkdirs() }
                 val exportFile = File(exportDir, "motolog_all_rides.gpx")
 
                 FileOutputStream(exportFile).use { stream ->
-                    GpxExporter.exportRides(ridesWithPoints, stream)
+                    GpxExporter.exportRidesStreaming(
+                        rides = rides,
+                        pointsProvider = { rideId -> ridePointDao.getPointsForRideOnce(rideId) },
+                        outputStream = stream
+                    )
                 }
 
                 val contentUri = FileProvider.getUriForFile(

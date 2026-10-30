@@ -69,6 +69,15 @@ object TrackingConstants {
      *  The system will not deliver updates faster than this. */
     const val LOCATION_FASTEST_INTERVAL_MS: Long = 1_000L
 
+    /** Desired interval when vehicle is stationary or moving very slowly (< 3 km/h). */
+    const val ADAPTIVE_STATIONARY_INTERVAL_MS: Long = 3_000L
+
+    /** Desired interval when tracking is paused (auto or manual). */
+    const val ADAPTIVE_PAUSED_INTERVAL_MS: Long = 4_000L
+
+    /** Desired interval when GPS signal is lost to conserve power during tunnels/gaps. */
+    const val ADAPTIVE_GPS_LOST_INTERVAL_MS: Long = 5_000L
+
     // ============================================================
     // GPS Signal Loss
     // ============================================================

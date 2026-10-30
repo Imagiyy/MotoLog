@@ -120,4 +120,26 @@ class FusedLocationSource @Inject constructor(
             fusedLocationClient.removeLocationUpdates(callback)
         }
     }
+
+    @SuppressLint("MissingPermission")
+    override fun updateSamplingRate(intervalMs: Long, fastestIntervalMs: Long) {
+        val callback = activeCallback.get() ?: return
+        try {
+            val locationRequest = LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                intervalMs
+            ).apply {
+                setMinUpdateIntervalMillis(fastestIntervalMs)
+                setWaitForAccurateLocation(false)
+            }.build()
+
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                callback,
+                Looper.getMainLooper()
+            )
+        } catch (_: SecurityException) {
+            // Permission revoked
+        }
+    }
 }

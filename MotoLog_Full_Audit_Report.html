@@ -392,6 +392,112 @@ code { font-family: "Courier New", monospace; background: #f1f1f1; padding: 1px 
 <p>MotoLog is structurally promising and has a good foundation in its shared calculation engine. It is not yet production-ready for a data-sensitive tracking application because the service lifecycle, persistence failure paths, backup restore path and import validation are not sufficiently defensive.</p>
 <p>Addressing Phase 1 and Phase 2 should be considered mandatory before release. Phase 3 is required for reliable diagnostics and support, while Phase 4 improves long-term maintainability and platform compatibility.</p>
 
+<div class="pagebreak"></div>
+<h2>Performance improvement plan</h2>
+<p>The app can be made significantly faster and more battery-efficient. The highest-impact areas are GPS processing, database writes, map rendering, Compose recomposition and large import/export operations.</p>
+
+<h3>1. Fix and optimize the GPS persistence pipeline</h3>
+<ul>
+<li>Replace the unbounded <code>Channel.UNLIMITED</code> point queue with a bounded queue and explicit backpressure behavior.</li>
+<li>Use one dedicated database-writer coroutine and controlled Room batches, typically 50-200 points depending on device testing.</li>
+<li>Retry transient database failures with bounded exponential backoff and surface persistent failures to the notification/UI.</li>
+<li>Do not persist rejected GPS samples; they increase database size and route-rendering work without contributing valid statistics.</li>
+<li>Measure write latency and queue depth during long rides.</li>
+</ul>
+
+<h3>2. Use adaptive GPS sampling</h3>
+<p>Requesting high-accuracy, one-second updates continuously consumes battery and creates unnecessary processing while stationary.</p>
+<ul>
+<li>Moving: approximately one-second updates.</li>
+<li>Slow or stationary: three-to-five-second updates.</li>
+<li>Auto-paused: reduce the update rate while preserving reliable resume detection.</li>
+<li>GPS lost: progressively back off and restore the normal interval after a valid fix.</li>
+<li>Expose battery-saver tracking mode and verify its accuracy against representative rides.</li>
+</ul>
+
+<h3>3. Confine tracking state to one coroutine</h3>
+<p>Move <code>RideCalculator</code>, pause state, speed alerts and mutable tracking statistics onto one actor/event loop, or protect them with a mutex. This avoids race conditions and reduces synchronization overhead from multiple concurrent callers.</p>
+<p>Commands such as start, pause, resume, stop and location updates should be processed sequentially. Checkpoint and notification code should read immutable snapshots rather than touching mutable calculator state concurrently.</p>
+
+<h3>4. Optimize MapLibre rendering</h3>
+<ul>
+<li>Downsample route geometry before passing it to MapLibre.</li>
+<li>Cache route geometry and elevation data.</li>
+<li>Do not rebuild the complete route on every GPS update.</li>
+<li>Update only the current-location marker during active tracking.</li>
+<li>Re-render route geometry only after a meaningful distance threshold, such as 25-100 meters, or after a time interval.</li>
+<li>Avoid reloading the full map style when only telemetry visibility or theme state changes.</li>
+<li>Guard the downsampler against duplicate coordinates and enforce its maximum-point contract.</li>
+</ul>
+
+<h3>5. Reduce Compose recompositions</h3>
+<ul>
+<li>Split large cockpit/dashboard composables into smaller stable components.</li>
+<li>Use immutable UI state models and stable collections.</li>
+<li>Keep rapidly changing telemetry separate from static cockpit configuration.</li>
+<li>Use <code>remember</code> for expensive calculations, paths, formatters and derived values.</li>
+<li>Avoid creating lists, lambdas and formatters inside frequently recomposed dashboard functions.</li>
+<li>Do not collect unrelated settings in the live screen when only one setting is needed.</li>
+</ul>
+
+<h3>6. Optimize history and ride-detail screens</h3>
+<ul>
+<li>Load route points only when the detail screen needs them.</li>
+<li>Use SQL-side filtering, pagination or downsampling instead of loading every point immediately.</li>
+<li>Cache prepared route and graph data for repeated screen visits.</li>
+<li>Run elevation and route preparation on <code>Dispatchers.Default</code> or <code>Dispatchers.IO</code>, never on the main thread.</li>
+<li>Render a simplified preview first, then refine it asynchronously.</li>
+</ul>
+
+<h3>7. Stream backup and import/export operations</h3>
+<ul>
+<li>Do not load every database table into memory at once for backup.</li>
+<li>Stream large point collections in chunks.</li>
+<li>Use bounded ZIP reads rather than unrestricted <code>readBytes()</code>.</li>
+<li>Move GPX/CSV/backup processing off the UI scope.</li>
+<li>Show progress and provide cancellation for large operations.</li>
+<li>Measure peak heap usage with large GPX files and high-mileage databases.</li>
+</ul>
+
+<h3>8. Optimize notifications and formatting</h3>
+<ul>
+<li>Keep notification throttling, but update only when displayed values actually change.</li>
+<li>Cache date, number and unit formatters rather than rebuilding them for every GPS update.</li>
+<li>Avoid repeated string construction for unchanged notification sections.</li>
+<li>Ensure locale changes invalidate formatter caches correctly.</li>
+</ul>
+
+<h3>9. Reduce startup time and application size</h3>
+<ul>
+<li>Remove unused drawable resources.</li>
+<li>Review MapLibre native libraries and ABI filters.</li>
+<li>Verify that release R8/resource shrinking is effective.</li>
+<li>Use baseline profiles for startup, live-screen rendering and navigation.</li>
+<li>Delay initialization of map, voice, sensor and nonessential garage components until needed.</li>
+<li>Measure cold start, warm start and first-frame time on representative devices.</li>
+</ul>
+
+<h3>10. Profile before and after each change</h3>
+<table>
+<tr><th>Tool</th><th>Use</th></tr>
+<tr><td>Android Studio CPU Profiler</td><td>Find hot methods in GPS processing, services and database work</td></tr>
+<tr><td>Compose Layout Inspector</td><td>Identify excessive recompositions and unstable parameters</td></tr>
+<tr><td>Perfetto/System Trace</td><td>Analyze frame drops, scheduling, wakeups and background work</td></tr>
+<tr><td>Room query logging</td><td>Find slow queries and excessive database reads</td></tr>
+<tr><td>Memory Profiler</td><td>Detect queue growth, route-memory spikes and import leaks</td></tr>
+<tr><td>Macrobenchmark</td><td>Measure startup, navigation and live-screen performance over time</td></tr>
+</table>
+
+<h3>Recommended first performance pass</h3>
+<ol>
+<li>Fix the point queue and database writer.</li>
+<li>Stop storing rejected GPS points.</li>
+<li>Confine tracking state to one coroutine.</li>
+<li>Cache and threshold map route updates.</li>
+<li>Profile and reduce Compose recompositions.</li>
+<li>Stream large backup and GPX operations.</li>
+</ol>
+
 <p class="small"><b>Audit note:</b> Severity reflects likely user impact and exploitability under realistic operating conditions. Recommendations should be implemented with focused regression tests and validated on physical Android devices, not only JVM unit tests.</p>
 </body>
 </html>

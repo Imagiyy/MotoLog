@@ -175,11 +175,13 @@ fun RetroLiveMap(
         baseStyle = BaseStyle.Uri(styleUrl),
         initialCameraPosition = initialCameraPosition
     ) {
-        // 1. Live route trail line (unconditional declaration prevents Compose applier node thrashing)
-        val lineGeoJson = if (routeCoordinates.size >= 2) {
-            lineStringJson(routeCoordinates)
-        } else {
-            EMPTY_GEOJSON
+        // 1. Live route trail line (cached with remember(routeCoordinates) to avoid rebuilding on intermediate ticks)
+        val lineGeoJson = remember(routeCoordinates) {
+            if (routeCoordinates.size >= 2) {
+                lineStringJson(routeCoordinates)
+            } else {
+                EMPTY_GEOJSON
+            }
         }
         val lineSource = rememberGeoJsonSource(GeoJsonData.JsonString(lineGeoJson))
         LineLayer(
@@ -189,11 +191,13 @@ fun RetroLiveMap(
             width = const(4.dp)
         )
 
-        // 2. Rider current location puck (unconditional declaration with empty feature fallback)
-        val puckGeoJson = if (latitude != null && longitude != null) {
-            pointJson(latitude, longitude)
-        } else {
-            EMPTY_GEOJSON
+        // 2. Rider current location puck (isolated to latitude/longitude to avoid full route re-renders)
+        val puckGeoJson = remember(latitude, longitude) {
+            if (latitude != null && longitude != null) {
+                pointJson(latitude, longitude)
+            } else {
+                EMPTY_GEOJSON
+            }
         }
         val puckSource = rememberGeoJsonSource(GeoJsonData.JsonString(puckGeoJson))
 

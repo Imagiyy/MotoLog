@@ -129,6 +129,41 @@ class TrackingService : Service() {
     private var activeTrackingMode = TrackingMode.HIGH_ACCURACY
     private var toneGenerator: ToneGenerator? = null
 
+    private val currentSamplingRateMs = java.util.concurrent.atomic.AtomicLong(TrackingConstants.LOCATION_UPDATE_INTERVAL_MS)
+    private var stationarySinceEpochMs = 0L
+
+    private fun checkAdaptiveSampling(speedKmh: Double, pauseState: PauseState, isGpsLost: Boolean, nowEpochMs: Long) {
+        if (activeTrackingMode == TrackingMode.BATTERY_SAVER) return
+
+        val targetIntervalMs = when {
+            isGpsLost -> TrackingConstants.ADAPTIVE_GPS_LOST_INTERVAL_MS
+            pauseState.isPaused -> TrackingConstants.ADAPTIVE_PAUSED_INTERVAL_MS
+            speedKmh < TrackingConstants.AUTO_PAUSE_SPEED_THRESHOLD_KMH -> {
+                if (stationarySinceEpochMs == 0L) {
+                    stationarySinceEpochMs = nowEpochMs
+                    TrackingConstants.LOCATION_UPDATE_INTERVAL_MS
+                } else if (nowEpochMs - stationarySinceEpochMs >= 10_000L) {
+                    TrackingConstants.ADAPTIVE_STATIONARY_INTERVAL_MS
+                } else {
+                    TrackingConstants.LOCATION_UPDATE_INTERVAL_MS
+                }
+            }
+            else -> {
+                stationarySinceEpochMs = 0L
+                TrackingConstants.LOCATION_UPDATE_INTERVAL_MS
+            }
+        }
+
+        if (currentSamplingRateMs.getAndSet(targetIntervalMs) != targetIntervalMs) {
+            val fastestMs = if (targetIntervalMs == TrackingConstants.LOCATION_UPDATE_INTERVAL_MS) {
+                TrackingConstants.LOCATION_FASTEST_INTERVAL_MS
+            } else {
+                (targetIntervalMs - 1_000L).coerceAtLeast(1_000L)
+            }
+            locationSource.updateSamplingRate(targetIntervalMs, fastestMs)
+        }
+    }
+
     companion object {
         const val ACTION_START = "com.abrar.motolog.action.START"
         const val ACTION_PAUSE = "com.abrar.motolog.action.PAUSE"
@@ -414,6 +449,8 @@ class TrackingService : Service() {
                             isWaitingGps = false
                         )
                     }
+
+                    checkAdaptiveSampling(speedKmh, pauseState, false, pointTimestamp)
                 }
         }
 
@@ -490,6 +527,8 @@ class TrackingService : Service() {
                         accuracyMeters = lastObservedAccuracy,
                         isWaitingGps = false
                     )
+
+                    checkAdaptiveSampling(0.0, pauseState, true, now)
                 }
             }
         }
@@ -524,6 +563,7 @@ class TrackingService : Service() {
             accuracyMeters = lastObservedAccuracy,
             isWaitingGps = false
         )
+        checkAdaptiveSampling(0.0, pauseState, isGpsLost.get(), clock.currentTimeMillis())
     }
 
     /**
@@ -555,6 +595,7 @@ class TrackingService : Service() {
             accuracyMeters = lastObservedAccuracy,
             isWaitingGps = false
         )
+        checkAdaptiveSampling(10.0, pauseState, isGpsLost.get(), clock.currentTimeMillis())
     }
 
     /**
@@ -705,16 +746,28 @@ class TrackingService : Service() {
     }
 
     /**
-     * Writes a batch of points to Room with retry on failure.
+     * Writes a batch of points to Room with chunking and retry on failure.
      * Retries up to 3 times with exponential backoff before logging the failure.
      */
     private suspend fun writeBatchWithRetry(batch: List<RidePointEntity>) {
+        val chunks = batch.chunked(100)
+        for (chunk in chunks) {
+            writeChunkWithRetry(chunk)
+        }
+    }
+
+    private suspend fun writeChunkWithRetry(chunk: List<RidePointEntity>) {
         var attempts = 0
         val maxAttempts = 3
         var delayMs = 500L
+        val startTime = android.os.SystemClock.elapsedRealtime()
         while (attempts < maxAttempts) {
             try {
-                ridePointDao.insertAll(batch)
+                ridePointDao.insertAll(chunk)
+                val durationMs = android.os.SystemClock.elapsedRealtime() - startTime
+                if (durationMs > 250) {
+                    Log.w("TrackingService", "Slow batch write: ${chunk.size} points took ${durationMs}ms")
+                }
                 return
             } catch (e: Exception) {
                 attempts++
@@ -725,7 +778,7 @@ class TrackingService : Service() {
                 }
             }
         }
-        Log.e("TrackingService", "Batch write permanently failed after $maxAttempts attempts, ${batch.size} points lost")
+        Log.e("TrackingService", "Batch write permanently failed after $maxAttempts attempts, ${chunk.size} points lost")
     }
 
     // flushPoints() is no longer needed — the batch writer drains remaining items
@@ -741,7 +794,8 @@ class TrackingService : Service() {
                 delay(TrackingConstants.CHECKPOINT_INTERVAL_MS)
                 if (serviceState != ServiceState.TRACKING) break
 
-                val stats = calculatorMutex.withLock { rideCalculator.stats }
+                val currentSession = trackingRepository.sessionState.value as? TrackingSessionState.Tracking ?: continue
+                val stats = currentSession.stats
                 val rideId = activeRideId
                 if (rideId <= 0L) continue
                 val existing = rideDao.getRideById(rideId)

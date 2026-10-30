@@ -50,6 +50,10 @@ class LiveViewModel @Inject constructor(
     private val _routePoints = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
     private var currentActiveBikeName: String? = null
     private var currentTrackingRideId: Long? = null
+    private val rawRoutePoints = mutableListOf<Pair<Double, Double>>()
+    private var lastRoutePublishDistanceMeters = 0.0
+    private var lastRoutePublishEpochMs = 0L
+    private var lastRoutePublishPauseState: com.abrar.motolog.shared.domain.model.PauseState? = null
 
     val isDisclaimerAccepted: StateFlow<Boolean> = settingsRepository.disclaimerAccepted
         .stateIn(
@@ -157,17 +161,27 @@ class LiveViewModel @Inject constructor(
                     }
                     is TrackingSessionState.Tracking -> {
                         startObservingRidePointsIfNeeded(sessionState.rideId)
-                        val coords = _routePoints.value.toMutableList()
                         val lat = sessionState.latitude
                         val lon = sessionState.longitude
                         if (lat != null && lon != null) {
                             val newPoint = Pair(lat, lon)
-                            if (coords.isEmpty() || coords.last() != newPoint) {
-                                coords.add(newPoint)
-                                if (coords.size > 2000) {
-                                    // Use simplified Douglas-Peucker to preserve route shape
-                                    _routePoints.value = simplifyRoute(coords, 0.00005)
-                                } else {
+                            if (rawRoutePoints.isEmpty() || rawRoutePoints.last() != newPoint) {
+                                rawRoutePoints.add(newPoint)
+                                val distanceDelta = kotlin.math.abs(sessionState.stats.totalDistanceMeters - lastRoutePublishDistanceMeters)
+                                val timeDelta = System.currentTimeMillis() - lastRoutePublishEpochMs
+                                val pauseChanged = lastRoutePublishPauseState != sessionState.pauseState
+
+                                // Threshold route polyline updates: only publish new polyline when distance advances >= 25m,
+                                // interval >= 10s, or pause state transitions
+                                if (rawRoutePoints.size == 1 || distanceDelta >= 25.0 || timeDelta >= 10_000L || pauseChanged) {
+                                    lastRoutePublishDistanceMeters = sessionState.stats.totalDistanceMeters
+                                    lastRoutePublishEpochMs = System.currentTimeMillis()
+                                    lastRoutePublishPauseState = sessionState.pauseState
+                                    val coords = if (rawRoutePoints.size > 500) {
+                                        simplifyRoute(rawRoutePoints, 0.00005)
+                                    } else {
+                                        rawRoutePoints.toList()
+                                    }
                                     _routePoints.value = coords
                                 }
                             }
@@ -209,7 +223,9 @@ class LiveViewModel @Inject constructor(
         activeRidePointsJob = viewModelScope.launch(Dispatchers.IO) {
             val entities = ridePointDao?.getPointsForRideOnce(rideId) ?: emptyList()
             val initial = entities.map { Pair(it.latitude, it.longitude) }
-            _routePoints.value = initial
+            rawRoutePoints.clear()
+            rawRoutePoints.addAll(initial)
+            _routePoints.value = if (initial.size > 500) simplifyRoute(initial, 0.00005) else initial
         }
     }
 
@@ -217,6 +233,10 @@ class LiveViewModel @Inject constructor(
         activeRidePointsJob?.cancel()
         activeRidePointsJob = null
         currentTrackingRideId = null
+        rawRoutePoints.clear()
+        lastRoutePublishDistanceMeters = 0.0
+        lastRoutePublishEpochMs = 0L
+        lastRoutePublishPauseState = null
         _routePoints.value = emptyList()
     }
 

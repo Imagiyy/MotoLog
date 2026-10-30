@@ -388,7 +388,7 @@ fun RacingTftDashboard(
             "ALT --"
         }
     }
-    val headingDisplay = "HDG ${compass.cardinal} ${compass.degrees}°"
+    val headingDisplay = remember(compass) { "HDG ${compass.cardinal} ${compass.degrees}°" }
 
     val totalDistanceKm = stats.totalDistanceMeters / 1000.0
     val displaySpeed = if (isMetric) speedKmh else speedKmh * 0.621371
@@ -399,7 +399,9 @@ fun RacingTftDashboard(
 
     val avgMovingSpeedDisplay = if (isMetric) stats.avgMovingSpeedKmh else stats.avgMovingSpeedKmh * 0.621371
     val maxSpeedDisplay = if (isMetric) stats.maxSpeedKmh else stats.maxSpeedKmh * 0.621371
-    val totalElapsedTimeDisplay = CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
+    val totalElapsedTimeDisplay = remember(stats.elapsedTimeMs) {
+        CockpitUtils.formatDurationMs(stats.elapsedTimeMs)
+    }
 
     BoxWithConstraints(
         modifier = modifier

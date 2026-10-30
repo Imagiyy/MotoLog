@@ -327,6 +327,9 @@ class SettingsViewModelTest {
         override suspend fun getPointCount(rideId: Long): Int = points.count { it.rideId == rideId }
         override suspend fun deletePointsForRide(rideId: Long) { points.removeAll { it.rideId == rideId } }
         override suspend fun getAllPointsOnce(): List<RidePointEntity> = points.toList()
+        override suspend fun getTotalPointCount(): Int = points.size
+        override suspend fun getPointsPaged(limit: Int, offset: Int): List<RidePointEntity> =
+            points.drop(offset).take(limit)
         override suspend fun deleteAllPoints() { points.clear() }
     }
 

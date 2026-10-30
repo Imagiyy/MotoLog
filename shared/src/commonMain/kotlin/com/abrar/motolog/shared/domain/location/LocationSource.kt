@@ -29,4 +29,9 @@ interface LocationSource {
      * Explicitly stop any active location updates and release hardware resources.
      */
     fun stopLocationUpdates()
+
+    /**
+     * Dynamically adjust location request sampling interval for adaptive battery optimization.
+     */
+    fun updateSamplingRate(intervalMs: Long, fastestIntervalMs: Long = intervalMs) {}
 }

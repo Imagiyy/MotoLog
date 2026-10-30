@@ -78,58 +78,101 @@ object GpxExporter {
         val dateFormat = iso8601Format
 
         for ((ride, points) in ridesWithPoints) {
-            writer.write("  <trk>\n")
-            writer.write("    <name>${escapeXml(ride.name)}</name>\n")
-
-            if (points.isNotEmpty()) {
-                writer.write("    <trkseg>\n")
-                var inSegment = true
-                var lastPointTime: Long? = null
-
-                for (point in points) {
-                    val deltaMs = lastPointTime?.let { point.timestamp - it } ?: 0L
-                    val isGap = point.isGap || deltaMs > TrackingConstants.GAP_THRESHOLD_MS
-
-                    if (isGap && inSegment && lastPointTime != null) {
-                        // Close segment across gap and open a new one
-                        writer.write("    </trkseg>\n")
-                        writer.write("    <trkseg>\n")
-                    }
-
-                    val lat = String.format(Locale.US, "%.6f", point.latitude)
-                    val lon = String.format(Locale.US, "%.6f", point.longitude)
-                    writer.write("      <trkpt lat=\"$lat\" lon=\"$lon\">\n")
-
-                    if (point.altitudeMeters > 0.0) {
-                        writer.write("        <ele>${String.format(Locale.US, "%.1f", point.altitudeMeters)}</ele>\n")
-                    }
-
-                    writer.write("        <time>${dateFormat.format(Date(point.timestamp))}</time>\n")
-
-                    writer.write("        <extensions>\n")
-                    writer.write("          <speed>${String.format(Locale.US, "%.2f", point.speedMs)}</speed>\n")
-                    writer.write("          <accuracy>${String.format(Locale.US, "%.1f", point.accuracyMeters)}</accuracy>\n")
-                    writer.write("        </extensions>\n")
-
-                    writer.write("      </trkpt>\n")
-                    lastPointTime = point.timestamp
-                    pointsWritten++
-
-                    if (pointsWritten % 50 == 0) {
-                        onProgress?.invoke(pointsWritten.toFloat() / totalPoints)
-                    }
-                }
-
-                if (inSegment) {
-                    writer.write("    </trkseg>\n")
-                }
-            }
-
-            writer.write("  </trk>\n")
+            writeRideTrack(writer, ride, points)
+            pointsWritten += points.size
+            onProgress?.invoke((pointsWritten.toFloat() / totalPoints).coerceAtMost(1f))
         }
 
         writer.write("</gpx>\n")
         writer.flush()
         onProgress?.invoke(1.0f)
+    }
+
+    /**
+     * Streams multiple rides into a GPX document by querying points ride-by-ride,
+     * preventing all points across all rides from being loaded into heap memory simultaneously.
+     */
+    suspend fun exportRidesStreaming(
+        rides: List<RideEntity>,
+        pointsProvider: suspend (rideId: Long) -> List<RidePointEntity>,
+        outputStream: OutputStream,
+        onProgress: ((Float) -> Unit)? = null
+    ) {
+        val writer = BufferedWriter(OutputStreamWriter(outputStream, StandardCharsets.UTF_8))
+        writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+        writer.write("<gpx version=\"1.1\" creator=\"MotoLog\" ")
+        writer.write("xmlns=\"http://www.topografix.com/GPX/1/1\" ")
+        writer.write("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
+        writer.write("xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\">\n")
+
+        val firstRide = rides.firstOrNull()
+        val metaTime = firstRide?.let { iso8601Format.format(Date(it.startTime)) }
+            ?: iso8601Format.format(Date())
+
+        writer.write("  <metadata>\n")
+        writer.write("    <name>${escapeXml(firstRide?.name ?: "MotoLog Export")}</name>\n")
+        writer.write("    <time>$metaTime</time>\n")
+        writer.write("  </metadata>\n")
+
+        val totalRides = rides.size.coerceAtLeast(1)
+        for ((index, ride) in rides.withIndex()) {
+            val points = pointsProvider(ride.id)
+            writeRideTrack(writer, ride, points)
+            onProgress?.invoke(((index + 1).toFloat() / totalRides.toFloat()).coerceAtMost(1f))
+        }
+
+        writer.write("</gpx>\n")
+        writer.flush()
+    }
+
+    private fun writeRideTrack(
+        writer: BufferedWriter,
+        ride: RideEntity,
+        points: List<RidePointEntity>
+    ) {
+        val dateFormat = iso8601Format
+        writer.write("  <trk>\n")
+        writer.write("    <name>${escapeXml(ride.name)}</name>\n")
+
+        if (points.isNotEmpty()) {
+            writer.write("    <trkseg>\n")
+            var inSegment = true
+            var lastPointTime: Long? = null
+
+            for (point in points) {
+                val deltaMs = lastPointTime?.let { point.timestamp - it } ?: 0L
+                val isGap = point.isGap || deltaMs > TrackingConstants.GAP_THRESHOLD_MS
+
+                if (isGap && inSegment && lastPointTime != null) {
+                    // Close segment across gap and open a new one
+                    writer.write("    </trkseg>\n")
+                    writer.write("    <trkseg>\n")
+                }
+
+                val lat = String.format(Locale.US, "%.6f", point.latitude)
+                val lon = String.format(Locale.US, "%.6f", point.longitude)
+                writer.write("      <trkpt lat=\"$lat\" lon=\"$lon\">\n")
+
+                if (point.altitudeMeters > 0.0) {
+                    writer.write("        <ele>${String.format(Locale.US, "%.1f", point.altitudeMeters)}</ele>\n")
+                }
+
+                writer.write("        <time>${dateFormat.format(Date(point.timestamp))}</time>\n")
+
+                writer.write("        <extensions>\n")
+                writer.write("          <speed>${String.format(Locale.US, "%.2f", point.speedMs)}</speed>\n")
+                writer.write("          <accuracy>${String.format(Locale.US, "%.1f", point.accuracyMeters)}</accuracy>\n")
+                writer.write("        </extensions>\n")
+
+                writer.write("      </trkpt>\n")
+                lastPointTime = point.timestamp
+            }
+
+            if (inSegment) {
+                writer.write("    </trkseg>\n")
+            }
+        }
+
+        writer.write("  </trk>\n")
     }
 }

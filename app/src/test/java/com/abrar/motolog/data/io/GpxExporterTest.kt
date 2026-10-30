@@ -56,4 +56,24 @@ class GpxExporterTest {
         assertTrue(gpxXml.contains("<speed>20.00</speed>"))
         assertTrue(gpxXml.contains("<accuracy>4.0</accuracy>"))
     }
+
+    @Test
+    fun gpxExportStreaming_writesMultipleRidesCorrectly() = kotlinx.coroutines.runBlocking {
+        val ride1 = RideEntity(id = 1L, startTime = 1700000000000L, endTime = 1700000010000L, distanceMeters = 100.0, elapsedTimeMs = 10000L, movingTimeMs = 10000L, avgMovingSpeedMs = 10.0, overallAvgSpeedMs = 10.0, maxSpeedMs = 15.0, name = "Ride 1", status = RideStatus.COMPLETED)
+        val ride2 = RideEntity(id = 2L, startTime = 1700000020000L, endTime = 1700000030000L, distanceMeters = 200.0, elapsedTimeMs = 10000L, movingTimeMs = 10000L, avgMovingSpeedMs = 20.0, overallAvgSpeedMs = 20.0, maxSpeedMs = 25.0, name = "Ride 2", status = RideStatus.COMPLETED)
+
+        val points1 = listOf(RidePointEntity(1L, 1L, 1700000000000L, 12.9716, 77.5946, 10.0, 4f, 900.0, false, false))
+        val points2 = listOf(RidePointEntity(2L, 2L, 1700000020000L, 12.9720, 77.5950, 20.0, 4f, 905.0, false, false))
+
+        val out = ByteArrayOutputStream()
+        GpxExporter.exportRidesStreaming(
+            rides = listOf(ride1, ride2),
+            pointsProvider = { if (it == 1L) points1 else points2 },
+            outputStream = out
+        )
+        val gpxXml = out.toString(Charsets.UTF_8.name())
+        assertTrue(gpxXml.contains("<name>Ride 1</name>"))
+        assertTrue(gpxXml.contains("<name>Ride 2</name>"))
+        assertEquals(2, gpxXml.split("<trk>").size - 1)
+    }
 }
