@@ -83,6 +83,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -206,7 +207,11 @@ fun SettingsScreen(
                             contentDescription = "Navigate back"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         }
     ) { innerPadding ->
@@ -725,19 +730,19 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Dashboard Colors",
+                                text = "App Theme & Colors",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Customize cockpit text, background, and gauge components",
+                                text = "Customize text, background, accent, and surface colors across the entire app",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // Live Mini Preview of Cockpit Colors
+                    // Live Mini Preview of Theme Colors
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -751,29 +756,6 @@ fun SettingsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // Mini shift light row preview
-                            Row(
-                                modifier = Modifier.fillMaxWidth(0.7f),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                repeat(7) { i ->
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(4.dp)
-                                            .padding(horizontal = 2.dp)
-                                            .clip(RoundedCornerShape(1.dp))
-                                            .background(
-                                                when {
-                                                    i < 3 -> Color(dashboardAccentColor)
-                                                    i < 5 -> Color(0xFFFFEA00)
-                                                    else -> Color(0xFFFF1744)
-                                                }
-                                            )
-                                    )
-                                }
-                            }
-
                             // Sample speedometer readout
                             Row(
                                 verticalAlignment = Alignment.Bottom,
@@ -784,7 +766,6 @@ fun SettingsScreen(
                                     color = Color(dashboardTextColor),
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Black,
-                                    fontStyle = FontStyle.Italic,
                                     fontFamily = FontFamily.Monospace,
                                     lineHeight = 28.sp
                                 )
@@ -843,7 +824,7 @@ fun SettingsScreen(
                     // 1. Text Color Selector
                     ColorSelectorRow(
                         title = "Text Color",
-                        description = "Applies to all speed digits, units, telemetry stats, and labels",
+                        description = "Applies to speed digits, text labels, telemetry stats, and headings across the app",
                         selectedColor = dashboardTextColor,
                         palette = listOf(
                             0xFFFFFFFFL, // Pure White
@@ -864,7 +845,7 @@ fun SettingsScreen(
                     // 2. Background Color Selector
                     ColorSelectorRow(
                         title = "Background Color",
-                        description = "Dashboard screen and outer casing background",
+                        description = "Background color for the dashboard, navigation, and screens",
                         selectedColor = dashboardBgColor,
                         palette = listOf(
                             0xFF000000L, // AMOLED Pure Black
@@ -882,8 +863,8 @@ fun SettingsScreen(
 
                     // 3. Gauge & Accent Color Selector
                     ColorSelectorRow(
-                        title = "Gauge & Accent Color",
-                        description = "Speed arc sweep, shift LEDs, border highlights, and indicators",
+                        title = "Accent & Highlight Color",
+                        description = "Speed arc sweep, active tabs, buttons, borders, and highlights across the app",
                         selectedColor = dashboardAccentColor,
                         palette = listOf(
                             0xFF00D4E5L, // Electric Cyan
@@ -903,7 +884,7 @@ fun SettingsScreen(
                     // 4. Component Surface Color Selector
                     ColorSelectorRow(
                         title = "Component Surface Color",
-                        description = "Telemetry box, stats cards, and inner containers",
+                        description = "Cards, telemetry boxes, top bars, and containers across the app",
                         selectedColor = dashboardComponentColor,
                         palette = listOf(
                             0xFF000000L, // Deep AMOLED

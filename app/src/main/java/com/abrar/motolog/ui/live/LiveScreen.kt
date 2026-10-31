@@ -95,6 +95,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -663,20 +664,14 @@ private fun TftWaitingForGpsView(
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
 ) {
-    val tftCyan = Color(0xFF00D4E5)
-    val tftBg = Color(0xFF080A10)
-    val tftSurface = Color(0xFF0E1118)
-    val tftYellow = Color(0xFFFFEA00)
-    val tftGray = Color(0xFF6B7280)
-    val tftWhite = Color(0xFFF5F5F7)
+    val tftAccent = palette.primaryAccent
+    val tftBg = palette.background
+    val tftSurface = palette.surface
+    val tftMuted = palette.dialText.copy(alpha = 0.6f)
 
     Box(
         modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(tftBg, Color(0xFF06080E), tftBg)
-                )
-            )
+            .background(tftBg)
             .padding(14.dp)
     ) {
         Column(
@@ -694,12 +689,12 @@ private fun TftWaitingForGpsView(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
                         .background(tftSurface)
-                        .border(1.dp, tftCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .border(1.dp, tftAccent.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "MOTO LOG",
-                        color = tftCyan,
+                        color = tftAccent,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
@@ -715,7 +710,7 @@ private fun TftWaitingForGpsView(
                         Icon(
                             imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
                             contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
-                            tint = if (keepScreenOn) tftCyan else tftGray
+                            tint = if (keepScreenOn) tftAccent else tftMuted
                         )
                     }
                     IconButton(
@@ -725,7 +720,7 @@ private fun TftWaitingForGpsView(
                         Icon(
                             imageVector = Icons.Default.SettingsIcon,
                             contentDescription = "Open Settings",
-                            tint = tftGray
+                            tint = tftMuted
                         )
                     }
                 }
@@ -752,21 +747,21 @@ private fun TftWaitingForGpsView(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(tftYellow.copy(alpha = pulseAlpha * 0.1f))
-                        .border(2.dp, tftYellow.copy(alpha = pulseAlpha * 0.5f), CircleShape),
+                        .background(tftAccent.copy(alpha = pulseAlpha * 0.15f))
+                        .border(2.dp, tftAccent.copy(alpha = pulseAlpha * 0.6f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.GpsNotFixed,
                         contentDescription = "Acquiring GPS",
-                        tint = tftYellow.copy(alpha = pulseAlpha),
+                        tint = tftAccent.copy(alpha = pulseAlpha),
                         modifier = Modifier.size(40.dp)
                     )
                 }
 
                 Text(
                     text = "ACQUIRING SATELLITE FIX",
-                    color = tftYellow,
+                    color = tftAccent,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -782,7 +777,7 @@ private fun TftWaitingForGpsView(
                 }
                 Text(
                     text = accuracyText,
-                    color = tftGray,
+                    color = tftMuted,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace
                 )
@@ -807,14 +802,11 @@ private fun TftStoppedView(
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
 ) {
-    val tftCyan = Color(0xFF00D4E5)
-    val tftBg = Color(0xFF080A10)
-    val tftSurface = Color(0xFF0E1118)
-    val tftGreen = Color(0xFF00E676)
-    val tftYellow = Color(0xFFFFEA00)
-    val tftRed = Color(0xFFFF1744)
-    val tftGray = Color(0xFF6B7280)
-    val tftWhite = Color(0xFFF5F5F7)
+    val tftAccent = palette.primaryAccent
+    val tftBg = palette.background
+    val tftSurface = palette.surface
+    val tftText = palette.dialText
+    val tftMuted = palette.dialText.copy(alpha = 0.6f)
 
     val totalDistKm = stats.totalDistanceMeters / 1000.0
     val displayDistance = if (useMetricUnits) totalDistKm else totalDistKm * 0.621371
@@ -829,11 +821,7 @@ private fun TftStoppedView(
 
     BoxWithConstraints(
         modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(tftBg, Color(0xFF06080E), tftBg)
-                )
-            )
+            .background(tftBg)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -855,12 +843,12 @@ private fun TftStoppedView(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
                     .background(tftSurface)
-                    .border(1.5.dp, tftCyan.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                    .border(1.5.dp, tftAccent.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = "SESSION COMPLETE",
-                    color = tftCyan,
+                    color = tftAccent,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -874,14 +862,14 @@ private fun TftStoppedView(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
                     .background(tftSurface)
-                    .border(1.dp, tftCyan.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                    .border(1.dp, tftAccent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
                     .padding(vertical = 10.dp, horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "TOTAL DISTANCE",
-                        color = tftCyan,
+                        color = tftAccent,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -894,7 +882,7 @@ private fun TftStoppedView(
                     ) {
                         Text(
                             text = String.format(Locale.US, "%.1f", displayDistance),
-                            color = tftWhite,
+                            color = tftText,
                             fontSize = 34.sp,
                             lineHeight = 36.sp,
                             fontWeight = FontWeight.Black,
@@ -903,7 +891,7 @@ private fun TftStoppedView(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = distUnit.uppercase(),
-                            color = tftGray,
+                            color = tftMuted,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
@@ -923,14 +911,18 @@ private fun TftStoppedView(
                 TftSummaryCard(
                     label = "Moving Time",
                     value = movingTimeStr,
-                    accentColor = tftGreen,
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftAccent,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
                 TftSummaryCard(
                     label = "Moving Avg",
                     value = String.format(Locale.US, "%.1f", avgSpeedDisplay),
                     unit = spdUnit,
-                    accentColor = tftYellow,
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftAccent,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
@@ -946,13 +938,17 @@ private fun TftStoppedView(
                     label = "Max Speed",
                     value = String.format(Locale.US, "%.1f", maxSpeedDisplay),
                     unit = spdUnit,
-                    accentColor = tftRed,
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftAccent,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
                 TftSummaryCard(
                     label = "Total Time",
                     value = totalTimeStr,
-                    accentColor = tftCyan,
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftAccent,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
@@ -968,14 +964,18 @@ private fun TftStoppedView(
                     label = "Overall Avg",
                     value = String.format(Locale.US, "%.1f", overallAvgSpeed),
                     unit = spdUnit,
-                    accentColor = Color(0xFFFF9100),
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftAccent,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
                 TftSummaryCard(
                     label = "GPS Hits",
                     value = "${stats.acceptedPointCount}",
                     subtitle = "Recorded Fixes",
-                    accentColor = tftGray,
+                    surfaceColor = tftSurface,
+                    textColor = tftText,
+                    accentColor = tftMuted,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
@@ -983,6 +983,7 @@ private fun TftStoppedView(
             Spacer(modifier = Modifier.height(4.dp))
 
             // Start New Ride Button
+            val onButtonText = if (tftAccent.luminance() > 0.5f) Color.Black else Color.White
             Button(
                 onClick = onResetClick,
                 modifier = Modifier
@@ -990,12 +991,12 @@ private fun TftStoppedView(
                     .height(58.dp),
                 shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = tftCyan
+                    containerColor = tftAccent
                 )
             ) {
                 Text(
                     text = "START NEW RIDE",
-                    color = Color.Black,
+                    color = onButtonText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -1016,16 +1017,16 @@ private fun TftSummaryCard(
     modifier: Modifier = Modifier,
     unit: String? = null,
     subtitle: String? = null,
+    surfaceColor: Color = Color(0xFF0E1118),
+    textColor: Color = Color(0xFFF5F5F7),
     accentColor: Color = Color(0xFF00D4E5)
 ) {
-    val tftSurface = Color(0xFF0E1118)
-    val tftWhite = Color(0xFFF5F5F7)
-    val tftGray = Color(0xFF6B7280)
+    val tftMuted = textColor.copy(alpha = 0.6f)
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(tftSurface)
+            .background(surfaceColor)
             .border(0.8.dp, accentColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
@@ -1048,7 +1049,7 @@ private fun TftSummaryCard(
             ) {
                 Text(
                     text = value,
-                    color = tftWhite,
+                    color = textColor,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace
@@ -1057,7 +1058,7 @@ private fun TftSummaryCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = unit,
-                        color = tftGray,
+                        color = tftMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -1068,7 +1069,7 @@ private fun TftSummaryCard(
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    color = tftGray,
+                    color = tftMuted,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace
                 )

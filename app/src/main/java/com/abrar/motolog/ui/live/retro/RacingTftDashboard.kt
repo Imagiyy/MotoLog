@@ -532,27 +532,6 @@ private fun TftLandscapeView(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP BEZEL BAR: Centered sleek Shift Light Array
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(16.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(customColors.componentColor.copy(alpha = 0.6f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                ShiftLightArray(
-                    currentSpeed = speedKmh,
-                    maxSpeed = maxScale,
-                    isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                )
-            }
-
             // MAIN INNER SCREEN
             Row(
                 modifier = Modifier
@@ -850,28 +829,6 @@ private fun TftPortraitView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP BEZEL: Centered sleek capsule Shift Light Array
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .height(16.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(customColors.componentColor.copy(alpha = 0.6f))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                ShiftLightArray(
-                    currentSpeed = speedKmh,
-                    maxSpeed = maxScale,
-                    isSpeedAlert = isSpeedAlert,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
             // STATUS ROW: Live Phone Battery % + Keep Screen On + Settings + Map
             Row(
                 modifier = Modifier
@@ -1226,71 +1183,6 @@ private fun TftSpeedArcGauge(
     }
 }
 
-// ============================================================
-// 10 SHIFT LIGHT ARRAY (Green -> Yellow -> Red based on speed)
-// ============================================================
-@Composable
-private fun ShiftLightArray(
-    currentSpeed: Double,
-    maxSpeed: Double,
-    isSpeedAlert: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val ratio = (currentSpeed / maxSpeed).coerceIn(0.0, 1.0).toFloat()
-    val totalLeds = 10
-
-    val infiniteTransition = rememberInfiniteTransition(label = "shiftFlash")
-    val flashAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 150),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "flashAlpha"
-    )
-
-    Canvas(modifier = modifier) {
-        val gap = 6f
-        val ledWidth = (size.width - (totalLeds - 1) * gap) / totalLeds
-        val ledHeight = size.height
-        val pillRadius = CornerRadius(ledHeight / 2f, ledHeight / 2f)
-
-        for (i in 0 until totalLeds) {
-            val ledThreshold = (i + 1f) / totalLeds
-            val isLit = ratio >= ledThreshold
-
-            val ledColor = when {
-                i < 4 -> TftGreen       // 4 Green
-                i < 7 -> TftYellow      // 3 Yellow
-                else -> TftRed          // 3 Red
-            }
-
-            val finalColor = when {
-                isSpeedAlert && i >= 7 -> ledColor.copy(alpha = flashAlpha)
-                isLit -> ledColor
-                else -> ledColor.copy(alpha = 0.12f)
-            }
-
-            val x = i * (ledWidth + gap)
-            drawRoundRect(
-                color = finalColor,
-                topLeft = Offset(x, 0f),
-                size = Size(ledWidth, ledHeight),
-                cornerRadius = pillRadius
-            )
-
-            if (isLit) {
-                drawRoundRect(
-                    color = ledColor.copy(alpha = 0.35f),
-                    topLeft = Offset(x - 1f, -1f),
-                    size = Size(ledWidth + 2f, ledHeight + 2f),
-                    cornerRadius = CornerRadius((ledHeight + 2f) / 2f, (ledHeight + 2f) / 2f)
-                )
-            }
-        }
-    }
-}
 
 // ============================================================
 // TURN INDICATOR ARROW (< and >)

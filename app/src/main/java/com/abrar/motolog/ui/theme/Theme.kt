@@ -1,13 +1,16 @@
 package com.abrar.motolog.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -19,29 +22,67 @@ enum class ThemeMode {
     RACING_TFT          // AiM MXS-style Racing TFT Display
 }
 
-// Racing TFT Color Scheme (Cyan + Dark AMOLED)
-private val RacingTftColorScheme = darkColorScheme(
-    primary = RacingTftCyan,
-    onPrimary = Color(0xFF002229),
-    primaryContainer = Color(0xFF004954),
-    onPrimaryContainer = Color(0xFF80F8FF),
-    secondary = RacingTftGreen,
-    onSecondary = Color(0xFF002A0B),
-    secondaryContainer = Color(0xFF004D1B),
-    onSecondaryContainer = Color(0xFFB3F2BC),
-    tertiary = RacingTftYellow,
-    onTertiary = Color(0xFF212121),
-    error = RacingTftRed,
-    onError = Color.White,
-    background = RacingTftBackground,
-    onBackground = Color(0xFFF5F5F7),
-    surface = RacingTftSurface,
-    onSurface = Color(0xFFF5F5F7),
-    surfaceVariant = Color(0xFF141720),
-    onSurfaceVariant = Color(0xFFE0E0E0),
-    outline = RacingTftCyan.copy(alpha = 0.4f),
-    outlineVariant = Color(0xFF1A1D27)
-)
+/**
+ * Generates an adaptive Material 3 ColorScheme dynamically reflecting the user's selected colors.
+ */
+fun createDynamicColorScheme(
+    textColor: Color = Color(0xFFFFFFFF),
+    backgroundColor: Color = RacingTftBackground,
+    accentColor: Color = RacingTftCyan,
+    componentColor: Color = RacingTftSurface
+): ColorScheme {
+    val isLight = backgroundColor.luminance() > 0.5f
+    val onAccent = if (accentColor.luminance() > 0.5f) Color.Black else Color.White
+    val onComponent = if (componentColor.luminance() > 0.5f) Color.Black else textColor
+
+    return if (isLight) {
+        lightColorScheme(
+            primary = accentColor,
+            onPrimary = onAccent,
+            primaryContainer = componentColor,
+            onPrimaryContainer = onComponent,
+            secondary = accentColor,
+            onSecondary = onAccent,
+            secondaryContainer = componentColor,
+            onSecondaryContainer = onComponent,
+            tertiary = accentColor,
+            onTertiary = onAccent,
+            error = RacingTftRed,
+            onError = Color.White,
+            background = backgroundColor,
+            onBackground = textColor,
+            surface = componentColor,
+            onSurface = textColor,
+            surfaceVariant = componentColor,
+            onSurfaceVariant = textColor.copy(alpha = 0.75f),
+            outline = accentColor.copy(alpha = 0.5f),
+            outlineVariant = accentColor.copy(alpha = 0.25f)
+        )
+    } else {
+        darkColorScheme(
+            primary = accentColor,
+            onPrimary = onAccent,
+            primaryContainer = componentColor,
+            onPrimaryContainer = onComponent,
+            secondary = accentColor,
+            onSecondary = onAccent,
+            secondaryContainer = componentColor,
+            onSecondaryContainer = onComponent,
+            tertiary = accentColor,
+            onTertiary = onAccent,
+            error = RacingTftRed,
+            onError = Color.White,
+            background = backgroundColor,
+            onBackground = textColor,
+            surface = componentColor,
+            onSurface = textColor,
+            surfaceVariant = componentColor,
+            onSurfaceVariant = textColor.copy(alpha = 0.75f),
+            outline = accentColor.copy(alpha = 0.5f),
+            outlineVariant = accentColor.copy(alpha = 0.25f)
+        )
+    }
+}
 
 /**
  * Visual styling palette for the cockpit speedometer, gauges, and cards.
@@ -81,37 +122,54 @@ fun getCockpitThemePalette(
         surfaceBorder = accentColor,
         bezelOuter = Color(0xFF1A1D27),
         bezelInner = accentColor,
-        dialFace = Color(0xFF0A0D15),
+        dialFace = backgroundColor,
         dialText = textColor,
         tickMajor = accentColor,
-        tickMinor = Color(0xFF6B7280),
+        tickMinor = textColor.copy(alpha = 0.4f),
         needle = accentColor,
         needleGradientStart = accentColor.copy(alpha = 0.4f),
         needleGradientEnd = accentColor,
         primaryAccent = accentColor,
-        secondaryAccent = RacingTftGreen,
+        secondaryAccent = accentColor,
         hubColor = componentColor,
-        hubCenter = accentColor
+        hubCenter = accentColor,
+        isLight = backgroundColor.luminance() > 0.5f
     )
 }
 
 /**
  * MotoLog Material 3 Theme.
  *
- * Single unified Racing TFT theme inspired by AiM MXS data logger displays.
+ * Dynamically applies user-customized colors across the entire app.
  */
 @Composable
 fun MotoLogTheme(
     themeMode: ThemeMode? = null,
+    textColor: Color = Color(0xFFFFFFFF),
+    backgroundColor: Color = RacingTftBackground,
+    accentColor: Color = RacingTftCyan,
+    componentColor: Color = RacingTftSurface,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = RacingTftColorScheme
+    val colorScheme = remember(textColor, backgroundColor, accentColor, componentColor) {
+        createDynamicColorScheme(
+            textColor = textColor,
+            backgroundColor = backgroundColor,
+            accentColor = accentColor,
+            componentColor = componentColor
+        )
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            val isLightBg = backgroundColor.luminance() > 0.5f
+            insetsController.isAppearanceLightStatusBars = isLightBg
+            insetsController.isAppearanceLightNavigationBars = isLightBg
+            window.statusBarColor = backgroundColor.toArgb()
+            window.navigationBarColor = componentColor.toArgb()
         }
     }
 

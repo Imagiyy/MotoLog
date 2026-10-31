@@ -38,9 +38,27 @@ class MainActivity : ComponentActivity() {
             val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle(
                 initialValue = ThemeMode.RACING_TFT
             )
+            val dashboardTextColor by settingsRepository.dashboardTextColor.collectAsStateWithLifecycle(
+                initialValue = SettingsRepository.DEFAULT_DASHBOARD_TEXT_COLOR
+            )
+            val dashboardBgColor by settingsRepository.dashboardBgColor.collectAsStateWithLifecycle(
+                initialValue = SettingsRepository.DEFAULT_DASHBOARD_BG_COLOR
+            )
+            val dashboardAccentColor by settingsRepository.dashboardAccentColor.collectAsStateWithLifecycle(
+                initialValue = SettingsRepository.DEFAULT_DASHBOARD_ACCENT_COLOR
+            )
+            val dashboardComponentColor by settingsRepository.dashboardComponentColor.collectAsStateWithLifecycle(
+                initialValue = SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR
+            )
             val navEvent by navEventFlow.collectAsStateWithLifecycle()
 
-            MotoLogTheme(themeMode = themeMode) {
+            MotoLogTheme(
+                themeMode = themeMode,
+                textColor = androidx.compose.ui.graphics.Color(dashboardTextColor),
+                backgroundColor = androidx.compose.ui.graphics.Color(dashboardBgColor),
+                accentColor = androidx.compose.ui.graphics.Color(dashboardAccentColor),
+                componentColor = androidx.compose.ui.graphics.Color(dashboardComponentColor)
+            ) {
                 MotoLogNavGraph(
                     navEvent = navEvent,
                     onNavEventConsumed = { navEventFlow.value = null }
