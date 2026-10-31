@@ -340,4 +340,48 @@ class DatabaseMigrationTest {
             executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_bikeId`") }
         )
     }
+
+    @Test
+    fun migration_8_to_9_createsSavedDestinationsAndNavigationSessionsTables() {
+        val executedSql = mutableListOf<String>()
+        val mockDb = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        // Execute migration
+        MotoLogDatabase.MIGRATION_8_9.migrate(mockDb)
+
+        // 1. Version numbers
+        assertEquals(8, MotoLogDatabase.MIGRATION_8_9.startVersion)
+        assertEquals(9, MotoLogDatabase.MIGRATION_8_9.endVersion)
+
+        // 2. No destructive fallback (DROP TABLE)
+        assertFalse("Migration must not contain DROP TABLE", executedSql.any { it.contains("DROP TABLE", ignoreCase = true) })
+
+        // 3. Creates saved_destinations table
+        assertTrue(
+            "Must create saved_destinations table",
+            executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `saved_destinations`") }
+        )
+
+        // 4. Creates navigation_sessions table and indices
+        assertTrue(
+            "Must create navigation_sessions table",
+            executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `navigation_sessions`") }
+        )
+        assertTrue(
+            "Must create index on navigation_sessions rideId",
+            executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_navigation_sessions_rideId`") }
+        )
+        assertTrue(
+            "Must create index on navigation_sessions startedAtTimestamp",
+            executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_navigation_sessions_startedAtTimestamp`") }
+        )
+    }
 }

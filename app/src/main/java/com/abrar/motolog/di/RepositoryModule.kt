@@ -29,4 +29,10 @@ abstract class RepositoryModule {
     abstract fun bindGarageRepository(
         impl: com.abrar.motolog.data.repository.GarageRepositoryImpl
     ): com.abrar.motolog.domain.repository.GarageRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNavigationSessionRepository(
+        impl: com.abrar.motolog.data.repository.NavigationSessionRepositoryImpl
+    ): com.abrar.motolog.domain.repository.NavigationSessionRepository
 }

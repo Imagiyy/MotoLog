@@ -9,14 +9,18 @@ import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.FuelLogDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
 import com.abrar.motolog.data.local.dao.MileageCycleDao
+import com.abrar.motolog.data.local.dao.NavigationSessionDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
+import com.abrar.motolog.data.local.dao.SavedDestinationDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
 import com.abrar.motolog.data.local.entity.MileageCycleEntity
+import com.abrar.motolog.data.local.entity.NavigationSessionEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
+import com.abrar.motolog.data.local.entity.SavedDestinationEntity
 
 /**
  * Room database for MotoLog.
@@ -32,9 +36,11 @@ import com.abrar.motolog.data.local.entity.RidePointEntity
         RidePointEntity::class,
         MaintenanceItemEntity::class,
         FuelLogEntity::class,
-        MileageCycleEntity::class
+        MileageCycleEntity::class,
+        SavedDestinationEntity::class,
+        NavigationSessionEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -45,6 +51,8 @@ abstract class MotoLogDatabase : RoomDatabase() {
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun fuelLogDao(): FuelLogDao
     abstract fun mileageCycleDao(): MileageCycleDao
+    abstract fun savedDestinationDao(): SavedDestinationDao
+    abstract fun navigationSessionDao(): NavigationSessionDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -150,6 +158,43 @@ abstract class MotoLogDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_bikeId` ON `mileage_cycles` (`bikeId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_mileage_cycles_resetTimestampEpochMs` ON `mileage_cycles` (`resetTimestampEpochMs`)")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `saved_destinations` (
+                        `id` TEXT PRIMARY KEY NOT NULL,
+                        `latitude` REAL NOT NULL,
+                        `longitude` REAL NOT NULL,
+                        `displayName` TEXT NOT NULL,
+                        `providerPlaceId` TEXT,
+                        `sourceType` TEXT NOT NULL,
+                        `createdAtTimestamp` INTEGER NOT NULL,
+                        `isFavorite` INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `navigation_sessions` (
+                        `sessionId` TEXT PRIMARY KEY NOT NULL,
+                        `plannedRouteId` TEXT NOT NULL,
+                        `rideId` INTEGER,
+                        `status` TEXT NOT NULL,
+                        `startedAtTimestamp` INTEGER NOT NULL,
+                        `endedAtTimestamp` INTEGER,
+                        `lastKnownProgressJson` TEXT,
+                        `routeSnapshotJson` TEXT,
+                        `rerouteCount` INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_navigation_sessions_rideId` ON `navigation_sessions` (`rideId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_navigation_sessions_startedAtTimestamp` ON `navigation_sessions` (`startedAtTimestamp`)")
             }
         }
     }
