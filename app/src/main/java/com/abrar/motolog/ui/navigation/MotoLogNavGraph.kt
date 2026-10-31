@@ -64,6 +64,9 @@ data class BikeDetailRoute(val bikeId: Long)
 @Serializable
 data class RideDetailRoute(val rideId: Long)
 
+@Serializable
+data object DestinationRoute
+
 sealed interface NavIntentEvent {
     data class NavigateToBike(val bikeId: Long) : NavIntentEvent
     data object RequestStopRide : NavIntentEvent
@@ -202,6 +205,9 @@ fun MotoLogNavGraph(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onNavigateToDestination = {
+                        navController.navigate(DestinationRoute)
                     }
                 )
             }
@@ -287,6 +293,49 @@ fun MotoLogNavGraph(
                 com.abrar.motolog.ui.history.detail.RideDetailScreen(
                     onNavigateBack = {
                         navController.popBackStack()
+                    }
+                )
+            }
+            composable<DestinationRoute>(
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(250)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(250)
+                    )
+                }
+            ) {
+                com.abrar.motolog.ui.destination.DestinationScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigationStarted = {
+                        val popped = navController.popBackStack(LiveRoute, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(LiveRoute) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                            }
+                        }
                     }
                 )
             }

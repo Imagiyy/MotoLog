@@ -126,8 +126,7 @@ class GraphHopperRoutingRepository @Inject constructor(
 
                 401, 403 -> {
                     Result.failure(
-                        RoutingError.ProviderError(
-                            response.statusCode,
+                        RoutingError.ApiKeyMissing(
                             "Invalid or missing GraphHopper API key. Please check your key in settings."
                         )
                     )

@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ScreenLockPortrait
@@ -364,6 +365,7 @@ fun RacingTftDashboard(
     keepScreenOn: Boolean = false,
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToDestination: () -> Unit = {},
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
     customColors: DashboardCustomColors = DashboardCustomColors()
 ) {
@@ -440,6 +442,7 @@ fun RacingTftDashboard(
                 onResumeClick = onResumeClick,
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
+                onNavigateToDestination = onNavigateToDestination,
                 palette = palette,
                 customColors = customColors,
                 batteryState = batteryState,
@@ -468,6 +471,7 @@ fun RacingTftDashboard(
                 keepScreenOn = keepScreenOn,
                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                 onNavigateToSettings = onNavigateToSettings,
+                onNavigateToDestination = onNavigateToDestination,
                 onStartClick = onStartClick,
                 onPauseClick = onPauseClick,
                 onResumeClick = onResumeClick,
@@ -513,6 +517,7 @@ private fun TftLandscapeView(
     onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
+    onNavigateToDestination: () -> Unit = {},
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
     batteryState: BatteryState,
@@ -766,6 +771,7 @@ private fun TftLandscapeView(
                 onResumeClick = onResumeClick,
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
+                onNavigateToDestination = onNavigateToDestination,
                 palette = palette,
                 customColors = customColors,
                 batteryState = batteryState,
@@ -809,6 +815,7 @@ private fun TftPortraitView(
     onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
+    onNavigateToDestination: () -> Unit = {},
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
     batteryState: BatteryState,
@@ -895,6 +902,35 @@ private fun TftPortraitView(
                             )
                             Text(
                                 text = "MAP",
+                                color = customColors.textColor,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .clickable { onNavigateToDestination() },
+                        color = customColors.componentColor
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = "Navigation",
+                                tint = customColors.accentColor,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "NAV",
                                 color = customColors.textColor,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -1544,6 +1580,7 @@ private fun TftLandscapeBottomBar(
     onResumeClick: () -> Unit,
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
+    onNavigateToDestination: () -> Unit = {},
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors = DashboardCustomColors(),
     batteryState: BatteryState,
@@ -1637,6 +1674,35 @@ private fun TftLandscapeBottomBar(
                         )
                         Text(
                             text = "MAP",
+                            color = customColors.textColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                        .clickable { onNavigateToDestination() },
+                    color = customColors.componentColor
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Navigation,
+                            contentDescription = "Navigate",
+                            tint = customColors.accentColor,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "NAV",
                             color = customColors.textColor,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,

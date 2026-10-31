@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
@@ -116,6 +117,7 @@ fun RetroLiveMap(
     onResumeClick: () -> Unit,
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
+    onNavigateToDestination: () -> Unit = {},
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
@@ -294,33 +296,65 @@ fun RetroLiveMap(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Switch to Full Cockpit button
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
-                    .clickable { onSwitchToCockpit() },
-                color = palette.surface.copy(alpha = 0.92f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Switch to Full Cockpit button
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                        .clickable { onSwitchToCockpit() },
+                    color = palette.surface.copy(alpha = 0.92f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Speed,
-                        contentDescription = "Switch to Cockpit",
-                        tint = palette.primaryAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "COCKPIT",
-                        color = palette.dialText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.sp
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = "Switch to Cockpit",
+                            tint = palette.primaryAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "COCKPIT",
+                            color = palette.dialText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+
+                // Destination / Navigation button
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                        .clickable { onNavigateToDestination() },
+                    color = palette.surface.copy(alpha = 0.92f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Navigation,
+                            contentDescription = "Navigate to Destination",
+                            tint = palette.primaryAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "NAV",
+                            color = palette.dialText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
 

@@ -121,6 +121,15 @@ class SettingsViewModel @Inject constructor(
     val activeBikes: StateFlow<List<BikeEntity>> = bikeDao.getActiveBikes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
 
+    val routingApiKey: StateFlow<String> = settingsRepository.routingApiKey
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
+
+    val routingProviderUrl: StateFlow<String> = settingsRepository.routingProviderUrl
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_ROUTING_PROVIDER_URL)
+
+    val routingAutoRerouteEnabled: StateFlow<Boolean> = settingsRepository.routingAutoRerouteEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
+
     // UI Dialog & Snack State
     private val _messageChannel = Channel<String>(Channel.BUFFERED)
     val messageFlow = _messageChannel.receiveAsFlow()
@@ -170,6 +179,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setKeepScreenOn(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setKeepScreenOn(enabled) }
+    }
+
+    fun setRoutingApiKey(apiKey: String) {
+        viewModelScope.launch { settingsRepository.setRoutingApiKey(apiKey) }
+    }
+
+    fun setRoutingProviderUrl(url: String) {
+        viewModelScope.launch { settingsRepository.setRoutingProviderUrl(url) }
+    }
+
+    fun setRoutingAutoRerouteEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setRoutingAutoRerouteEnabled(enabled) }
     }
 
     fun setThemeMode(mode: ThemeMode) {

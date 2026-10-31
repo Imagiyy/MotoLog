@@ -16,9 +16,9 @@ import kotlinx.serialization.Serializable
 data class LocationPoint(
     val latitude: Double,
     val longitude: Double,
-    val speedMps: Float?,
-    val accuracyMeters: Float,
-    val timestamp: Long,
+    val speedMps: Float? = null,
+    val accuracyMeters: Float = 0f,
+    val timestamp: Long = 0L,
     val altitudeMeters: Double? = null,
     val elapsedTimestampMs: Long? = null,
     val bearingDegrees: Float? = null

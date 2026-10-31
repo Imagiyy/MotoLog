@@ -169,7 +169,7 @@ class GraphHopperRoutingRepositoryTest {
     }
 
     @Test
-    fun calculateRouteUnauthorizedReturnsProviderError() = runTest {
+    fun calculateRouteUnauthorizedReturnsApiKeyMissing() = runTest {
         fakeTransport.responseToReturn = HttpResponse(401, """{"message": "Your key is invalid"}""")
 
         val request = RouteRequest(
@@ -179,8 +179,22 @@ class GraphHopperRoutingRepositoryTest {
 
         val result = repository.calculateRoute(request)
         assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is RoutingError.ApiKeyMissing)
+    }
+
+    @Test
+    fun calculateRouteServerErrorReturnsProviderError() = runTest {
+        fakeTransport.responseToReturn = HttpResponse(500, """{"message": "Internal error"}""")
+
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(13.0, 78.0)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isFailure)
         val err = result.exceptionOrNull() as RoutingError.ProviderError
-        assertEquals(401, err.statusCode)
+        assertEquals(500, err.statusCode)
     }
 
     @Test

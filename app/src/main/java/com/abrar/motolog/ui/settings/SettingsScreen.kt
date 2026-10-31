@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PauseCircleOutline
@@ -916,7 +917,83 @@ fun SettingsScreen(
             }
 
             // ============================================================
-            // 5. DATA OWNERSHIP & BACKUP
+            // 5. NAVIGATION & ROUTING
+            // ============================================================
+            SettingsSectionHeader(title = "NAVIGATION & ROUTING")
+
+            val routingApiKey by viewModel.routingApiKey.collectAsStateWithLifecycle()
+            val routingAutoRerouteEnabled by viewModel.routingAutoRerouteEnabled.collectAsStateWithLifecycle()
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Navigation,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Routing Provider (GraphHopper)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Required for destination search and motorcycle route planning",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
+                    OutlinedTextField(
+                        value = tempApiKey,
+                        onValueChange = {
+                            tempApiKey = it
+                            viewModel.setRoutingApiKey(it.trim())
+                        },
+                        label = { Text("GraphHopper API Key") },
+                        placeholder = { Text("Enter your GraphHopper key") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Automatic Re-routing",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Recalculate route automatically when off-track",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = routingAutoRerouteEnabled,
+                            onCheckedChange = { viewModel.setRoutingAutoRerouteEnabled(it) }
+                        )
+                    }
+                }
+            }
+
+            // ============================================================
+            // 6. DATA OWNERSHIP & BACKUP
             // ============================================================
             SettingsSectionHeader(title = "DATA OWNERSHIP & BACKUP")
 

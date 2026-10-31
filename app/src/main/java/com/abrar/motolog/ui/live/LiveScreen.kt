@@ -40,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
 import com.abrar.motolog.ui.live.retro.CockpitUtils
 import java.util.Locale
@@ -123,6 +124,7 @@ import kotlin.math.roundToInt
 fun LiveScreen(
     modifier: Modifier = Modifier,
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToDestination: () -> Unit = {},
     viewModel: LiveViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -277,6 +279,7 @@ fun LiveScreen(
                     onResumeClick = handleResume,
                     onStopProgressChange = { viewModel.stopTracking() },
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
+                    onNavigateToDestination = onNavigateToDestination,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     modifier = modifier.fillMaxSize()
@@ -297,6 +300,10 @@ fun LiveScreen(
                     onResumeClick = handleResume,
                     onStopConfirmed = { viewModel.stopTracking() },
                     onSwitchToMap = { currentViewMode = LiveViewMode.MAP },
+                    keepScreenOn = keepScreenOn,
+                    onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
+                    onNavigateToSettings = onNavigateToSettings,
+                    onNavigateToDestination = onNavigateToDestination,
                     palette = palette,
                     customColors = customColors,
                     modifier = modifier.fillMaxSize()
@@ -311,6 +318,7 @@ fun LiveScreen(
                 keepScreenOn = keepScreenOn,
                 onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                 onNavigateToSettings = onNavigateToSettings,
+                onNavigateToDestination = onNavigateToDestination,
                 onStopConfirmed = { viewModel.stopTracking() },
                 palette = palette,
                 modifier = modifier.fillMaxSize()
@@ -335,6 +343,7 @@ fun LiveScreen(
                     onResumeClick = {},
                     onStopProgressChange = {},
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
+                    onNavigateToDestination = onNavigateToDestination,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     isIdle = true,
@@ -360,6 +369,7 @@ fun LiveScreen(
                     keepScreenOn = keepScreenOn,
                     onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                     onNavigateToSettings = onNavigateToSettings,
+                    onNavigateToDestination = onNavigateToDestination,
                     palette = palette,
                     customColors = customColors,
                     modifier = modifier.fillMaxSize()
@@ -660,6 +670,7 @@ private fun TftWaitingForGpsView(
     keepScreenOn: Boolean,
     onToggleKeepScreenOn: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToDestination: () -> Unit = {},
     onStopConfirmed: () -> Unit,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
@@ -711,6 +722,16 @@ private fun TftWaitingForGpsView(
                             imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
                             contentDescription = if (keepScreenOn) "Screen stay awake enabled" else "Screen stay awake disabled",
                             tint = if (keepScreenOn) tftAccent else tftMuted
+                        )
+                    }
+                    IconButton(
+                        onClick = onNavigateToDestination,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Navigation,
+                            contentDescription = "Navigate",
+                            tint = tftAccent
                         )
                     }
                     IconButton(

@@ -21,6 +21,10 @@ sealed class RoutingError(message: String, cause: Throwable? = null) : Exception
     class ProviderError(val statusCode: Int, message: String) :
         RoutingError("Provider error ($statusCode): $message")
 
+    /** Routing or geocoding API key is missing or invalid. */
+    class ApiKeyMissing(message: String = "GraphHopper API key is missing or invalid") :
+        RoutingError(message)
+
     /** Provided coordinates are out of bounds or invalid. */
     class InvalidCoordinates(message: String = "Invalid coordinates supplied") :
         RoutingError(message)
