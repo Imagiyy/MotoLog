@@ -1,5 +1,7 @@
 package com.abrar.motolog.shared.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Pure Kotlin representation of a GPS location fix.
  *
@@ -10,6 +12,7 @@ package com.abrar.motolog.shared.domain.model
  * [elapsedTimestampMs] is monotonic elapsed-realtime millis (for calculation engine Δt).
  * When elapsedTimestampMs is null, the engine falls back to [timestamp].
  */
+@Serializable
 data class LocationPoint(
     val latitude: Double,
     val longitude: Double,

@@ -198,4 +198,38 @@ object TrackingConstants {
 
     /** Fallback half-window (km/h) around median when speed range is too narrow. */
     const val SPEED_COLOR_FALLBACK_WINDOW_KMH: Double = 10.0
+
+    // ============================================================
+    // Navigation & Route Progress
+    // ============================================================
+
+    /** Distance (meters) from destination to trigger arrival detection. */
+    const val NAV_ARRIVAL_RADIUS_METERS: Double = 40.0
+
+    /** Speed threshold (km/h) below which arrival is confirmed within arrival radius. */
+    const val NAV_ARRIVAL_SPEED_CONFIRMATION_KMH: Double = 5.0
+
+    /** Distance (meters) from destination to immediately confirm arrival regardless of speed. */
+    const val NAV_IMMEDIATE_ARRIVAL_RADIUS_METERS: Double = 15.0
+
+    /** Cross-track deviation distance (meters) to trigger off-route warning. */
+    const val NAV_OFF_ROUTE_WARNING_METERS: Double = 40.0
+
+    /** Duration (seconds) of sustained deviation before showing off-route warning. */
+    const val NAV_OFF_ROUTE_WARNING_DELAY_SECONDS: Int = 5
+
+    /** Cross-track deviation distance (meters) to trigger automatic reroute. */
+    const val NAV_OFF_ROUTE_REROUTE_METERS: Double = 80.0
+
+    /** Duration (seconds) of sustained deviation before triggering automatic reroute. */
+    const val NAV_OFF_ROUTE_REROUTE_DELAY_SECONDS: Int = 10
+
+    /** Minimum cooldown duration (seconds) between reroute calculations to prevent loops. */
+    const val NAV_REROUTE_COOLDOWN_SECONDS: Long = 20L
+
+    /** Look-ahead window (in route segments) for forward-compatible nearest-point matching. */
+    const val NAV_SEGMENT_LOOKAHEAD_COUNT: Int = 20
+
+    /** Maximum allowed backward jump in meters due to GPS jitter on the same segment. */
+    const val NAV_PROGRESS_JITTER_TOLERANCE_METERS: Double = 10.0
 }
