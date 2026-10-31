@@ -162,6 +162,7 @@ fun BikeDetailScreen(
                             registrationNumber = bike.registrationNumber,
                             ridesCount = uiState.recordedRidesCount,
                             ridesDistanceKm = uiState.recordedRidesDistanceKm,
+                            unloggedDistanceKm = bike.odometerOffsetKm,
                             useMetricUnits = uiState.useMetricUnits,
                             isCurrentBike = uiState.isCurrentBike,
                             onToggleActive = { viewModel.toggleActiveBike() },
@@ -369,6 +370,7 @@ private fun OdometerHeaderCard(
     registrationNumber: String = "",
     ridesCount: Int,
     ridesDistanceKm: Double,
+    unloggedDistanceKm: Double = 0.0,
     useMetricUnits: Boolean,
     isCurrentBike: Boolean = false,
     onToggleActive: () -> Unit = {},
@@ -428,9 +430,15 @@ private fun OdometerHeaderCard(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 val userRidesDist = UnitConverter.kmToUserDistance(ridesDistanceKm, useMetricUnits)
+                val userUnloggedDist = UnitConverter.kmToUserDistance(unloggedDistanceKm, useMetricUnits)
                 val unitStr = UnitConverter.distanceUnit(useMetricUnits)
+                val ridesSummary = if (userUnloggedDist > 0.05) {
+                    "$ridesCount rides (${String.format(Locale.US, "%.1f", userRidesDist)} $unitStr logged • +${String.format(Locale.US, "%.1f", userUnloggedDist)} $unitStr unlogged)"
+                } else {
+                    "$ridesCount rides (${String.format(Locale.US, "%.1f", userRidesDist)} $unitStr in app)"
+                }
                 Text(
-                    text = "$ridesCount rides (${String.format(Locale.US, "%.1f", userRidesDist)} $unitStr in app)",
+                    text = ridesSummary,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )

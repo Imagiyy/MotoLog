@@ -18,19 +18,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+import com.abrar.motolog.data.local.dao.BikeDao
+import com.abrar.motolog.data.local.entity.BikeEntity
+import com.abrar.motolog.shared.domain.engine.OdometerCalculator
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class RideRepositoryImplTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRideDao: FakeRideDao
     private lateinit var fakeRidePointDao: FakeRidePointDao
+    private lateinit var fakeBikeDao: FakeBikeDao
     private lateinit var repository: RideRepositoryImpl
 
     @Before
     fun setUp() {
         fakeRideDao = FakeRideDao()
         fakeRidePointDao = FakeRidePointDao()
-        repository = RideRepositoryImpl(fakeRideDao, fakeRidePointDao, testDispatcher)
+        fakeBikeDao = FakeBikeDao()
+        repository = RideRepositoryImpl(fakeRideDao, fakeRidePointDao, fakeBikeDao, testDispatcher)
     }
 
     @Test
@@ -73,6 +79,76 @@ class RideRepositoryImplTest {
 
         assertNull(fakeRideDao.ridesMap[5L])
         assertTrue("RidePoints must be wiped on commit deletion", fakeRidePointDao.pointsMap[5L].isNullOrEmpty())
+    }
+
+    @Test
+    fun commitDeletion_transfersRideDistanceToBikeOdometerOffsetAndPreservesOdometer() = runTest(testDispatcher) {
+        val bike = BikeEntity(id = 1L, name = "Honda CB300R", initialOdometerKm = 1000.0, odometerOffsetKm = 10.0)
+        fakeBikeDao.bikesMap[1L] = bike
+
+        val ride = RideEntity(
+            id = 50L,
+            bikeId = 1L,
+            name = "Sunday Ride",
+            startTime = 1000L,
+            distanceMeters = 25000.0, // 25 km
+            status = RideStatus.COMPLETED
+        )
+        fakeRideDao.ridesMap[50L] = ride
+
+        // Initial state before deletion:
+        // Recorded distance = 25 km, Initial = 1000 km, Offset = 10 km -> Total Odometer = 1035 km
+        val initialOdo = OdometerCalculator.calculateCurrentOdometerKm(
+            initialOdometerKm = bike.initialOdometerKm,
+            recordedDistanceMeters = ride.distanceMeters,
+            odometerOffsetKm = bike.odometerOffsetKm
+        )
+        assertEquals(1035.0, initialOdo, 0.001)
+
+        // Delete the ride
+        repository.commitDeletion(50L)
+        advanceUntilIdle()
+
+        // Ride is deleted from rides table
+        assertNull(fakeRideDao.ridesMap[50L])
+
+        // Bike offset increased by 25 km (from 10.0 to 35.0)
+        val updatedBike = fakeBikeDao.bikesMap[1L]
+        assertEquals(35.0, updatedBike?.odometerOffsetKm ?: 0.0, 0.001)
+
+        // New odometer calculation:
+        // Recorded distance = 0 km, Initial = 1000 km, Offset = 35 km -> Total Odometer = 1035 km (UNCHANGED!)
+        val finalOdo = OdometerCalculator.calculateCurrentOdometerKm(
+            initialOdometerKm = updatedBike?.initialOdometerKm ?: 0.0,
+            recordedDistanceMeters = 0.0,
+            odometerOffsetKm = updatedBike?.odometerOffsetKm ?: 0.0
+        )
+        assertEquals(initialOdo, finalOdo, 0.001)
+    }
+
+    @Test
+    fun commitDeletion_importedRideNotCountingTowardsOdometerDoesNotAlterBikeOffset() = runTest(testDispatcher) {
+        val bike = BikeEntity(id = 1L, name = "Honda CB300R", initialOdometerKm = 1000.0, odometerOffsetKm = 10.0)
+        fakeBikeDao.bikesMap[1L] = bike
+
+        val importedRide = RideEntity(
+            id = 51L,
+            bikeId = 1L,
+            name = "Old GPX Import",
+            startTime = 1000L,
+            distanceMeters = 50000.0,
+            status = RideStatus.COMPLETED,
+            isImported = true,
+            countsTowardOdometer = false
+        )
+        fakeRideDao.ridesMap[51L] = importedRide
+
+        repository.commitDeletion(51L)
+        advanceUntilIdle()
+
+        assertNull(fakeRideDao.ridesMap[51L])
+        // Offset remains 10.0 because the ride never counted towards the odometer
+        assertEquals(10.0, fakeBikeDao.bikesMap[1L]?.odometerOffsetKm ?: 0.0, 0.001)
     }
 
     @Test
@@ -211,5 +287,72 @@ private class FakeRidePointDao : RidePointDao {
 
     override suspend fun deleteAllPoints() {
         pointsMap.clear()
+    }
+}
+
+private class FakeBikeDao : BikeDao {
+    val bikesMap = mutableMapOf<Long, BikeEntity>()
+
+    override suspend fun insert(bike: BikeEntity): Long {
+        bikesMap[bike.id] = bike
+        return bike.id
+    }
+
+    override suspend fun update(bike: BikeEntity) {
+        bikesMap[bike.id] = bike
+    }
+
+    override suspend fun delete(bike: BikeEntity) {
+        bikesMap.remove(bike.id)
+    }
+
+    override fun getAllBikes(): Flow<List<BikeEntity>> =
+        MutableStateFlow(bikesMap.values.toList())
+
+    override fun getActiveBikes(): Flow<List<BikeEntity>> =
+        MutableStateFlow(bikesMap.values.filter { !it.isArchived })
+
+    override suspend fun getActiveBikesOnce(): List<BikeEntity> =
+        bikesMap.values.filter { !it.isArchived }
+
+    override fun getArchivedBikes(): Flow<List<BikeEntity>> =
+        MutableStateFlow(bikesMap.values.filter { it.isArchived })
+
+    override suspend fun getBikeById(bikeId: Long): BikeEntity? = bikesMap[bikeId]
+
+    override suspend fun getActiveBikeCount(): Int =
+        bikesMap.values.count { !it.isArchived }
+
+    override suspend fun getRideCountForBike(bikeId: Long): Int = 0
+
+    override suspend fun setArchived(bikeId: Long, isArchived: Boolean) {
+        val existing = bikesMap[bikeId]
+        if (existing != null) {
+            bikesMap[bikeId] = existing.copy(isArchived = isArchived)
+        }
+    }
+
+    override suspend fun updateOdometerOffset(bikeId: Long, offsetKm: Double) {
+        val existing = bikesMap[bikeId]
+        if (existing != null) {
+            bikesMap[bikeId] = existing.copy(odometerOffsetKm = offsetKm)
+        }
+    }
+
+    override suspend fun updateMileageReset(bikeId: Long, resetOdoKm: Double?, resetEpochMs: Long?) {
+        val existing = bikesMap[bikeId]
+        if (existing != null) {
+            bikesMap[bikeId] = existing.copy(mileageResetOdometerKm = resetOdoKm, mileageResetEpochMs = resetEpochMs)
+        }
+    }
+
+    override suspend fun getAllBikesOnce(): List<BikeEntity> = bikesMap.values.toList()
+
+    override suspend fun insertAll(bikes: List<BikeEntity>) {
+        bikes.forEach { bikesMap[it.id] = it }
+    }
+
+    override suspend fun deleteAllBikes() {
+        bikesMap.clear()
     }
 }

@@ -72,8 +72,13 @@ fun HistoryScreen(
     LaunchedEffect(uiState.recentlyDeletedRide) {
         val deleted = uiState.recentlyDeletedRide
         if (deleted != null) {
+            val message = if (deleted.bikeId != null && deleted.distanceMeters > 0) {
+                "Ride deleted • Odometer preserved in unlogged rides"
+            } else {
+                "Ride deleted"
+            }
             val result = snackbarHostState.showSnackbar(
-                message = "Ride deleted",
+                message = message,
                 actionLabel = "Undo",
                 duration = SnackbarDuration.Short
             )

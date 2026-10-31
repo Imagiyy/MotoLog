@@ -299,6 +299,16 @@ private fun BikeCard(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold
                     )
+                    val unloggedKm = item.bike.odometerOffsetKm
+                    val userUnlogged = UnitConverter.kmToUserDistance(unloggedKm, useMetricUnits)
+                    if (userUnlogged > 0.05) {
+                        Text(
+                            text = "+${String.format(Locale.US, "%,.1f", userUnlogged)} $unitStr unlogged",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
                 if (item.isCurrentBike) {
