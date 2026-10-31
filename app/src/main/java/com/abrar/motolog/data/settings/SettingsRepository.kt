@@ -51,6 +51,9 @@ class SettingsRepository @Inject constructor(
         val DASHBOARD_BG_COLOR = longPreferencesKey("dashboard_bg_color")
         val DASHBOARD_ACCENT_COLOR = longPreferencesKey("dashboard_accent_color")
         val DASHBOARD_COMPONENT_COLOR = longPreferencesKey("dashboard_component_color")
+        val ROUTING_API_KEY = stringPreferencesKey("routing_api_key")
+        val ROUTING_PROVIDER_URL = stringPreferencesKey("routing_provider_url")
+        val ROUTING_AUTO_REROUTE_ENABLED = booleanPreferencesKey("routing_auto_reroute_enabled")
     }
 
     // ============================================================
@@ -62,6 +65,7 @@ class SettingsRepository @Inject constructor(
         const val DEFAULT_DASHBOARD_BG_COLOR = 0xFF030508L
         const val DEFAULT_DASHBOARD_ACCENT_COLOR = 0xFF00D4E5L
         const val DEFAULT_DASHBOARD_COMPONENT_COLOR = 0xFF0D0F14L
+        const val DEFAULT_ROUTING_PROVIDER_URL = "https://graphhopper.com/api/1"
     }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { prefs ->
@@ -340,6 +344,40 @@ class SettingsRepository @Inject constructor(
             } else {
                 prefs.remove(Keys.CURRENT_BIKE_ID)
             }
+        }
+    }
+
+    // ============================================================
+    // Routing & Navigation Preferences
+    // ============================================================
+
+    val routingApiKey: Flow<String> = dataStore.data.map { prefs ->
+        prefs[Keys.ROUTING_API_KEY] ?: ""
+    }
+
+    suspend fun setRoutingApiKey(apiKey: String) {
+        dataStore.edit { prefs ->
+            prefs[Keys.ROUTING_API_KEY] = apiKey.trim()
+        }
+    }
+
+    val routingProviderUrl: Flow<String> = dataStore.data.map { prefs ->
+        prefs[Keys.ROUTING_PROVIDER_URL] ?: DEFAULT_ROUTING_PROVIDER_URL
+    }
+
+    suspend fun setRoutingProviderUrl(url: String) {
+        dataStore.edit { prefs ->
+            prefs[Keys.ROUTING_PROVIDER_URL] = url.trim()
+        }
+    }
+
+    val routingAutoRerouteEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.ROUTING_AUTO_REROUTE_ENABLED] ?: true
+    }
+
+    suspend fun setRoutingAutoRerouteEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.ROUTING_AUTO_REROUTE_ENABLED] = enabled
         }
     }
 }
