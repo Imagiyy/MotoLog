@@ -20,8 +20,8 @@ sealed interface TrackingSessionState {
     /** Tracking is actively recording or paused. */
     data class Tracking(
         val rideId: Long,
-        val isPaused: Boolean = false,
-        val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+        val pauseState: PauseState = PauseState.RECORDING,
+        val isPaused: Boolean = pauseState.isPaused,
         val isGpsLost: Boolean = false,
         val stats: RideStats = RideStats(),
         val accuracyMeters: Float = 0f,
@@ -34,27 +34,15 @@ sealed interface TrackingSessionState {
 
         constructor(
             rideId: Long,
-            pauseState: PauseState,
-            isGpsLost: Boolean = false,
+            isPaused: Boolean,
             stats: RideStats = RideStats(),
-            accuracyMeters: Float = 0f,
-            isSpeedAlert: Boolean = false,
-            latitude: Double? = null,
-            longitude: Double? = null,
-            altitudeMeters: Double? = null,
-            bearingDegrees: Float? = null
+            accuracyMeters: Float = 0f
         ) : this(
             rideId = rideId,
-            isPaused = pauseState.isPaused,
-            pauseState = pauseState,
-            isGpsLost = isGpsLost,
+            pauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+            isPaused = isPaused,
             stats = stats,
-            accuracyMeters = accuracyMeters,
-            isSpeedAlert = isSpeedAlert,
-            latitude = latitude,
-            longitude = longitude,
-            altitudeMeters = altitudeMeters,
-            bearingDegrees = bearingDegrees
+            accuracyMeters = accuracyMeters
         )
     }
 

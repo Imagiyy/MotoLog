@@ -189,8 +189,8 @@ class LiveViewModel @Inject constructor(
                         LiveUiState.Tracking(
                             speedKmh = sessionState.stats.currentSpeedKmh,
                             accuracyMeters = sessionState.accuracyMeters,
-                            isPaused = sessionState.isPaused,
                             pauseState = sessionState.pauseState,
+                            isPaused = sessionState.pauseState.isPaused,
                             isGpsLost = sessionState.isGpsLost,
                             stats = sessionState.stats,
                             isSpeedAlert = sessionState.isSpeedAlert,

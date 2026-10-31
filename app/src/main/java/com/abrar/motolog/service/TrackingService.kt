@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -111,7 +113,7 @@ class TrackingService : Service() {
 
     // Bounded queue for batching points to Room. Backpressure suspends location processing
     // rather than growing the heap unboundedly if Room writes stall.
-    private val pointChannel = Channel<RidePointEntity>(capacity = 5_000)
+    private var pointChannel = Channel<RidePointEntity>(capacity = 5_000)
 
     private var lastLocationCallbackTime = 0L
     /** Tracks when we last accepted a valid GPS fix (passes accuracy filter). Used for GPS-loss detection. */
@@ -277,6 +279,7 @@ class TrackingService : Service() {
         }
 
         // 4. Start background point batch writer
+        pointChannel = Channel(capacity = 5_000)
         startBatchWriter()
 
         // 5. Start periodic checkpoint runner
@@ -610,6 +613,7 @@ class TrackingService : Service() {
         if (activeRideId <= 0L) {
             Log.w("TrackingService", "handleStop called with invalid activeRideId=$activeRideId, aborting")
             serviceState = ServiceState.IDLE
+            trackingRepository.updateState(TrackingSessionState.Idle)
             withContext(Dispatchers.Main) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -633,8 +637,13 @@ class TrackingService : Service() {
 
         // 3. Close the channel to signal the writer, then flush remaining points
         pointChannel.close()
-        // Wait for the batch writer to drain remaining items
-        batchWriterJob?.join()
+        // Wait for the batch writer to drain remaining items with a timeout safety net
+        withTimeoutOrNull(3_000L) {
+            batchWriterJob?.join()
+        } ?: run {
+            Log.w("TrackingService", "Batch writer drain timed out, cancelling job")
+            batchWriterJob?.cancelAndJoin()
+        }
 
         // 4. Checkpoint final stats & mark COMPLETED
         val finalStats = calculatorMutex.withLock { rideCalculator.stats }
@@ -719,7 +728,6 @@ class TrackingService : Service() {
             val batch = mutableListOf<RidePointEntity>()
             try {
                 while (isActive) {
-                    delay(TrackingConstants.DB_BATCH_WRITE_INTERVAL_MS)
                     // Drain all available items
                     while (true) {
                         val point = pointChannel.tryReceive().getOrNull() ?: break
@@ -729,6 +737,10 @@ class TrackingService : Service() {
                         writeBatchWithRetry(batch)
                         batch.clear()
                     }
+                    if (pointChannel.isClosedForReceive) {
+                        break
+                    }
+                    delay(TrackingConstants.DB_BATCH_WRITE_INTERVAL_MS)
                 }
             } catch (_: kotlinx.coroutines.CancellationException) {
                 // Normal cancellation — fall through to drain

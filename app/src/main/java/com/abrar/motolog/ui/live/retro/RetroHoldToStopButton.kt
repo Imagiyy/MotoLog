@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +28,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +61,8 @@ fun ThemedHoldToStopButton(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
+    val currentOnStopConfirmed by rememberUpdatedState(onStopConfirmed)
+    val haptic = LocalHapticFeedback.current
 
     Box(
         modifier = modifier
@@ -67,26 +73,35 @@ fun ThemedHoldToStopButton(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    var confirmed = false
                     val animationJob = coroutineScope.launch {
                         progress.animateTo(
                             targetValue = 1f,
                             animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
                         )
-                        onStopConfirmed()
+                        confirmed = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        currentOnStopConfirmed()
                     }
 
                     // Wait until pointer is released or cancelled
                     var isUp = false
                     while (!isUp) {
                         val event = awaitPointerEvent()
-                        if (event.changes.all { it.id != down.id || !it.pressed }) {
+                        // Consume pointer events so parent scrollable containers don't intercept the hold gesture
+                        event.changes.forEach { it.consume() }
+                        val downChange = event.changes.find { it.id == down.id }
+                        if (downChange == null || !downChange.pressed) {
                             isUp = true
                         }
                     }
 
-                    animationJob.cancel()
-                    coroutineScope.launch {
-                        progress.snapTo(0f)
+                    if (!confirmed) {
+                        animationJob.cancel()
+                        coroutineScope.launch {
+                            progress.snapTo(0f)
+                        }
                     }
                 }
             },

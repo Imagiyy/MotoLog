@@ -10,8 +10,6 @@
             Only user preferences (DataStore/SharedPrefs) are migrated.
             Ride data can be migrated explicitly via the in-app backup/restore flow.
         -->
-        <exclude domain="database" path="." />
-        <exclude domain="root" path="." />
         <include domain="sharedpref" path="." />
     </device-transfer>
 </data-extraction-rules>

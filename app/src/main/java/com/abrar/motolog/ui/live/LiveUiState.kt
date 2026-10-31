@@ -32,8 +32,8 @@ sealed interface LiveUiState {
     data class Tracking(
         val speedKmh: Double,
         val accuracyMeters: Float,
-        val isPaused: Boolean = false,
-        val pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+        val pauseState: PauseState = PauseState.RECORDING,
+        val isPaused: Boolean = pauseState.isPaused,
         val isGpsLost: Boolean = false,
         val stats: RideStats = RideStats(),
         val isSpeedAlert: Boolean = false,
@@ -48,7 +48,7 @@ sealed interface LiveUiState {
         constructor(
             speedKmh: Double,
             accuracyMeters: Float,
-            pauseState: PauseState,
+            isPaused: Boolean,
             isGpsLost: Boolean = false,
             stats: RideStats = RideStats(),
             isSpeedAlert: Boolean = false,
@@ -61,8 +61,8 @@ sealed interface LiveUiState {
         ) : this(
             speedKmh = speedKmh,
             accuracyMeters = accuracyMeters,
-            isPaused = pauseState.isPaused,
-            pauseState = pauseState,
+            pauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
+            isPaused = isPaused,
             isGpsLost = isGpsLost,
             stats = stats,
             isSpeedAlert = isSpeedAlert,

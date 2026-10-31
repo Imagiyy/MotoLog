@@ -31,7 +31,10 @@ class FakeTrackingRepository : TrackingRepository {
         pauseCalled = true
         val current = _sessionState.value
         if (current is TrackingSessionState.Tracking) {
-            _sessionState.value = current.copy(isPaused = true)
+            _sessionState.value = current.copy(
+                isPaused = true,
+                pauseState = com.abrar.motolog.shared.domain.model.PauseState.MANUALLY_PAUSED
+            )
         }
     }
 
@@ -39,7 +42,10 @@ class FakeTrackingRepository : TrackingRepository {
         resumeCalled = true
         val current = _sessionState.value
         if (current is TrackingSessionState.Tracking) {
-            _sessionState.value = current.copy(isPaused = false)
+            _sessionState.value = current.copy(
+                isPaused = false,
+                pauseState = com.abrar.motolog.shared.domain.model.PauseState.RECORDING
+            )
         }
     }
 
