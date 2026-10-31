@@ -1,55 +1,42 @@
 package com.abrar.motolog.ui.live.retro
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.ui.theme.JewelRed
 import com.abrar.motolog.ui.theme.RetroBrass
 import com.abrar.motolog.ui.theme.RetroIvory
-import kotlinx.coroutines.launch
 
 /**
- * 2-Second Hold-to-Stop button with customizable motorcycle styling
- * and visual progress fill animation. Complies with the 56dp glove-friendly touch target rule.
+ * Stop button with customizable motorcycle styling and instant press interaction.
+ * Complies with the 56dp glove-friendly touch target rule.
  */
 @Composable
 fun ThemedHoldToStopButton(
     onStopConfirmed: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "HOLD TO STOP",
-    progressLabel: String = "HOLD",
+    label: String = "STOP",
+    progressLabel: String = "STOP",
     borderColor: Color = RetroBrass,
     gradientColors: List<Color> = listOf(
         Color(0xFF5E1717),
@@ -57,10 +44,8 @@ fun ThemedHoldToStopButton(
     ),
     progressFillColor: Color = JewelRed.copy(alpha = 0.5f),
     textColor: Color = RetroIvory,
-    cornerRadius: androidx.compose.ui.unit.Dp = 8.dp
+    cornerRadius: Dp = 8.dp
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val progress = remember { Animatable(0f) }
     val currentOnStopConfirmed by rememberUpdatedState(onStopConfirmed)
     val haptic = LocalHapticFeedback.current
 
@@ -70,60 +55,14 @@ fun ThemedHoldToStopButton(
             .clip(RoundedCornerShape(cornerRadius))
             .background(Brush.verticalGradient(colors = gradientColors))
             .border(1.5.dp, borderColor, RoundedCornerShape(cornerRadius))
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    var confirmed = false
-                    val animationJob = coroutineScope.launch {
-                        progress.animateTo(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-                        )
-                        confirmed = true
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        currentOnStopConfirmed()
-                    }
-
-                    // Wait until pointer is released or cancelled
-                    var isUp = false
-                    while (!isUp) {
-                        val event = awaitPointerEvent()
-                        // Consume pointer events so parent scrollable containers don't intercept the hold gesture
-                        event.changes.forEach { it.consume() }
-                        val downChange = event.changes.find { it.id == down.id }
-                        if (downChange == null || !downChange.pressed) {
-                            isUp = true
-                        }
-                    }
-
-                    if (!confirmed) {
-                        animationJob.cancel()
-                        coroutineScope.launch {
-                            progress.snapTo(0f)
-                        }
-                    }
-                }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                currentOnStopConfirmed()
             },
         contentAlignment = Alignment.Center
     ) {
-        // Progress Fill Bar
-        if (progress.value > 0f) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawRect(
-                    color = progressFillColor,
-                    topLeft = Offset.Zero,
-                    size = Size(size.width * progress.value, size.height)
-                )
-            }
-        }
-
         Text(
-            text = if (progress.value > 0f) {
-                "$progressLabel (${(2.0 * (1f - progress.value) + 0.1).toInt()}s)"
-            } else {
-                label
-            },
+            text = label,
             color = textColor,
             fontSize = 15.sp,
             fontWeight = FontWeight.Black,
@@ -135,15 +74,19 @@ fun ThemedHoldToStopButton(
 }
 
 /**
- * Vintage 2-Second Hold-to-Stop button with classic motorcycle ignition kill-switch styling.
+ * Vintage Stop button with classic motorcycle ignition kill-switch styling.
+ * Triggers stop immediately on press.
  */
 @Composable
 fun RetroHoldToStopButton(
     onStopConfirmed: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = "STOP"
 ) {
     ThemedHoldToStopButton(
         onStopConfirmed = onStopConfirmed,
-        modifier = modifier
+        modifier = modifier,
+        label = label
     )
 }
+

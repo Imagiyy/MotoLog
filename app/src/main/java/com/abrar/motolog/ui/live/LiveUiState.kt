@@ -84,7 +84,7 @@ sealed interface LiveUiState {
     ) : LiveUiState
 
     /**
-     * Tracking stopped after confirming 2-second Hold-to-Stop.
+     * Tracking stopped after confirming Stop.
      * Location updates are completely ceased.
      */
     @Immutable

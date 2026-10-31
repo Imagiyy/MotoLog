@@ -843,7 +843,7 @@ private fun RetroMiniCockpitCluster(
                         )
                     }
 
-                    // Hold-to-Stop Button (56dp min height)
+                    // Stop Button (56dp min height)
                     RetroHoldToStopButton(
                         onStopConfirmed = { onStopProgressChange(1f) },
                         modifier = Modifier
@@ -970,7 +970,7 @@ private fun RetroCompactMinimizedHudPill(
                 }
             }
 
-            // Right: Pause/Resume + Hold to Stop (or START in Idle)
+            // Right: Pause/Resume + Stop (or START in Idle)
             if (isIdle) {
                 Button(
                     onClick = onStartClick,

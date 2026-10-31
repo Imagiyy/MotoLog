@@ -437,7 +437,7 @@ fun ThemedTopRightMapButton(
 
 /**
  * Unified active controls row for motorcycle dashboards.
- * Features a glove-friendly Pause/Resume toggle button and a 2-second Hold-to-Stop button.
+ * Features a glove-friendly Pause/Resume toggle button and an instant Stop button.
  */
 @Composable
 fun ThemedCockpitControlsRow(
@@ -449,7 +449,7 @@ fun ThemedCockpitControlsRow(
     modifier: Modifier = Modifier,
     pauseLabel: String = "PAUSE",
     resumeLabel: String = "RESUME",
-    stopLabel: String = "HOLD TO STOP",
+    stopLabel: String = "STOP",
     cornerRadius: Dp = 8.dp
 ) {
     Row(
@@ -493,7 +493,7 @@ fun ThemedCockpitControlsRow(
             )
         }
 
-        // Hold-to-Stop Button (56dp min height, 2-second hold gesture)
+        // Stop Button (56dp min height, instant tap)
         ThemedHoldToStopButton(
             onStopConfirmed = onStopConfirmed,
             label = stopLabel,
