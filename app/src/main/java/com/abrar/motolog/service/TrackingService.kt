@@ -647,6 +647,35 @@ class TrackingService : Service() {
 
         // 4. Checkpoint final stats & mark COMPLETED
         val finalStats = calculatorMutex.withLock { rideCalculator.stats }
+        if (finalStats.isZeroRide()) {
+            Log.i("TrackingService", "Stopping empty/zero ride (distance=${finalStats.totalDistanceMeters}m, movingTime=${finalStats.movingTimeMs}ms, maxSpeed=${finalStats.maxSpeedKmh}km/h). Discarding without saving to history.")
+            // Delete draft ride and any residual points from Room database
+            ridePointDao.deletePointsForRide(activeRideId)
+            val existingRide = rideDao.getRideById(activeRideId)
+            if (existingRide != null) {
+                rideDao.delete(existingRide)
+            }
+
+            // Return UI to Idle state
+            trackingRepository.updateState(TrackingSessionState.Idle)
+
+            // Release audio resources and tear down foreground service
+            try {
+                toneGenerator?.release()
+                toneGenerator = null
+            } catch (_: Exception) {}
+
+            activeRideId = 0L
+            serviceState = ServiceState.IDLE
+
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(applicationContext, "Empty ride discarded", android.widget.Toast.LENGTH_SHORT).show()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            return
+        }
+
         val now = System.currentTimeMillis()
         val existingRide = rideDao.getRideById(activeRideId)
         val startTime = existingRide?.startTime ?: now

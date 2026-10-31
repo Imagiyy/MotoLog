@@ -42,6 +42,10 @@ object TrackingConstants {
      *  Once reached, this initial 100m is credited into total distance. */
     const val START_CONFIRMATION_DISTANCE_METERS: Double = 100.0
 
+    /** Minimum distance (meters) required for a ride to be saved to history upon stop.
+     *  Rides stopped with distance below this and zero moving time/speed are discarded as empty/zero rides. */
+    const val MIN_SAVEABLE_RIDE_DISTANCE_METERS: Double = 10.0
+
     // ============================================================
     // Auto-Pause
     // ============================================================

@@ -69,7 +69,14 @@ class TrackingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun checkActiveRideOnStartup(): RideEntity? = withContext(Dispatchers.IO) {
-        rideDao.findActiveRide()
+        val activeRide = rideDao.findActiveRide() ?: return@withContext null
+        val pointCount = ridePointDao.getPointCount(activeRide.id)
+        if (pointCount == 0) {
+            ridePointDao.deletePointsForRide(activeRide.id)
+            rideDao.delete(activeRide)
+            return@withContext null
+        }
+        activeRide
     }
 
     override suspend fun recoverRide(activeRide: RideEntity): RideStats = withContext(Dispatchers.IO) {
