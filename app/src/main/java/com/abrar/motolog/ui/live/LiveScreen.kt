@@ -28,9 +28,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -832,7 +834,8 @@ private fun TftStoppedView(
                     colors = listOf(tftBg, Color(0xFF06080E), tftBg)
                 )
             )
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         val isLandscape = maxWidth > maxHeight
         val cardHeight = if (isLandscape) 64.dp else 76.dp
@@ -840,10 +843,12 @@ private fun TftStoppedView(
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(spacing)
+            verticalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterVertically)
         ) {
             // Header Status Tag
             Box(
