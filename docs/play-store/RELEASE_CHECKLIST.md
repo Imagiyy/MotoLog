@@ -60,6 +60,25 @@
   - Check targetSdk is 36.
   - Verify native libraries in `.aab` have 16 KB segment alignment.
 
+### 6. Destination Tracking & Navigation Verification
+- [ ] **Privacy Disclosures**: Confirm routing and geocoding section in `docs/play-store/PRIVACY_POLICY.md` accurately describes external API interactions (origin/destination coordinates only, no account or device identifiers sent).
+- [ ] **Data Safety Alignment**: Confirm Data Safety answers reflect that routing requests only transfer ephemeral user-initiated destination coordinates, and no ride history or location data is stored externally.
+- [ ] **Network & Transport Hardening**:
+  - Verify strict HTTPS enforced (`usesCleartextTraffic="false"`).
+  - Verify connection timeouts (10s connect, 15s read) and maximum response size bounded (5MB limit).
+- [ ] **Offline Autonomy**:
+  - Confirm active route progress matching continues offline using on-device GPS matching.
+  - Verify route snapshot is saved locally in Room database (Room migration 8 -> 9).
+  - Confirm ride recording and telemetry continue without interruption during network loss.
+- [ ] **Observability & Diagnostics**:
+  - Verify `NavigationDiagnostics` collects aggregated counters with zero PII, zero coordinates, and zero API tokens.
+  - Verify diagnostic JSON export contains only non-sensitive metrics.
+- [ ] **Glove-Friendly Touch Targets**:
+  - Verify all navigation interactive targets meet or exceed 48x48dp (primary navigation buttons >= 56dp).
+- [ ] **Rider Safety & Legal Disclaimers**:
+  - Confirm legal speed disclaimer is visible: speed is GPS-derived and not a legal speedometer; do not interact with phone while riding.
+  - Verify Bluetooth helmet audio focus releases cleanly on mute or completion.
+
 ---
 
 ## Part 2: Google Play Console Setup

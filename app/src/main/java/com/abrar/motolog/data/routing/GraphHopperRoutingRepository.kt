@@ -31,10 +31,13 @@ import javax.inject.Singleton
  * Supports motorcycle & car travel profiles, polyline decoding, maneuver mapping,
  * bounded retries, timeout detection, rate limit handling, and request cancellation.
  */
+import com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics
+
 @Singleton
 class GraphHopperRoutingRepository @Inject constructor(
     private val httpTransport: HttpTransport,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val diagnostics: NavigationDiagnostics = NavigationDiagnostics()
 ) : RoutingRepository {
 
     private val json = Json {
@@ -47,6 +50,7 @@ class GraphHopperRoutingRepository @Inject constructor(
     private var lastSuccessfulRequest: RouteRequest? = null
 
     override suspend fun calculateRoute(request: RouteRequest): Result<List<PlannedRoute>> {
+        diagnostics.recordRouteRequest()
         return try {
             val providerUrl = settingsRepository.routingProviderUrl.first()
             val apiKey = settingsRepository.routingApiKey.first()
@@ -116,15 +120,18 @@ class GraphHopperRoutingRepository @Inject constructor(
                     }
 
                     lastSuccessfulRequest = request
+                    diagnostics.recordRouteSuccess()
                     Result.success(routes)
                 }
 
                 400 -> {
                     val errorMsg = extractErrorMessage(response.body) ?: "No route found between points"
+                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NO_ROUTE)
                     Result.failure(RoutingError.NoRouteFound(errorMsg))
                 }
 
                 401, 403 -> {
+                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.API_KEY_MISSING)
                     Result.failure(
                         RoutingError.ApiKeyMissing(
                             "Invalid or missing GraphHopper API key. Please check your key in settings."
@@ -133,21 +140,27 @@ class GraphHopperRoutingRepository @Inject constructor(
                 }
 
                 429 -> {
+                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.RATE_LIMIT)
                     Result.failure(RoutingError.RateLimitExceeded())
                 }
 
                 else -> {
                     val errorMsg = extractErrorMessage(response.body) ?: "HTTP ${response.statusCode}"
+                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
                     Result.failure(RoutingError.ProviderError(response.statusCode, errorMsg))
                 }
             }
         } catch (e: SocketTimeoutException) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.TIMEOUT)
             Result.failure(RoutingError.Timeout("Routing request timed out"))
         } catch (e: CancellationException) {
+            diagnostics.recordCancellation()
             Result.failure(RoutingError.RequestCancelled())
         } catch (e: IOException) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NETWORK)
             Result.failure(RoutingError.NetworkError("Network error calculating route: ${e.message}", e))
         } catch (e: Exception) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
             Result.failure(RoutingError.ProviderError(500, e.message ?: "Unknown routing error"))
         }
     }

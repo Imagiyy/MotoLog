@@ -41,12 +41,19 @@ All personal and ride data recorded by MotoLog is stored locally in an encrypted
 MotoLog does not send your ride coordinates, statistics, or personal data to any developer servers. The **only** network activity initiated by the app is for downloading public map display assets:
 
 1. **Vector Map Tiles (OpenFreeMap / OpenMapTiles)**:
-   - When you view a route map on the Ride Detail screen, MotoLog connects over secure HTTPS to OpenFreeMap CDN servers to download static vector map tiles, map fonts (glyphs), and map icons (sprites).
+   - When you view a route map on the Live Map or Ride Detail screen, MotoLog connects over secure HTTPS to OpenFreeMap CDN servers to download static vector map tiles, map fonts (glyphs), and map icons (sprites).
    - **What the map provider can see**: Like any standard web request, OpenFreeMap servers observe your device's public IP address and the specific map tile coordinates (bounding box / zoom level) requested to display the map. OpenFreeMap is an open-source, non-tracking service that does not require an account, API key, or tracking cookies.
    - **Attribution**: Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, styles and tiles by [OpenFreeMap](https://openfreemap.org) and OpenMapTiles.
-2. **Crash Reporting & Diagnostics**:
+2. **Routing & Destination Geocoding (GraphHopper / OpenStreetMap)**:
+   - When you search for a destination or calculate a route in MotoLog, the app connects over secure HTTPS to the routing provider (GraphHopper or a user-configured endpoint) to search places or generate turn-by-turn route geometry.
+   - **What the routing provider receives**: Only the specific coordinates (origin and destination) or text query needed to compute the path. MotoLog **never** transmits user accounts, hardware identifiers, or past ride histories to routing services.
+   - **Local Storage & Offline Autonomy**: Once calculated, the route snapshot is retained strictly on your device. Live route tracking, off-route detection, and progress matching operate offline using on-device GPS matching.
+   - **Attribution**: Routing data powered by GraphHopper and map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
+3. **Crash Reporting & Diagnostics**:
    - MotoLog **does not include any third-party analytics or crash tracking SDKs** (such as Firebase Crashlytics, Facebook SDK, or Google Analytics).
    - Crash diagnostics are limited strictly to **Android Vitals** provided automatically by the Android operating system to the Google Play Console if you have opted in to share diagnostic data with Google in your Android system settings. Android Vitals reports contain stack traces and device models, and never contain your GPS coordinates or route history.
+4. **Rider Responsibility & Safety Disclaimer**:
+   - Speed data and route progress are GPS-derived and are not a legal speedometer. The rider remains solely responsible for safe operation of the vehicle, obeying all traffic regulations, and riding with full attention to the road. Do not interact with the device while riding.
 
 ---
 

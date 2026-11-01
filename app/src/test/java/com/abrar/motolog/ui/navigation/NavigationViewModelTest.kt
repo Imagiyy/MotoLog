@@ -644,4 +644,45 @@ class NavigationViewModelTest {
 
         assertTrue(fakeVoiceAnnouncer.stopCalled)
     }
+
+    @Test
+    fun diagnosticsRecordsEventsAndExportsAnonymizedJson() = runTest {
+        val route = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_diag",
+            plannedRouteId = route.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, route)
+        advanceUntilIdle()
+
+        // 1. Simulate GPS signal loss
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(currentSpeedKmh = 30.0),
+                pauseState = PauseState.RECORDING,
+                isGpsLost = true
+            )
+        )
+        advanceUntilIdle()
+
+        // 2. Trigger reroute
+        val fix = LocationPoint(latitude = 12.9750, longitude = 77.5980)
+        routingRepo.routeToReturn = Result.success(listOf(route))
+        viewModel.triggerReroute(viewModel.uiState.value as NavigationUiState.Navigating, fix)
+        advanceUntilIdle()
+
+        val snapshot = viewModel.getDiagnosticsSnapshot()
+        assertTrue("Reroutes triggered should be >= 1", snapshot.totalReroutesTriggered >= 1)
+        assertTrue("Successful reroutes should be >= 1", snapshot.successfulReroutes >= 1)
+        assertTrue("GPS signal loss events should be >= 1", snapshot.gpsSignalLossEvents >= 1)
+
+        val json = viewModel.getDiagnosticsJson()
+        assertTrue(json.contains("totalReroutesTriggered"))
+        assertTrue(json.contains("gpsSignalLossEvents"))
+        assertFalse(json.contains("12.9750"))
+        assertFalse(json.contains("77.5980"))
+    }
 }

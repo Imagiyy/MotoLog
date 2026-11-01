@@ -859,3 +859,65 @@
 - [x] `./gradlew compileDebugKotlin` (compilation passes cleanly) — VERIFIED
 - [x] `./gradlew testDebugUnitTest` (all unit tests pass across :shared and :app) — VERIFIED
 - [x] `./gradlew assembleDebug` (debug APK builds cleanly with 0 errors) — VERIFIED
+
+---
+
+## Destination Tracking & Route Navigation Subsystem
+
+### Phase 0: Provider Strategy & Privacy Architecture
+**Status:** COMPLETED
+- Provider abstraction decoupling navigation engine from specific vendor APIs (GraphHopper primary, extensible to Valhalla/OSRM).
+- Ephemeral origin/destination queries: zero ride histories, user accounts, or device identifiers sent externally.
+- Privacy-first on-device routing architecture retaining route geometry and GPS matching locally.
+
+### Phase 1: Shared Domain Models & Route Progress Engine
+**Status:** COMPLETED & TESTED
+- Pure Kotlin shared models (`Destination`, `RouteRequest`, `PlannedRoute`, `RouteProgress`, `NavigationSession`, `RouteInstruction`, `ManeuverType`).
+- `RouteProgressEngine` with forward look-ahead, cross-track distance, off-route hysteresis, and multi-segment projection.
+- 135 shared unit tests passing across `:shared`.
+
+### Phase 2: Routing & Geocoding Provider Adapters
+**Status:** COMPLETED & TESTED
+- `HttpTransport` with strict timeouts (10s connect, 15s read), bounded response cap (5MB), and structured error mapping (`NoRouteFound`, `ApiKeyMissing`, `RateLimitExceeded`, `Timeout`, `NetworkError`).
+- `GraphHopperRoutingRepository` and `GraphHopperGeocodingRepository` with motorcycle travel profile support and polyline decoding.
+- Full unit test coverage for success, malformed geometry, cancellations, and network errors.
+
+### Phase 3: Room Persistence & Recovery
+**Status:** COMPLETED & TESTED
+- Room Migration 8 → 9: `destinations` table and `navigation_sessions` table with foreign key cascade deletion.
+- Active navigation session persistence with throttled progress checkpoints.
+- Transactional state recovery and process-death resilience without corrupting recorded GPS rides.
+
+### Phase 4: Destination Planning UI
+**Status:** COMPLETED & TESTED
+- `DestinationScreen` and `DestinationViewModel` with text search, search debouncing, and saved favorites.
+- Interactive map-pin placement with camera crosshair and reverse-geocoding.
+- Route alternatives preview, distance/ETA summary, avoidance toggles (tolls, motorways, ferries), and glove-friendly Start Navigation action (>=56dp).
+
+### Phase 5: Live Navigation Map & Cockpit Telemetry
+**Status:** COMPLETED & TESTED
+- Route layers: planned route polyline, completed progress trail, destination marker, and GPS fix marker.
+- Camera follow modes: Head-Up (3D bearing rotation), North-Up, and Free pan/zoom with Re-center action.
+- Cockpit integration: floating next-maneuver card, remaining distance/ETA, and seamless integration with existing ride recording.
+
+### Phase 6: Off-Route Detection & Rerouting
+**Status:** COMPLETED & TESTED
+- 35m off-route warning threshold with 5s delay.
+- 75m sustained deviation trigger with 8-12s confirmation.
+- 15s reroute backoff cooldown preventing request flooding.
+- Retains active route line during recalculation; graceful error toast and manual retry option on failure.
+
+### Phase 7: Maneuver Instructions & Bluetooth Voice Guidance
+**Status:** COMPLETED & TESTED
+- Motorcycle acoustic voice engine with speed-adaptive advance warning distances (50m in city to 250m at highway speed).
+- Android `TextToSpeech` integration with motorcycle Bluetooth helmet audio focus (`USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`).
+- In-ride mute toggle and DataStore voice preference integration.
+
+### Phase 8: Hardening, Offline Autonomy & Diagnostics
+**Status:** COMPLETED & TESTED
+- **Offline Autonomy**: Active navigation continues seamlessly offline matching against the local route snapshot in Room.
+- **Privacy Disclosures**: Updated `docs/play-store/PRIVACY_POLICY.md` with explicit disclosures for routing/geocoding and rider safety speedometer disclaimers.
+- **Non-Sensitive Diagnostics**: Created `NavigationDiagnostics` collecting anonymized request counts, failure categories, reroutes, arrivals, GPS losses, and voice events without coordinates or API tokens; exportable as clean JSON.
+- **Accessibility & Ergonomics**: All navigation touch targets meet or exceed 48x48dp (action buttons >= 56dp for motorcycle gloves).
+- **Verification**: All unit tests pass across `:shared` and `:app`, and `./gradlew assembleDebug` builds cleanly.
+

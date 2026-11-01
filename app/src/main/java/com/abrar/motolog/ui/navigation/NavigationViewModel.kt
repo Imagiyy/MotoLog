@@ -31,6 +31,8 @@ import kotlin.math.max
 
 import com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine
 import com.abrar.motolog.shared.domain.voice.VoiceAnnouncer
+import com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics
+import com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnosticsSnapshot
 
 /**
  * ViewModel managing active route navigation, real-time GPS progress matching,
@@ -48,7 +50,8 @@ class NavigationViewModel @Inject constructor(
     private val routeProgressEngine: RouteProgressEngine = RouteProgressEngine(),
     private val clock: Clock = DefaultClock,
     private val voiceEngine: NavigationVoiceEngine = NavigationVoiceEngine(),
-    private val voiceAnnouncer: VoiceAnnouncer? = null
+    private val voiceAnnouncer: VoiceAnnouncer? = null,
+    private val diagnostics: NavigationDiagnostics = NavigationDiagnostics()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NavigationUiState>(NavigationUiState.Idle)
@@ -119,6 +122,7 @@ class NavigationViewModel @Inject constructor(
                                 )
                                 processLocationUpdate(fix, current, sessionState.stats.currentSpeedKmh)
                             } else if (isGpsLost && !current.isGpsLost) {
+                                diagnostics.recordGpsSignalLoss()
                                 _uiState.update { state ->
                                     if (state is NavigationUiState.Navigating) {
                                         state.copy(isGpsLost = true)
@@ -127,6 +131,9 @@ class NavigationViewModel @Inject constructor(
                             }
                         }
                         is TrackingSessionState.WaitingForGps -> {
+                            if (!current.isGpsLost) {
+                                diagnostics.recordGpsSignalLoss()
+                            }
                             _uiState.update { state ->
                                 if (state is NavigationUiState.Navigating) {
                                     state.copy(isGpsLost = true)
@@ -242,6 +249,13 @@ class NavigationViewModel @Inject constructor(
         val isOffRoute = updatedProgress.status == NavigationStatus.OFF_ROUTE_WARNING
         val isRerouteNeeded = updatedProgress.status == NavigationStatus.OFF_ROUTE_REROUTE_NEEDED
 
+        if (isOffRoute && !current.isOffRouteWarning) {
+            diagnostics.recordOffRouteWarning()
+        }
+        if (isArrived && !current.isArrived) {
+            diagnostics.recordArrival()
+        }
+
         _uiState.value = current.copy(
             progress = updatedProgress,
             currentInstruction = currentInstruction,
@@ -276,6 +290,7 @@ class NavigationViewModel @Inject constructor(
             nowMs = nowMs
         )
         if (announcement != null) {
+            diagnostics.recordVoiceAnnouncement()
             voiceAnnouncer?.speak(announcement.text, isUrgent = announcement.isUrgent)
         }
 
@@ -307,6 +322,7 @@ class NavigationViewModel @Inject constructor(
      * Retains the current route line and state until recalculation succeeds.
      */
     fun triggerReroute(current: NavigationUiState.Navigating, originFix: LocationPoint) {
+        diagnostics.recordRerouteTriggered()
         rerouteJob?.cancel()
         val nowMs = clock.currentTimeMillis()
         routeProgressEngine.markRerouteTriggered(nowMs)
@@ -357,6 +373,7 @@ class NavigationViewModel @Inject constructor(
         current: NavigationUiState.Navigating,
         newRoute: PlannedRoute
     ) {
+        diagnostics.recordRerouteSuccess()
         navigationSessionRepository.incrementRerouteCount(current.session.sessionId)
         val updatedSession = current.session.copy(
             rerouteCount = current.session.rerouteCount + 1,
@@ -409,6 +426,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     private fun applyRerouteFailure(message: String) {
+        diagnostics.recordRerouteFailure()
         lastRerouteFailureTimestampMs = clock.currentTimeMillis()
         _uiState.update { state ->
             if (state is NavigationUiState.Navigating) {
@@ -541,4 +559,16 @@ class NavigationViewModel @Inject constructor(
             _uiState.value = current.copy(isMuted = nextMuted)
         }
     }
+
+    /**
+     * Export anonymized diagnostics counters as formatted JSON.
+     * Contains zero coordinates, PII, or tokens.
+     */
+    fun getDiagnosticsJson(): String = diagnostics.exportDiagnosticsJson(clock.currentTimeMillis())
+
+    /**
+     * Get snapshot of current diagnostics counters.
+     */
+    fun getDiagnosticsSnapshot(): NavigationDiagnosticsSnapshot =
+        diagnostics.getSnapshot(clock.currentTimeMillis())
 }

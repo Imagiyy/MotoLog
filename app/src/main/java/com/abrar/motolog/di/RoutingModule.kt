@@ -49,5 +49,10 @@ abstract class RoutingModule {
         @Provides
         fun provideNavigationVoiceEngine(): com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine =
             com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine()
+
+        @Provides
+        @Singleton
+        fun provideNavigationDiagnostics(): com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics =
+            com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics()
     }
 }

@@ -1496,7 +1496,7 @@ private fun FloatingMapControlButton(
 ) {
     Surface(
         modifier = Modifier
-            .size(42.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .border(1.dp, palette.surfaceBorder, CircleShape)
             .clickable { onClick() },
@@ -1507,7 +1507,7 @@ private fun FloatingMapControlButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = palette.primaryAccent,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
