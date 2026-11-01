@@ -31,6 +31,7 @@ import javax.inject.Singleton
  * Supports motorcycle & car travel profiles, polyline decoding, maneuver mapping,
  * bounded retries, timeout detection, rate limit handling, and request cancellation.
  */
+import com.abrar.motolog.shared.domain.model.RoutingMode
 import com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics
 
 @Singleton
@@ -52,8 +53,15 @@ class GraphHopperRoutingRepository @Inject constructor(
     override suspend fun calculateRoute(request: RouteRequest): Result<List<PlannedRoute>> {
         diagnostics.recordRouteRequest()
         return try {
-            val providerUrl = settingsRepository.routingProviderUrl.first()
-            val apiKey = settingsRepository.routingApiKey.first()
+            val mode = settingsRepository.routingMode.first()
+            val (providerUrl, apiKey) = when (mode) {
+                RoutingMode.GRAPH_HOPPER_CLOUD -> {
+                    Pair(settingsRepository.routingProviderUrl.first(), settingsRepository.routingApiKey.first())
+                }
+                RoutingMode.KEYLESS_GRAPH_HOPPER -> {
+                    Pair(settingsRepository.routingSelfHostedUrl.first(), "")
+                }
+            }
 
             val origin = request.origin
             val destination = request.destination
@@ -85,7 +93,12 @@ class GraphHopperRoutingRepository @Inject constructor(
                 queryParams.add("alternative_route.max_paths=3")
             }
 
-            if (request.avoidances.isNotEmpty()) {
+            val avoidTolls = settingsRepository.routingAvoidTolls.first() || request.avoidances.contains(RouteAvoidance.TOLLS)
+            val avoidFerries = settingsRepository.routingAvoidFerries.first() || request.avoidances.contains(RouteAvoidance.FERRIES)
+            val avoidHighways = settingsRepository.routingAvoidHighways.first() || request.avoidances.contains(RouteAvoidance.HIGHWAYS)
+            val avoidUnpaved = settingsRepository.routingAvoidUnpaved.first() || request.avoidances.contains(RouteAvoidance.UNPAVED)
+
+            if (request.avoidances.isNotEmpty() || avoidTolls || avoidFerries || avoidHighways || avoidUnpaved) {
                 queryParams.add("ch.disable=true")
             }
 
@@ -115,7 +128,8 @@ class GraphHopperRoutingRepository @Inject constructor(
                         mapPathToPlannedRoute(
                             path = path,
                             request = request,
-                            isAlternative = index > 0
+                            isAlternative = index > 0,
+                            routingMode = mode
                         )
                     }
 
@@ -131,12 +145,22 @@ class GraphHopperRoutingRepository @Inject constructor(
                 }
 
                 401, 403 -> {
-                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.API_KEY_MISSING)
-                    Result.failure(
-                        RoutingError.ApiKeyMissing(
-                            "Invalid or missing GraphHopper API key. Please check your key in settings."
+                    if (mode == RoutingMode.GRAPH_HOPPER_CLOUD) {
+                        diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.API_KEY_MISSING)
+                        Result.failure(
+                            RoutingError.ApiKeyMissing(
+                                "Invalid or missing GraphHopper Cloud API key. Please check your key in settings."
+                            )
                         )
-                    )
+                    } else {
+                        diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
+                        Result.failure(
+                            RoutingError.ProviderError(
+                                response.statusCode,
+                                "Self-hosted server authentication rejected (HTTP ${response.statusCode}). Check server configuration."
+                            )
+                        )
+                    }
                 }
 
                 429 -> {
@@ -188,7 +212,8 @@ class GraphHopperRoutingRepository @Inject constructor(
     private fun mapPathToPlannedRoute(
         path: GraphHopperPathDto,
         request: RouteRequest,
-        isAlternative: Boolean
+        isAlternative: Boolean,
+        routingMode: RoutingMode
     ): PlannedRoute {
         val decodedPoints = if (!path.pointsEncoded.isNullOrEmpty()) {
             PolylineDecoder.decode(path.pointsEncoded)
@@ -219,6 +244,12 @@ class GraphHopperRoutingRepository @Inject constructor(
             )
         }
 
+        val attribution = if (routingMode == RoutingMode.KEYLESS_GRAPH_HOPPER) {
+            "Routing data © Keyless GraphHopper & OpenStreetMap contributors"
+        } else {
+            "Routing data © GraphHopper Cloud & OpenStreetMap contributors"
+        }
+
         return PlannedRoute(
             id = UUID.randomUUID().toString(),
             geometry = decodedPoints,
@@ -226,7 +257,7 @@ class GraphHopperRoutingRepository @Inject constructor(
             expectedDurationSeconds = path.timeMs / 1000L,
             bounds = boundingBox,
             instructions = instructions,
-            providerAttribution = "Routing data © GraphHopper & OpenStreetMap contributors",
+            providerAttribution = attribution,
             calculatedAtTimestamp = System.currentTimeMillis()
         )
     }

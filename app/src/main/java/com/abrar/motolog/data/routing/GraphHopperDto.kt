@@ -90,3 +90,45 @@ data class GraphHopperPointDto(
     @SerialName("lng")
     val lng: Double
 )
+
+// ============================================================
+// OpenStreetMap Photon Geocoding DTOs (Keyless Fallback)
+// ============================================================
+
+@Serializable
+data class PhotonGeocodeResponseDto(
+    @SerialName("features")
+    val features: List<PhotonFeatureDto> = emptyList()
+)
+
+@Serializable
+data class PhotonFeatureDto(
+    @SerialName("geometry")
+    val geometry: PhotonGeometryDto? = null,
+    @SerialName("properties")
+    val properties: PhotonPropertiesDto? = null
+)
+
+@Serializable
+data class PhotonGeometryDto(
+    @SerialName("coordinates")
+    val coordinates: List<Double> = emptyList() // [lon, lat]
+)
+
+@Serializable
+data class PhotonPropertiesDto(
+    @SerialName("osm_id")
+    val osmId: Long? = null,
+    @SerialName("name")
+    val name: String? = null,
+    @SerialName("country")
+    val country: String? = null,
+    @SerialName("city")
+    val city: String? = null,
+    @SerialName("state")
+    val state: String? = null,
+    @SerialName("street")
+    val street: String? = null,
+    @SerialName("housenumber")
+    val housenumber: String? = null
+)

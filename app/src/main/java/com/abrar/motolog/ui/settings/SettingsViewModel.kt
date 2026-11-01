@@ -27,6 +27,7 @@ import com.abrar.motolog.shared.domain.engine.UnitConverter
 import com.abrar.motolog.shared.domain.model.FuelUnit
 import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
 import com.abrar.motolog.shared.domain.model.TrackingMode
+import com.abrar.motolog.shared.domain.model.RoutingMode
 import androidx.room.withTransaction
 import com.abrar.motolog.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -134,6 +135,33 @@ class SettingsViewModel @Inject constructor(
     val navigationFeatureEnabled: StateFlow<Boolean> = settingsRepository.navigationFeatureEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
+    val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
+
+    val routingSelfHostedUrl: StateFlow<String> = settingsRepository.routingSelfHostedUrl
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_SELF_HOSTED_URL)
+
+    val nearbySearchEnabled: StateFlow<Boolean> = settingsRepository.nearbySearchEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
+
+    val initialSearchRadiusKm: StateFlow<Int> = settingsRepository.initialSearchRadiusKm
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_SEARCH_RADIUS_KM)
+
+    val globalSearchFallback: StateFlow<Boolean> = settingsRepository.globalSearchFallback
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
+
+    val routingAvoidTolls: StateFlow<Boolean> = settingsRepository.routingAvoidTolls
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
+    val routingAvoidFerries: StateFlow<Boolean> = settingsRepository.routingAvoidFerries
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
+    val routingAvoidHighways: StateFlow<Boolean> = settingsRepository.routingAvoidHighways
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
+    val routingAvoidUnpaved: StateFlow<Boolean> = settingsRepository.routingAvoidUnpaved
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
     // UI Dialog & Snack State
     private val _messageChannel = Channel<String>(Channel.BUFFERED)
     val messageFlow = _messageChannel.receiveAsFlow()
@@ -199,6 +227,52 @@ class SettingsViewModel @Inject constructor(
 
     fun setNavigationFeatureEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setNavigationFeatureEnabled(enabled) }
+    }
+
+    fun setRoutingMode(mode: RoutingMode) {
+        viewModelScope.launch {
+            settingsRepository.setRoutingMode(mode)
+            _messageChannel.send("Routing mode set to ${mode.displayName}")
+        }
+    }
+
+    fun setRoutingSelfHostedUrl(url: String) {
+        viewModelScope.launch {
+            val saved = settingsRepository.setRoutingSelfHostedUrl(url)
+            if (saved) {
+                _messageChannel.send("Self-hosted server URL updated")
+            } else {
+                _messageChannel.send("Invalid server URL. Must start with http:// or https:// and include a valid host.")
+            }
+        }
+    }
+
+    fun setNearbySearchEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setNearbySearchEnabled(enabled) }
+    }
+
+    fun setInitialSearchRadiusKm(radiusKm: Int) {
+        viewModelScope.launch { settingsRepository.setInitialSearchRadiusKm(radiusKm) }
+    }
+
+    fun setGlobalSearchFallback(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setGlobalSearchFallback(enabled) }
+    }
+
+    fun setRoutingAvoidTolls(avoid: Boolean) {
+        viewModelScope.launch { settingsRepository.setRoutingAvoidTolls(avoid) }
+    }
+
+    fun setRoutingAvoidFerries(avoid: Boolean) {
+        viewModelScope.launch { settingsRepository.setRoutingAvoidFerries(avoid) }
+    }
+
+    fun setRoutingAvoidHighways(avoid: Boolean) {
+        viewModelScope.launch { settingsRepository.setRoutingAvoidHighways(avoid) }
+    }
+
+    fun setRoutingAvoidUnpaved(avoid: Boolean) {
+        viewModelScope.launch { settingsRepository.setRoutingAvoidUnpaved(avoid) }
     }
 
     fun getDiagnosticsSnapshot(): com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnosticsSnapshot =

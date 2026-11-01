@@ -21,7 +21,8 @@ data class Destination(
     val displayName: String,
     val providerPlaceId: String? = null,
     val sourceType: DestinationSourceType = DestinationSourceType.SEARCH,
-    val createdAtTimestamp: Long = 0L
+    val createdAtTimestamp: Long = 0L,
+    val isFartherMatch: Boolean = false
 )
 
 @Serializable

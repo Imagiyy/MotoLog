@@ -23,6 +23,7 @@ import com.abrar.motolog.shared.domain.model.RoutingError
 import com.abrar.motolog.shared.domain.repository.GeocodingRepository
 import com.abrar.motolog.shared.domain.repository.RoutingRepository
 import com.abrar.motolog.shared.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.model.RoutingMode
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -77,6 +79,9 @@ class DestinationViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
+    val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
+
     val routingApiKey: StateFlow<String> = settingsRepository.routingApiKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
 
@@ -106,10 +111,13 @@ class DestinationViewModel @Inject constructor(
             }
         }
 
-        // Observe API key state
+        // Observe routing mode & API key state
         viewModelScope.launch {
-            routingApiKey.collect { key ->
-                _uiState.update { it.copy(isApiKeyMissing = key.isBlank()) }
+            combine(routingMode, routingApiKey) { mode, key ->
+                Pair(mode, key)
+            }.collect { (mode, key) ->
+                val missing = (mode == RoutingMode.GRAPH_HOPPER_CLOUD && key.isBlank())
+                _uiState.update { it.copy(routingMode = mode, isApiKeyMissing = missing) }
             }
         }
 

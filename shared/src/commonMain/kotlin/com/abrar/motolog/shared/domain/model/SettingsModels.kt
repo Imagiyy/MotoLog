@@ -40,3 +40,18 @@ enum class MapThemePreference(val displayName: String, val description: String) 
     DARK("Dark", "Dark background map style, optimized for night rides and AMOLED displays"),
     LIGHT("White / Light", "Clean white background map style with high daytime contrast")
 }
+
+/**
+ * Routing provider mode: hosted Cloud vs self-hosted keyless GraphHopper instance.
+ */
+enum class RoutingMode(val displayName: String, val description: String) {
+    GRAPH_HOPPER_CLOUD(
+        displayName = "GraphHopper Cloud",
+        description = "Hosted GraphHopper routing service using an API key."
+    ),
+    KEYLESS_GRAPH_HOPPER(
+        displayName = "Keyless (Self-Hosted)",
+        description = "Self-hosted GraphHopper server or local proxy without requiring a cloud API key."
+    )
+}
+

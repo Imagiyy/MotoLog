@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontStyle
 import com.abrar.motolog.shared.domain.model.MapThemePreference
+import com.abrar.motolog.shared.domain.model.RoutingMode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -71,6 +72,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -924,7 +927,16 @@ fun SettingsScreen(
             // ============================================================
             SettingsSectionHeader(title = "NAVIGATION & ROUTING")
 
+            val routingMode by viewModel.routingMode.collectAsStateWithLifecycle()
             val routingApiKey by viewModel.routingApiKey.collectAsStateWithLifecycle()
+            val routingSelfHostedUrl by viewModel.routingSelfHostedUrl.collectAsStateWithLifecycle()
+            val nearbySearchEnabled by viewModel.nearbySearchEnabled.collectAsStateWithLifecycle()
+            val initialSearchRadiusKm by viewModel.initialSearchRadiusKm.collectAsStateWithLifecycle()
+            val globalSearchFallback by viewModel.globalSearchFallback.collectAsStateWithLifecycle()
+            val routingAvoidTolls by viewModel.routingAvoidTolls.collectAsStateWithLifecycle()
+            val routingAvoidFerries by viewModel.routingAvoidFerries.collectAsStateWithLifecycle()
+            val routingAvoidHighways by viewModel.routingAvoidHighways.collectAsStateWithLifecycle()
+            val routingAvoidUnpaved by viewModel.routingAvoidUnpaved.collectAsStateWithLifecycle()
             val routingAutoRerouteEnabled by viewModel.routingAutoRerouteEnabled.collectAsStateWithLifecycle()
             val navigationFeatureEnabled by viewModel.navigationFeatureEnabled.collectAsStateWithLifecycle()
 
@@ -962,40 +974,207 @@ fun SettingsScreen(
                     if (navigationFeatureEnabled) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Navigation,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Routing Provider (GraphHopper)",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
+                        // Routing Provider Mode
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Navigation,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
                                 )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Routing Provider & Mode",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Choose hosted GraphHopper Cloud or keyless self-hosted instance",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = routingMode == RoutingMode.GRAPH_HOPPER_CLOUD,
+                                    onClick = { viewModel.setRoutingMode(RoutingMode.GRAPH_HOPPER_CLOUD) },
+                                    label = { Text("GraphHopper Cloud") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = routingMode == RoutingMode.KEYLESS_GRAPH_HOPPER,
+                                    onClick = { viewModel.setRoutingMode(RoutingMode.KEYLESS_GRAPH_HOPPER) },
+                                    label = { Text("Keyless (Self-Hosted)") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            if (routingMode == RoutingMode.GRAPH_HOPPER_CLOUD) {
                                 Text(
-                                    text = "Required for destination search and motorcycle route planning",
+                                    text = "Hosted routing service using your personal GraphHopper API key.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
+                                OutlinedTextField(
+                                    value = tempApiKey,
+                                    onValueChange = {
+                                        tempApiKey = it
+                                        viewModel.setRoutingApiKey(it.trim())
+                                    },
+                                    label = { Text("GraphHopper Cloud API Key") },
+                                    placeholder = { Text("Enter your GraphHopper key") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            } else {
+                                Text(
+                                    text = "Keyless Mode active: Zero API keys transmitted. Connects to your private GraphHopper instance with OpenStreetMap fallback.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                var tempServerUrl by remember(routingSelfHostedUrl) { mutableStateOf(routingSelfHostedUrl) }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = tempServerUrl,
+                                        onValueChange = { tempServerUrl = it },
+                                        label = { Text("Server URL") },
+                                        placeholder = { Text("http://localhost:8989") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Button(
+                                        onClick = { viewModel.setRoutingSelfHostedUrl(tempServerUrl.trim()) },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Text("Save")
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        // Nearby-First Search Configuration
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Nearby-First Search Bias",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Rank destination candidates near your current GPS location first",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = nearbySearchEnabled,
+                                    onCheckedChange = { viewModel.setNearbySearchEnabled(it) }
+                                )
+                            }
+
+                            if (nearbySearchEnabled) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Search Radius:",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    listOf(25, 50, 100).forEach { radius ->
+                                        FilterChip(
+                                            selected = initialSearchRadiusKm == radius,
+                                            onClick = { viewModel.setInitialSearchRadiusKm(radius) },
+                                            label = { Text("$radius km") }
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Global Fallback",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "Search farther away if no nearby destination matches",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Switch(
+                                        checked = globalSearchFallback,
+                                        onCheckedChange = { viewModel.setGlobalSearchFallback(it) }
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        // Motorcycle Route Avoidances
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Motorcycle Route Avoidances",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = routingAvoidTolls,
+                                    onClick = { viewModel.setRoutingAvoidTolls(!routingAvoidTolls) },
+                                    label = { Text("Tolls") }
+                                )
+                                FilterChip(
+                                    selected = routingAvoidFerries,
+                                    onClick = { viewModel.setRoutingAvoidFerries(!routingAvoidFerries) },
+                                    label = { Text("Ferries") }
+                                )
+                                FilterChip(
+                                    selected = routingAvoidHighways,
+                                    onClick = { viewModel.setRoutingAvoidHighways(!routingAvoidHighways) },
+                                    label = { Text("Highways") }
+                                )
+                                FilterChip(
+                                    selected = routingAvoidUnpaved,
+                                    onClick = { viewModel.setRoutingAvoidUnpaved(!routingAvoidUnpaved) },
+                                    label = { Text("Unpaved") }
                                 )
                             }
                         }
 
-                        var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
-                        OutlinedTextField(
-                            value = tempApiKey,
-                            onValueChange = {
-                                tempApiKey = it
-                                viewModel.setRoutingApiKey(it.trim())
-                            },
-                            label = { Text("GraphHopper API Key") },
-                            placeholder = { Text("Enter your GraphHopper key") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),

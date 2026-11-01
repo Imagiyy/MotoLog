@@ -837,7 +837,15 @@ private fun DestinationSearchResultItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (distanceDisplay != null) {
+                if (destination.isFartherMatch && distanceDisplay != null) {
+                    Text(
+                        text = "Farther match • $distanceDisplay",
+                        color = palette.dialText.copy(alpha = 0.65f),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium
+                    )
+                } else if (distanceDisplay != null) {
                     Text(
                         text = "$distanceDisplay away",
                         color = palette.primaryAccent,

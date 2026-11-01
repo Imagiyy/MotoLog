@@ -48,3 +48,6 @@ obj/
 
 # Kotlin
 .kotlin/
+
+# User Documents
+*.docx

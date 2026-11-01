@@ -928,4 +928,29 @@
 - **Pilot Testing Guide**: Created `docs/play-store/PILOT_TESTING_GUIDE.md` detailing test scenarios (search, route matching, off-route recalculation, Bluetooth helmet audio, offline tunnels) and closed track promotion criteria.
 - **Verification**: All unit tests across `:shared` and `:app` pass, and `./gradlew assembleDebug` builds cleanly.
 
+### GraphHopper Cloud & Keyless Routing Design
+**Status:** COMPLETED & VERIFIED
+- **Dual Routing Modes**:
+  - `GRAPH_HOPPER_CLOUD`: Uses GraphHopper hosted API with personal API key.
+  - `KEYLESS_GRAPH_HOPPER`: Uses self-hosted GraphHopper server or local OSM proxy, transmitting zero API credentials.
+- **Provider Architecture**:
+  - Provider-agnostic `RoutingProvider` and `GeocodingProvider` interfaces with `Coordinates` domain models and `PlaceResult`.
+  - `GraphHopperRoutingRepository` and `GraphHopperGeocodingRepository` dynamically dispatch requests based on DataStore `routingMode`.
+  - Self-hosted geocoding gracefully falls back to OpenStreetMap Photon public geocoder (`https://photon.komoot.io`) when self-hosted endpoint is routing-only.
+- **Nearby-First Search & Multi-Factor Ranking Engine**:
+  - Pure Kotlin `PlaceRankingEngine` implementing multi-factor weighted scoring:
+    `rankingScore = relevanceScore * 0.65 + localityMatchScore * 0.15 + distanceScore * 0.20`.
+  - Candidate locations biased by rider's latest valid GPS fix with straight-line Haversine distance proximity decay.
+  - Initial radius (25–50 km configurable) with global fallback labeling farther matches (`isFartherMatch = true`).
+  - Strict physical coordinate validation rejecting `NaN`, infinite, or out-of-bounds coordinates.
+- **Settings & UI Controls**:
+  - Mode toggle (`GraphHopper Cloud` vs `Keyless Self-Hosted`), self-hosted URL input with strict protocol and host validation (`isValidServerUrl`), and API key input shown conditionally.
+  - Nearby search bias toggle, search radius selector (25 km, 50 km, 100 km), and global fallback switch.
+  - Motorcycle route avoidance toggles (Tolls, Ferries, Highways, Unpaved).
+  - Glove-friendly search result badges showing distance and locality ("2.5 km away" / "Farther match • 85 km").
+- **Verification**:
+  - Unit tests in `PlaceRankingEngineTest`, `SettingsRepositoryTest`, `GraphHopperRoutingRepositoryTest`, and `GraphHopperGeocodingRepositoryTest` covering mode switching, keyless anonymity, photon fallback, deterministic ranking, distance calculation, URL validation, and error states.
+  - All tests passed (`:shared:testAndroidHostTest` and `:app:testDebugUnitTest`), `./gradlew assembleDebug` and `./gradlew lintDebug` (0 errors).
+
+
 

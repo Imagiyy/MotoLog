@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,10 +32,11 @@ class GraphHopperGeocodingRepositoryTest {
     private class FakeHttpTransport : HttpTransport {
         var requestedUrl: String? = null
         var responseToReturn: HttpResponse = HttpResponse(200, "{}")
+        var responseHandler: ((String) -> HttpResponse)? = null
 
         override suspend fun get(url: String, headers: Map<String, String>): HttpResponse {
             requestedUrl = url
-            return responseToReturn
+            return responseHandler?.invoke(url) ?: responseToReturn
         }
     }
 
@@ -164,5 +166,129 @@ class GraphHopperGeocodingRepositoryTest {
         val result = repository.searchDestinations("Mumbai")
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is RoutingError.RateLimitExceeded)
+    }
+
+    @Test
+    fun searchPlacesKeylessModeUsesSelfHostedUrlAndSendsNoKey() = runTest {
+        val sampleResponse = """
+            {
+              "hits": [
+                {
+                  "point": { "lat": 12.9352, "lng": 77.6245 },
+                  "name": "Koramangala 5th Block",
+                  "city": "Bengaluru",
+                  "state": "Karnataka",
+                  "country": "India"
+                }
+              ]
+            }
+        """.trimIndent()
+        fakeTransport.responseToReturn = HttpResponse(200, sampleResponse)
+
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER)
+        settingsRepository.setRoutingSelfHostedUrl("https://self-hosted-osm.local:8989")
+        settingsRepository.setRoutingApiKey("secret_cloud_key_must_not_leak")
+
+        val result = repository.searchPlaces("Koramangala")
+        assertTrue(result.isSuccess)
+
+        val places = result.getOrThrow()
+        assertEquals(1, places.size)
+        val place = places.first()
+        assertEquals("Koramangala 5th Block", place.name)
+        assertEquals("Keyless GraphHopper", place.provider)
+
+        val requestedUrl = fakeTransport.requestedUrl!!
+        assertTrue(requestedUrl.startsWith("https://self-hosted-osm.local:8989/geocode?"))
+        assertFalse("Self-hosted request must never send API key", requestedUrl.contains("key="))
+        assertFalse(requestedUrl.contains("secret_cloud_key_must_not_leak"))
+    }
+
+    @Test
+    fun searchPlacesKeylessModeFallsBackToPhotonWhenSelfHosted404() = runTest {
+        val photonResponse = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Point",
+                    "coordinates": [77.6412, 12.9784]
+                  },
+                  "properties": {
+                    "osm_id": 987654,
+                    "name": "Indiranagar 100ft Road",
+                    "city": "Bengaluru",
+                    "state": "Karnataka",
+                    "country": "India"
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        fakeTransport.responseHandler = { url ->
+            if (url.contains("photon.komoot.io")) {
+                HttpResponse(200, photonResponse)
+            } else {
+                HttpResponse(404, "Not Found")
+            }
+        }
+
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER)
+        settingsRepository.setRoutingSelfHostedUrl("https://routing-only-host:8989")
+
+        val result = repository.searchPlaces("Indiranagar")
+        assertTrue(result.isSuccess)
+
+        val places = result.getOrThrow()
+        assertEquals(1, places.size)
+        val place = places.first()
+        assertEquals("Indiranagar 100ft Road", place.name)
+        assertEquals(12.9784, place.latitude, 0.001)
+        assertEquals(77.6412, place.longitude, 0.001)
+        assertEquals("OpenStreetMap", place.provider)
+    }
+
+    @Test
+    fun searchPlacesNearbyFirstRanksCloserLocationsAboveFartherMatches() = runTest {
+        val jsonResponse = """
+            {
+              "hits": [
+                {
+                  "point": { "lat": 13.0827, "lng": 80.2707 },
+                  "name": "Central Cafe",
+                  "city": "Chennai",
+                  "state": "Tamil Nadu",
+                  "country": "India"
+                },
+                {
+                  "point": { "lat": 12.9720, "lng": 77.5950 },
+                  "name": "Central Cafe",
+                  "city": "Bengaluru",
+                  "state": "Karnataka",
+                  "country": "India"
+                }
+              ]
+            }
+        """.trimIndent()
+        fakeTransport.responseToReturn = HttpResponse(200, jsonResponse)
+
+        val riderLocation = LocationPoint(12.9716, 77.5946, 0f, 5f, 1000L)
+        val result = repository.searchPlaces("Central Cafe", nearLocation = riderLocation)
+
+        assertTrue(result.isSuccess)
+        val places = result.getOrThrow()
+        assertEquals(2, places.size)
+
+        // The Bengaluru result (close to rider) must be ranked above Chennai (farther away)
+        assertEquals("Bengaluru", places[0].formattedAddress.split(", ").firstOrNull { it.contains("Bengaluru") })
+        assertFalse(places[0].isFartherMatch)
+        assertTrue(places[0].distanceFromUserMeters != null && places[0].distanceFromUserMeters!! < 2000.0)
+
+        // Chennai result is ~290 km away, so outside default 50 km radius: flagged as farther match
+        assertTrue(places[1].isFartherMatch)
+        assertTrue(places[1].distanceFromUserMeters != null && places[1].distanceFromUserMeters!! > 200_000.0)
     }
 }

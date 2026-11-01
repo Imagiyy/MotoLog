@@ -7,14 +7,14 @@ import com.abrar.motolog.shared.domain.model.RouteRequest
 /**
  * Provider-agnostic interface for motorcycle route calculation and rerouting.
  */
-interface RoutingRepository {
+interface RoutingRepository : RoutingProvider {
 
     /**
      * Calculate route alternatives between origin and destination based on request parameters.
      *
      * Returns a list of candidate routes with the primary route as the first element.
      */
-    suspend fun calculateRoute(request: RouteRequest): Result<List<PlannedRoute>>
+    override suspend fun calculateRoute(request: RouteRequest): Result<List<PlannedRoute>>
 
     /**
      * Request a fast recalculation / reroute from the current position towards the original destination.

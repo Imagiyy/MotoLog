@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -253,5 +254,92 @@ class GraphHopperRoutingRepositoryTest {
         assertTrue(rerouteResult.isSuccess)
         assertTrue(fakeTransport.requestedUrl!!.contains("point=12.02,77.02"))
         assertTrue(fakeTransport.requestedUrl!!.contains("point=12.05,77.05"))
+    }
+
+    @Test
+    fun calculateRouteKeylessModeUsesSelfHostedUrlAndSendsNoKey() = runTest {
+        val sampleResponse = """
+            {
+              "paths": [
+                {
+                  "distance": 1500.0,
+                  "time": 75000,
+                  "points": "_p~iF~ps|U"
+                }
+              ]
+            }
+        """.trimIndent()
+        fakeTransport.responseToReturn = HttpResponse(200, sampleResponse)
+
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER)
+        settingsRepository.setRoutingSelfHostedUrl("https://self-hosted.motolog.internal:8989")
+        settingsRepository.setRoutingApiKey("secret_cloud_key_must_not_leak")
+
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(12.5, 77.5)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isSuccess)
+
+        val routes = result.getOrThrow()
+        assertEquals(1, routes.size)
+        assertTrue(routes.first().providerAttribution?.contains("Keyless GraphHopper") == true)
+
+        val requestedUrl = fakeTransport.requestedUrl!!
+        assertTrue(requestedUrl.startsWith("https://self-hosted.motolog.internal:8989/route?"))
+        assertFalse("Self-hosted request must never transmit Cloud API keys", requestedUrl.contains("key="))
+        assertFalse(requestedUrl.contains("secret_cloud_key_must_not_leak"))
+    }
+
+    @Test
+    fun calculateRouteKeylessModeHandles401AsSelfHostedAuthError() = runTest {
+        fakeTransport.responseToReturn = HttpResponse(401, """{"message": "Self-hosted access denied"}""")
+
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER)
+
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(12.5, 77.5)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isFailure)
+        val err = result.exceptionOrNull()
+        assertTrue("Keyless mode 401 must produce ProviderError rather than ApiKeyMissing", err is RoutingError.ProviderError)
+        assertEquals(401, (err as RoutingError.ProviderError).statusCode)
+        assertTrue(err.message!!.contains("Self-hosted"))
+    }
+
+    @Test
+    fun calculateRouteCloudModeAttachesApiKeyAndAttribution() = runTest {
+        val sampleResponse = """
+            {
+              "paths": [
+                {
+                  "distance": 2000.0,
+                  "time": 100000,
+                  "points": "_p~iF~ps|U"
+                }
+              ]
+            }
+        """.trimIndent()
+        fakeTransport.responseToReturn = HttpResponse(200, sampleResponse)
+
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+        settingsRepository.setRoutingApiKey("cloud_key_abc_123")
+
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(12.5, 77.5)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isSuccess)
+
+        val route = result.getOrThrow().first()
+        assertTrue(route.providerAttribution?.contains("GraphHopper Cloud") == true)
+        assertTrue(fakeTransport.requestedUrl!!.contains("key=cloud_key_abc_123"))
     }
 }

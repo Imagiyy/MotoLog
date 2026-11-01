@@ -3,6 +3,7 @@ package com.abrar.motolog.fake
 import com.abrar.motolog.shared.domain.model.Destination
 import com.abrar.motolog.shared.domain.model.DestinationSourceType
 import com.abrar.motolog.shared.domain.model.LocationPoint
+import com.abrar.motolog.shared.domain.model.PlaceResult
 import com.abrar.motolog.shared.domain.repository.GeocodingRepository
 
 class FakeGeocodingRepository : GeocodingRepository {
@@ -19,6 +20,20 @@ class FakeGeocodingRepository : GeocodingRepository {
         )
     )
 
+    var placeResultsToReturn: Result<List<PlaceResult>> = Result.success(
+        listOf(
+            PlaceResult(
+                id = "dest_1",
+                name = "MG Road",
+                formattedAddress = "Bengaluru, Karnataka",
+                latitude = 12.9716,
+                longitude = 77.5946,
+                distanceFromUserMeters = 1500.0,
+                provider = "Fake"
+            )
+        )
+    )
+
     var reverseGeocodeToReturn: Result<Destination> = Result.success(
         Destination(
             id = "rev_1",
@@ -31,6 +46,16 @@ class FakeGeocodingRepository : GeocodingRepository {
 
     var lastSearchQuery: String? = null
     var lastNearLocation: LocationPoint? = null
+
+    override suspend fun searchPlaces(
+        query: String,
+        nearLocation: LocationPoint?,
+        radiusMeters: Int?
+    ): Result<List<PlaceResult>> {
+        lastSearchQuery = query
+        lastNearLocation = nearLocation
+        return placeResultsToReturn
+    }
 
     override suspend fun searchDestinations(
         query: String,
