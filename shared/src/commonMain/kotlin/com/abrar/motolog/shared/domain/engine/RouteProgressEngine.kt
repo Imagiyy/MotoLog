@@ -57,8 +57,10 @@ class RouteProgressEngine(
     /**
      * Set or replace the active navigation route.
      * Precomputes cumulative segment distances and initializes tracking state.
+     *
+     * @param isReroute When true, preserves active reroute cooldown to avoid immediate retrigger loops.
      */
-    fun setRoute(route: PlannedRoute) {
+    fun setRoute(route: PlannedRoute, isReroute: Boolean = false) {
         currentRoute = route
         val geometry = route.geometry
         if (geometry.size < 2) {
@@ -85,7 +87,9 @@ class RouteProgressEngine(
         maxDistanceAlongRouteMeters = 0.0
         warningStartTimeMs = null
         rerouteStartTimeMs = null
-        lastRerouteTimestampMs = null
+        if (!isReroute) {
+            lastRerouteTimestampMs = null
+        }
 
         lastProgress = RouteProgress(
             nearestPointIndex = 0,

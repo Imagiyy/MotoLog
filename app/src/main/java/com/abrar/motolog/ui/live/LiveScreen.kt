@@ -299,6 +299,8 @@ fun LiveScreen(
                     onRecenterCamera = navigationViewModel::recenterCamera,
                     onUserMapInteraction = navigationViewModel::onUserMapInteraction,
                     onDismissArrival = navigationViewModel::dismissArrival,
+                    onManualReroute = navigationViewModel::requestManualReroute,
+                    onDismissRerouteError = navigationViewModel::dismissRerouteError,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     modifier = modifier.fillMaxSize()
@@ -370,6 +372,8 @@ fun LiveScreen(
                     onRecenterCamera = navigationViewModel::recenterCamera,
                     onUserMapInteraction = navigationViewModel::onUserMapInteraction,
                     onDismissArrival = navigationViewModel::dismissArrival,
+                    onManualReroute = navigationViewModel::requestManualReroute,
+                    onDismissRerouteError = navigationViewModel::dismissRerouteError,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     isIdle = true,

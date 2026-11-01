@@ -46,6 +46,7 @@ import com.abrar.motolog.ui.navigation.CameraFollowMode
 import com.abrar.motolog.ui.navigation.NavigationUiState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -136,6 +137,8 @@ fun RetroLiveMap(
     onRecenterCamera: () -> Unit = {},
     onUserMapInteraction: () -> Unit = {},
     onDismissArrival: () -> Unit = {},
+    onManualReroute: () -> Unit = {},
+    onDismissRerouteError: () -> Unit = {},
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
@@ -484,6 +487,8 @@ fun RetroLiveMap(
                 navState = navState,
                 isMetric = isMetric,
                 palette = palette,
+                onManualReroute = onManualReroute,
+                onDismissRerouteError = onDismissRerouteError,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 64.dp, start = 12.dp, end = 12.dp)
@@ -1193,6 +1198,8 @@ fun NavigationTurnGuidanceCard(
     navState: NavigationUiState.Navigating,
     isMetric: Boolean,
     palette: CockpitThemePalette,
+    onManualReroute: () -> Unit = {},
+    onDismissRerouteError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1206,44 +1213,125 @@ fun NavigationTurnGuidanceCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Off-route warning / rerouting / signal loss status badge
-            if (navState.isOffRouteWarning) {
+            // Off-route warning / rerouting / signal loss / error status badges
+            if (navState.rerouteErrorMessage != null) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(JewelAmber.copy(alpha = 0.2f))
+                        .background(JewelRed.copy(alpha = 0.2f))
+                        .border(1.dp, JewelRed.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "⚠️", fontSize = 14.sp)
                     Text(
-                        text = "OFF ROUTE — REJOINING ROUTE",
-                        color = JewelAmber,
+                        text = navState.rerouteErrorMessage,
+                        color = JewelRed,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.weight(1f).padding(end = 6.dp)
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(1.dp, JewelRed.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                                .clickable { onManualReroute() },
+                            color = JewelRed.copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "RETRY",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { onDismissRerouteError() },
+                            color = palette.surfaceBorder.copy(alpha = 0.3f)
+                        ) {
+                            Text(
+                                text = "✕",
+                                color = palette.dialText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
                 }
             } else if (navState.isRerouting) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(JewelAmber.copy(alpha = 0.2f))
+                        .background(Color(0xFF00E5FF).copy(alpha = 0.18f))
+                        .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "🔄", fontSize = 14.sp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF00E5FF)
+                    )
                     Text(
-                        text = "RECALCULATING ROUTE...",
-                        color = JewelAmber,
+                        text = "REROUTING... CALCULATING FASTEST PATH",
+                        color = Color(0xFF00E5FF),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     )
+                }
+            } else if (navState.isOffRouteWarning) {
+                val devDist = CockpitUtils.formatDistance(navState.progress.crossTrackDistanceMeters, isMetric)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(JewelAmber.copy(alpha = 0.2f))
+                        .border(1.dp, JewelAmber.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "⚠️", fontSize = 14.sp)
+                        Text(
+                            text = "OFF ROUTE ($devDist)",
+                            color = JewelAmber,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(1.dp, JewelAmber.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                            .clickable { onManualReroute() },
+                        color = JewelAmber.copy(alpha = 0.25f)
+                    ) {
+                        Text(
+                            text = "REROUTE",
+                            color = JewelAmber,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             } else if (navState.isGpsLost) {
                 Row(

@@ -49,6 +49,7 @@ sealed interface NavigationUiState {
         val cameraFollowMode: CameraFollowMode = CameraFollowMode.FOLLOW_HEAD_UP,
         val isOffRouteWarning: Boolean = false,
         val isRerouting: Boolean = false,
-        val isGpsLost: Boolean = false
+        val isGpsLost: Boolean = false,
+        val rerouteErrorMessage: String? = null
     ) : NavigationUiState
 }

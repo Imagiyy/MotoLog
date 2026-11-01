@@ -10,8 +10,15 @@ import com.abrar.motolog.shared.domain.model.LocationPoint
 import com.abrar.motolog.shared.domain.model.NavigationStatus
 import com.abrar.motolog.shared.domain.model.PlannedRoute
 import com.abrar.motolog.shared.domain.model.RouteProgress
+import com.abrar.motolog.shared.domain.model.RouteProfile
+import com.abrar.motolog.shared.domain.model.RouteRequest
+import com.abrar.motolog.shared.domain.model.RoutingError
+import com.abrar.motolog.shared.domain.repository.RoutingRepository
 import com.abrar.motolog.shared.domain.repository.TrackingSessionState
+import com.abrar.motolog.shared.domain.time.Clock
+import com.abrar.motolog.shared.domain.time.DefaultClock
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +31,7 @@ import kotlin.math.max
 
 /**
  * ViewModel managing active route navigation, real-time GPS progress matching,
- * turn-by-turn guidance, and camera perspective modes.
+ * turn-by-turn guidance, off-route detection, rerouting, and camera perspective modes.
  *
  * Keeps navigation logic cleanly decoupled from LiveViewModel's ride telemetry.
  */
@@ -33,7 +40,9 @@ class NavigationViewModel @Inject constructor(
     private val navigationSessionRepository: NavigationSessionRepository,
     private val trackingRepository: TrackingRepository,
     private val settingsRepository: SettingsRepository,
-    private val routeProgressEngine: RouteProgressEngine = RouteProgressEngine()
+    private val routingRepository: RoutingRepository,
+    private val routeProgressEngine: RouteProgressEngine = RouteProgressEngine(),
+    private val clock: Clock = DefaultClock
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NavigationUiState>(NavigationUiState.Idle)
@@ -42,10 +51,21 @@ class NavigationViewModel @Inject constructor(
     private var lastCheckpointTimestampMs: Long = 0L
     private var lastCheckpointDistanceMeters: Double = 0.0
 
+    private var latestFix: LocationPoint? = null
+    private var rerouteJob: Job? = null
+    private var lastRerouteFailureTimestampMs: Long = 0L
+
     val useMetricUnits: StateFlow<Boolean> = settingsRepository.useMetricUnits
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = true
+        )
+
+    val autoRerouteEnabled: StateFlow<Boolean> = settingsRepository.routingAutoRerouteEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
             initialValue = true
         )
 
@@ -82,12 +102,14 @@ class NavigationViewModel @Inject constructor(
                             val isGpsLost = sessionState.isGpsLost
 
                             if (lat != null && lon != null && !isGpsLost) {
+                                val now = clock.currentTimeMillis()
                                 val fix = LocationPoint(
                                     latitude = lat,
                                     longitude = lon,
                                     speedMps = (speedKmh / 3.6).toFloat(),
                                     accuracyMeters = accuracy,
-                                    timestamp = System.currentTimeMillis()
+                                    timestamp = now,
+                                    elapsedTimestampMs = now
                                 )
                                 processLocationUpdate(fix, current, sessionState.stats.currentSpeedKmh)
                             } else if (isGpsLost && !current.isGpsLost) {
@@ -178,6 +200,7 @@ class NavigationViewModel @Inject constructor(
         current: NavigationUiState.Navigating,
         currentSpeedKmh: Double
     ) {
+        latestFix = fix
         val updatedProgress = routeProgressEngine.onLocationUpdate(fix)
 
         val currIdx = updatedProgress.currentInstructionIndex
@@ -199,8 +222,11 @@ class NavigationViewModel @Inject constructor(
             (initialDuration * fractionRemaining).toLong().coerceAtLeast(0L)
         }
 
-        val etaEpochMs = System.currentTimeMillis() + (remainingDurationSeconds * 1000L)
+        val nowMs = clock.currentTimeMillis()
+        val etaEpochMs = nowMs + (remainingDurationSeconds * 1000L)
         val isArrived = updatedProgress.status == NavigationStatus.ARRIVED
+        val isOffRoute = updatedProgress.status == NavigationStatus.OFF_ROUTE_WARNING
+        val isRerouteNeeded = updatedProgress.status == NavigationStatus.OFF_ROUTE_REROUTE_NEEDED
 
         _uiState.value = current.copy(
             progress = updatedProgress,
@@ -212,13 +238,20 @@ class NavigationViewModel @Inject constructor(
             etaTimestampEpochMs = etaEpochMs,
             status = updatedProgress.status,
             isArrived = isArrived,
-            isOffRouteWarning = updatedProgress.status == NavigationStatus.OFF_ROUTE_WARNING,
-            isRerouting = updatedProgress.status == NavigationStatus.OFF_ROUTE_REROUTE_NEEDED,
+            isOffRouteWarning = isOffRoute,
+            isRerouting = isRerouteNeeded || current.isRerouting,
             isGpsLost = false
         )
 
+        // Trigger automatic reroute if needed, auto-reroute is enabled, and backoff has elapsed
+        if (isRerouteNeeded && autoRerouteEnabled.value) {
+            val backoffElapsed = lastRerouteFailureTimestampMs == 0L || (nowMs - lastRerouteFailureTimestampMs >= 15_000L)
+            if (rerouteJob?.isActive != true && backoffElapsed) {
+                triggerReroute(current, fix)
+            }
+        }
+
         // Throttled checkpointing to Room database
-        val nowMs = System.currentTimeMillis()
         val timeDelta = nowMs - lastCheckpointTimestampMs
         val distanceDelta = kotlin.math.abs(updatedProgress.distanceAlongRouteMeters - lastCheckpointDistanceMeters)
         val statusChanged = updatedProgress.status != current.progress.status
@@ -242,9 +275,151 @@ class NavigationViewModel @Inject constructor(
     }
 
     /**
+     * Dispatch a recalculation / reroute request from the rider's current position to the destination.
+     * Retains the current route line and state until recalculation succeeds.
+     */
+    fun triggerReroute(current: NavigationUiState.Navigating, originFix: LocationPoint) {
+        rerouteJob?.cancel()
+        val nowMs = clock.currentTimeMillis()
+        routeProgressEngine.markRerouteTriggered(nowMs)
+
+        _uiState.update { state ->
+            if (state is NavigationUiState.Navigating) {
+                state.copy(isRerouting = true, rerouteErrorMessage = null)
+            } else state
+        }
+
+        rerouteJob = viewModelScope.launch {
+            val destination = LocationPoint(
+                latitude = current.destinationLatitude,
+                longitude = current.destinationLongitude
+            )
+            val request = RouteRequest(
+                origin = originFix,
+                destination = destination,
+                travelProfile = RouteProfile.MOTORCYCLE,
+                alternatives = false,
+                requestTimestamp = nowMs
+            )
+
+            val result = routingRepository.calculateRoute(request)
+            result.fold(
+                onSuccess = { routes ->
+                    val newRoute = routes.firstOrNull()
+                    if (newRoute != null) {
+                        applyRerouteSuccess(current, newRoute)
+                    } else {
+                        applyRerouteFailure("No route returned for recalculation. Retaining current route.")
+                    }
+                },
+                onFailure = { error ->
+                    val message = when (error) {
+                        is RoutingError.Timeout -> "Reroute timed out. Retaining current route."
+                        is RoutingError.RateLimitExceeded -> "Routing rate limit reached. Retaining current route."
+                        is RoutingError.NoRouteFound -> "No alternative route found. Retaining current route."
+                        else -> "Recalculation failed (${error.message ?: "network error"}). Retaining current route."
+                    }
+                    applyRerouteFailure(message)
+                }
+            )
+        }
+    }
+
+    private suspend fun applyRerouteSuccess(
+        current: NavigationUiState.Navigating,
+        newRoute: PlannedRoute
+    ) {
+        navigationSessionRepository.incrementRerouteCount(current.session.sessionId)
+        val updatedSession = current.session.copy(
+            rerouteCount = current.session.rerouteCount + 1,
+            plannedRouteId = newRoute.id
+        )
+        navigationSessionRepository.saveActiveSession(updatedSession, newRoute)
+
+        routeProgressEngine.setRoute(newRoute, isReroute = true)
+
+        val nowMs = clock.currentTimeMillis()
+        val newProgress = routeProgressEngine.lastProgress ?: RouteProgress(
+            nearestPointIndex = 0,
+            distanceAlongRouteMeters = 0.0,
+            remainingDistanceMeters = newRoute.totalDistanceMeters,
+            progressFraction = 0f,
+            crossTrackDistanceMeters = 0.0,
+            status = NavigationStatus.ON_ROUTE,
+            timestamp = nowMs
+        )
+
+        val currInstr = newRoute.instructions.firstOrNull()
+        val nextInstr = newRoute.instructions.getOrNull(1)
+        val distToManeuver = if (newRoute.instructions.isNotEmpty()) {
+            routeProgressEngine.getDistanceToInstruction(0)
+        } else 0.0
+
+        _uiState.update { state ->
+            if (state is NavigationUiState.Navigating) {
+                state.copy(
+                    session = updatedSession,
+                    route = newRoute,
+                    progress = newProgress,
+                    currentInstruction = currInstr,
+                    nextInstruction = nextInstr,
+                    distanceToNextManeuverMeters = distToManeuver,
+                    remainingDistanceMeters = newRoute.totalDistanceMeters,
+                    remainingDurationSeconds = newRoute.expectedDurationSeconds,
+                    etaTimestampEpochMs = nowMs + (newRoute.expectedDurationSeconds * 1000L),
+                    status = NavigationStatus.ON_ROUTE,
+                    isOffRouteWarning = false,
+                    isRerouting = false,
+                    rerouteErrorMessage = null
+                )
+            } else state
+        }
+    }
+
+    private fun applyRerouteFailure(message: String) {
+        lastRerouteFailureTimestampMs = clock.currentTimeMillis()
+        _uiState.update { state ->
+            if (state is NavigationUiState.Navigating) {
+                state.copy(
+                    isRerouting = false,
+                    rerouteErrorMessage = message
+                )
+            } else state
+        }
+    }
+
+    /**
+     * Request a manual reroute from the UI using the latest known rider coordinate.
+     * Bypasses the network failure backoff timer.
+     */
+    fun requestManualReroute() {
+        val current = _uiState.value as? NavigationUiState.Navigating ?: return
+        val fix = latestFix ?: LocationPoint(
+            latitude = current.originLatitude ?: current.route.geometry.firstOrNull()?.latitude ?: 0.0,
+            longitude = current.originLongitude ?: current.route.geometry.firstOrNull()?.longitude ?: 0.0
+        )
+        lastRerouteFailureTimestampMs = 0L
+        triggerReroute(current, fix)
+    }
+
+    /**
+     * Dismiss the reroute error notification.
+     */
+    fun dismissRerouteError() {
+        _uiState.update { state ->
+            if (state is NavigationUiState.Navigating) {
+                state.copy(rerouteErrorMessage = null)
+            } else state
+        }
+    }
+
+    /**
      * Stop and finish active navigation. Does NOT stop ride recording.
+     * Cancels any pending or in-flight reroute network requests.
      */
     fun endNavigation() {
+        rerouteJob?.cancel()
+        routingRepository.cancelActiveRequests()
         val current = _uiState.value
         if (current is NavigationUiState.Navigating) {
             viewModelScope.launch {
@@ -256,6 +431,12 @@ class NavigationViewModel @Inject constructor(
                 _uiState.value = NavigationUiState.Idle
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        rerouteJob?.cancel()
+        routingRepository.cancelActiveRequests()
     }
 
     /**

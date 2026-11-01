@@ -3,7 +3,9 @@ package com.abrar.motolog.ui.navigation
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.fake.FakeNavigationSessionRepository
+import com.abrar.motolog.fake.FakeRoutingRepository
 import com.abrar.motolog.fake.FakeTrackingRepository
+import com.abrar.motolog.shared.domain.model.RoutingError
 import com.abrar.motolog.shared.domain.model.LocationPoint
 import com.abrar.motolog.shared.domain.model.ManeuverType
 import com.abrar.motolog.shared.domain.model.NavigationSession
@@ -43,7 +45,13 @@ class NavigationViewModelTest {
     private lateinit var navSessionRepo: FakeNavigationSessionRepository
     private lateinit var trackingRepo: FakeTrackingRepository
     private lateinit var settingsRepo: SettingsRepository
+    private lateinit var routingRepo: FakeRoutingRepository
+    private lateinit var fakeClock: FakeClock
     private lateinit var viewModel: NavigationViewModel
+
+    class FakeClock(var time: Long = 1000L) : com.abrar.motolog.shared.domain.time.Clock {
+        override fun currentTimeMillis(): Long = time
+    }
 
     private fun createSampleRoute(): PlannedRoute {
         val geometry = listOf(
@@ -90,6 +98,8 @@ class NavigationViewModelTest {
 
         navSessionRepo = FakeNavigationSessionRepository()
         trackingRepo = FakeTrackingRepository()
+        routingRepo = FakeRoutingRepository()
+        fakeClock = FakeClock(1000L)
 
         val testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope,
@@ -100,7 +110,9 @@ class NavigationViewModelTest {
         viewModel = NavigationViewModel(
             navigationSessionRepository = navSessionRepo,
             trackingRepository = trackingRepo,
-            settingsRepository = settingsRepo
+            settingsRepository = settingsRepo,
+            routingRepository = routingRepo,
+            clock = fakeClock
         )
     }
 
@@ -284,5 +296,235 @@ class NavigationViewModelTest {
 
         val nav = viewModel.uiState.value as NavigationUiState.Navigating
         assertTrue(nav.isGpsLost)
+    }
+
+    @Test
+    fun autoRerouteTriggeredAfterSustainedDeviation() = runTest {
+        val originalRoute = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_reroute_01",
+            plannedRouteId = originalRoute.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, originalRoute)
+        advanceUntilIdle()
+
+        // Set up the recalculated route that routing repo will return
+        val reroutedRoute = PlannedRoute(
+            id = "route_rerouted_202",
+            geometry = listOf(
+                LocationPoint(latitude = 12.9780, longitude = 77.6010),
+                LocationPoint(latitude = 12.9800, longitude = 77.6050)
+            ),
+            totalDistanceMeters = 600.0,
+            expectedDurationSeconds = 150L,
+            instructions = listOf(
+                RouteInstruction(
+                    maneuverType = ManeuverType.DEPART,
+                    instructionText = "Continue to Indiranagar",
+                    distanceMeters = 600.0
+                )
+            ),
+            providerAttribution = "GraphHopper"
+        )
+        routingRepo.routeToReturn = Result.success(listOf(reroutedRoute))
+
+        // Deviate well beyond 80m reroute threshold (~2km away)
+        // t = 1000L
+        fakeClock.time = 1000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9600,
+                longitude = 77.5800
+            )
+        )
+        advanceUntilIdle()
+
+        // Off-route warning initially
+        val state1 = viewModel.uiState.value as NavigationUiState.Navigating
+        assertTrue(state1.isOffRouteWarning)
+
+        // t = 13000L (> 10s sustained off route)
+        fakeClock.time = 13000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(totalDistanceMeters = 20.0),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9601,
+                longitude = 77.5801
+            )
+        )
+        advanceUntilIdle()
+
+        // Verify reroute was requested and applied
+        assertNotNull(routingRepo.lastCalculatedRequest)
+        assertEquals(12.9601, routingRepo.lastCalculatedRequest!!.origin.latitude, 0.001)
+
+        val updatedState = viewModel.uiState.value as NavigationUiState.Navigating
+        assertEquals("route_rerouted_202", updatedState.route.id)
+        assertEquals(600.0, updatedState.remainingDistanceMeters, 0.1)
+        assertFalse(updatedState.isRerouting)
+        assertFalse(updatedState.isOffRouteWarning)
+
+        // Verify session in Room was updated with new route and incremented rerouteCount
+        val active = navSessionRepo.activeSession
+        assertNotNull(active)
+        assertEquals("route_rerouted_202", active!!.plannedRouteId)
+        assertEquals(1, active.rerouteCount)
+    }
+
+    @Test
+    fun autoRerouteDisabledInSettingsSuppressesAutomaticReroute() = runTest {
+        settingsRepo.setRoutingAutoRerouteEnabled(false)
+        advanceUntilIdle()
+
+        val originalRoute = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_reroute_off",
+            plannedRouteId = originalRoute.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, originalRoute)
+        advanceUntilIdle()
+
+        // Sustained deviation > 80m for > 10s
+        fakeClock.time = 1000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9600,
+                longitude = 77.5800
+            )
+        )
+        advanceUntilIdle()
+
+        fakeClock.time = 14000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(totalDistanceMeters = 20.0),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9601,
+                longitude = 77.5801
+            )
+        )
+        advanceUntilIdle()
+
+        // Auto reroute was NOT requested
+        assertTrue(routingRepo.lastCalculatedRequest == null)
+        val state = viewModel.uiState.value as NavigationUiState.Navigating
+        assertEquals(originalRoute.id, state.route.id)
+    }
+
+    @Test
+    fun manualRerouteTriggersRecalculationEvenIfAutoRerouteDisabled() = runTest {
+        settingsRepo.setRoutingAutoRerouteEnabled(false)
+        advanceUntilIdle()
+
+        val originalRoute = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_manual",
+            plannedRouteId = originalRoute.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, originalRoute)
+        advanceUntilIdle()
+
+        // Emit current fix
+        fakeClock.time = 2000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9740,
+                longitude = 77.5960
+            )
+        )
+        advanceUntilIdle()
+
+        // User taps manual "REROUTE"
+        viewModel.requestManualReroute()
+        advanceUntilIdle()
+
+        // Recalculation was dispatched with the rider's latest coordinates
+        assertNotNull(routingRepo.lastCalculatedRequest)
+        assertEquals(12.9740, routingRepo.lastCalculatedRequest!!.origin.latitude, 0.001)
+    }
+
+    @Test
+    fun rerouteFailureRetainsExistingRouteAndSetsErrorMessage() = runTest {
+        val originalRoute = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_fail",
+            plannedRouteId = originalRoute.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, originalRoute)
+        advanceUntilIdle()
+
+        fakeClock.time = 2000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9740,
+                longitude = 77.5960
+            )
+        )
+        advanceUntilIdle()
+
+        // Simulate network failure during reroute
+        routingRepo.routeToReturn = Result.failure(RoutingError.NetworkError("No route returned"))
+
+        viewModel.requestManualReroute()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as NavigationUiState.Navigating
+        // Original route is retained! Never erased on network failure!
+        assertEquals(originalRoute.id, state.route.id)
+        assertFalse(state.isRerouting)
+        assertNotNull(state.rerouteErrorMessage)
+
+        // Dismiss error
+        viewModel.dismissRerouteError()
+        val dismissedState = viewModel.uiState.value as NavigationUiState.Navigating
+        assertTrue(dismissedState.rerouteErrorMessage == null)
+    }
+
+    @Test
+    fun endNavigationCancelsActiveRerouteRequest() = runTest {
+        val originalRoute = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_cancel",
+            plannedRouteId = originalRoute.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, originalRoute)
+        advanceUntilIdle()
+
+        viewModel.endNavigation()
+        advanceUntilIdle()
+
+        assertTrue(routingRepo.cancelCalled)
+        assertEquals(NavigationUiState.Idle, viewModel.uiState.value)
     }
 }
