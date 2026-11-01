@@ -37,7 +37,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun defaultRoutingSettings_matchExpectedDefaults() = runTest(testDispatcher) {
-        assertEquals(RoutingMode.GRAPH_HOPPER_CLOUD, repository.routingMode.first())
+        assertEquals(RoutingMode.KEYLESS_GRAPH_HOPPER, repository.routingMode.first())
         assertEquals("http://localhost:8989", repository.routingSelfHostedUrl.first())
         assertTrue(repository.nearbySearchEnabled.first())
         assertEquals(50, repository.initialSearchRadiusKm.first())
@@ -50,11 +50,19 @@ class SettingsRepositoryTest {
 
     @Test
     fun setRoutingMode_persistsCorrectly() = runTest(testDispatcher) {
-        repository.setRoutingMode(RoutingMode.KEYLESS_GRAPH_HOPPER)
-        assertEquals(RoutingMode.KEYLESS_GRAPH_HOPPER, repository.routingMode.first())
-
+        repository.setRoutingApiKey("valid_key_123")
         repository.setRoutingMode(RoutingMode.GRAPH_HOPPER_CLOUD)
         assertEquals(RoutingMode.GRAPH_HOPPER_CLOUD, repository.routingMode.first())
+
+        repository.setRoutingMode(RoutingMode.KEYLESS_GRAPH_HOPPER)
+        assertEquals(RoutingMode.KEYLESS_GRAPH_HOPPER, repository.routingMode.first())
+    }
+
+    @Test
+    fun routingMode_fallsBackToKeylessWhenCloudKeyMissing() = runTest(testDispatcher) {
+        repository.setRoutingMode(RoutingMode.GRAPH_HOPPER_CLOUD)
+        repository.setRoutingApiKey("")
+        assertEquals(RoutingMode.KEYLESS_GRAPH_HOPPER, repository.routingMode.first())
     }
 
     @Test

@@ -23,7 +23,7 @@ data class DestinationUiState(
     val requestAlternatives: Boolean = true,
     val errorMessage: String? = null,
     val isApiKeyMissing: Boolean = false,
-    val routingMode: com.abrar.motolog.shared.domain.model.RoutingMode = com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD,
+    val routingMode: com.abrar.motolog.shared.domain.model.RoutingMode = com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER,
     val isMapPinMode: Boolean = false,
     val mapCenterLatitude: Double = 0.0,
     val mapCenterLongitude: Double = 0.0,

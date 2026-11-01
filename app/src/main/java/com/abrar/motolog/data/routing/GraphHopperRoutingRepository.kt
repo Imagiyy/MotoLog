@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
@@ -102,6 +106,13 @@ class GraphHopperRoutingRepository @Inject constructor(
                 queryParams.add("ch.disable=true")
             }
 
+            if (mode == RoutingMode.GRAPH_HOPPER_CLOUD && apiKey.isBlank() && providerUrl.contains("graphhopper.com")) {
+                diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.API_KEY_MISSING)
+                return Result.failure(
+                    RoutingError.ApiKeyMissing("GraphHopper Cloud API key is required. Please add your key in Settings or switch to Keyless mode.")
+                )
+            }
+
             if (apiKey.isNotBlank()) {
                 queryParams.add("key=${URLEncoder.encode(apiKey, "UTF-8")}")
             }
@@ -140,8 +151,17 @@ class GraphHopperRoutingRepository @Inject constructor(
 
                 400 -> {
                     val errorMsg = extractErrorMessage(response.body) ?: "No route found between points"
-                    diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NO_ROUTE)
-                    Result.failure(RoutingError.NoRouteFound(errorMsg))
+                    if (isApiKeyError(response.statusCode, errorMsg)) {
+                        diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.API_KEY_MISSING)
+                        Result.failure(
+                            RoutingError.ApiKeyMissing(
+                                errorMsg.ifBlank { "Invalid or missing GraphHopper Cloud API key. Please check your key in settings." }
+                            )
+                        )
+                    } else {
+                        diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NO_ROUTE)
+                        Result.failure(RoutingError.NoRouteFound(errorMsg))
+                    }
                 }
 
                 401, 403 -> {
@@ -284,12 +304,29 @@ class GraphHopperRoutingRepository @Inject constructor(
     private fun extractErrorMessage(body: String): String? {
         return try {
             val jsonElement = json.parseToJsonElement(body)
-            val msgObj = jsonElement as? kotlinx.serialization.json.JsonObject
-            msgObj?.get("message")?.let {
-                it.toString().trim('\"')
-            }
+            val jsonObj = jsonElement as? JsonObject ?: return null
+            // 1. Direct "message"
+            jsonObj["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                // 2. hints[0].message
+                ?: (jsonObj["hints"] as? JsonArray)?.firstOrNull()?.let { firstHint ->
+                    (firstHint as? JsonObject)?.get("message")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                }
+                // 3. Direct "error"
+                ?: jsonObj["error"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                // 4. Fallback string representation
+                ?: jsonObj["message"]?.toString()?.trim('\"')?.takeIf { it.isNotBlank() }
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun isApiKeyError(statusCode: Int, message: String?): Boolean {
+        if (statusCode in listOf(401, 403)) return true
+        val lower = message?.lowercase() ?: return false
+        return lower.contains("api key") ||
+                lower.contains("api_key") ||
+                lower.contains("authentication") ||
+                lower.contains("unauthorized") ||
+                lower.contains("pass an api key")
     }
 }

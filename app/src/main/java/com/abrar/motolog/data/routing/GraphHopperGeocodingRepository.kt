@@ -12,6 +12,12 @@ import com.abrar.motolog.shared.domain.repository.GeocodingRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
@@ -144,6 +150,12 @@ class GraphHopperGeocodingRepository @Inject constructor(
         val providerUrl = settingsRepository.routingProviderUrl.first()
         val apiKey = settingsRepository.routingApiKey.first()
 
+        if (apiKey.isBlank() && providerUrl.contains("graphhopper.com")) {
+            throw RoutingError.ApiKeyMissing(
+                "GraphHopper Cloud API key is required. Please configure your key in settings or switch to Keyless mode."
+            )
+        }
+
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val queryParams = mutableListOf(
             "q=$encodedQuery",
@@ -162,30 +174,44 @@ class GraphHopperGeocodingRepository @Inject constructor(
         val fullUrl = "${providerUrl.removeSuffix("/")}/geocode?${queryParams.joinToString("&")}"
         val response = httpTransport.get(fullUrl)
 
-        when (response.statusCode) {
-            in 200..299 -> {
-                val dto = json.decodeFromString<GraphHopperGeocodeResponseDto>(response.body)
-                return dto.hits.mapNotNull { hit ->
-                    val pt = hit.point ?: return@mapNotNull null
-                    PlaceResult(
-                        id = hit.osmId,
-                        name = hit.name?.takeIf { it.isNotBlank() } ?: "Unnamed Location",
-                        formattedAddress = formatHitAddress(hit),
-                        latitude = pt.lat,
-                        longitude = pt.lng,
-                        provider = "GraphHopper Cloud"
-                    )
-                }
+        if (response.statusCode in 200..299) {
+            val dto = json.decodeFromString<GraphHopperGeocodeResponseDto>(response.body)
+            return dto.hits.mapNotNull { hit ->
+                val pt = hit.point ?: return@mapNotNull null
+                PlaceResult(
+                    id = hit.osmId,
+                    name = hit.name?.takeIf { it.isNotBlank() } ?: "Unnamed Location",
+                    formattedAddress = formatHitAddress(hit),
+                    latitude = pt.lat,
+                    longitude = pt.lng,
+                    provider = "GraphHopper Cloud"
+                )
             }
-            401, 403 -> throw RoutingError.ApiKeyMissing("Invalid or missing GraphHopper Cloud API key.")
-            429 -> throw RoutingError.RateLimitExceeded()
-            else -> throw RoutingError.ProviderError(response.statusCode, "Geocoding failed with HTTP ${response.statusCode}")
+        }
+
+        val errorMsg = extractErrorMessage(response.body)
+        when {
+            isApiKeyError(response.statusCode, errorMsg) -> {
+                throw RoutingError.ApiKeyMissing(
+                    errorMsg ?: "Invalid or missing GraphHopper Cloud API key. Please check your key in settings or switch to Keyless mode."
+                )
+            }
+            response.statusCode == 429 -> throw RoutingError.RateLimitExceeded()
+            else -> throw RoutingError.ProviderError(
+                response.statusCode,
+                errorMsg ?: "Geocoding failed with HTTP ${response.statusCode}"
+            )
         }
     }
 
     private suspend fun reverseGeocodeCloud(latitude: Double, longitude: Double): Destination {
         val providerUrl = settingsRepository.routingProviderUrl.first()
         val apiKey = settingsRepository.routingApiKey.first()
+
+        // If no key is configured for GraphHopper Cloud, fall back to free OSM Photon reverse geocoding
+        if (apiKey.isBlank() && providerUrl.contains("graphhopper.com")) {
+            return reverseGeocodeKeyless(latitude, longitude)
+        }
 
         val queryParams = mutableListOf(
             "reverse=true",
@@ -412,5 +438,34 @@ class GraphHopperGeocodingRepository @Inject constructor(
         props.country?.takeIf { it.isNotBlank() && !parts.contains(it) }?.let { parts.add(it) }
 
         return parts.joinToString(", ")
+    }
+
+    private fun extractErrorMessage(body: String): String? {
+        return try {
+            val jsonElement = json.parseToJsonElement(body)
+            val jsonObj = jsonElement as? JsonObject ?: return null
+            // 1. Direct "message"
+            jsonObj["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                // 2. hints[0].message
+                ?: (jsonObj["hints"] as? JsonArray)?.firstOrNull()?.let { firstHint ->
+                    (firstHint as? JsonObject)?.get("message")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                }
+                // 3. Direct "error"
+                ?: jsonObj["error"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                // 4. Fallback string representation
+                ?: jsonObj["message"]?.toString()?.trim('\"')?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun isApiKeyError(statusCode: Int, message: String?): Boolean {
+        if (statusCode in listOf(401, 403)) return true
+        val lower = message?.lowercase() ?: return false
+        return lower.contains("api key") ||
+                lower.contains("api_key") ||
+                lower.contains("authentication") ||
+                lower.contains("unauthorized") ||
+                lower.contains("pass an api key")
     }
 }

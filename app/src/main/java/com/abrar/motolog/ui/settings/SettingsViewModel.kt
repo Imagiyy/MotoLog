@@ -136,7 +136,7 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
     val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.KEYLESS_GRAPH_HOPPER)
 
     val routingSelfHostedUrl: StateFlow<String> = settingsRepository.routingSelfHostedUrl
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), SettingsRepository.DEFAULT_SELF_HOSTED_URL)

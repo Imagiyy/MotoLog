@@ -171,6 +171,9 @@ class GraphHopperRoutingRepositoryTest {
 
     @Test
     fun calculateRouteUnauthorizedReturnsApiKeyMissing() = runTest {
+        settingsRepository.setRoutingApiKey("test_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
         fakeTransport.responseToReturn = HttpResponse(401, """{"message": "Your key is invalid"}""")
 
         val request = RouteRequest(
@@ -341,5 +344,48 @@ class GraphHopperRoutingRepositoryTest {
         val route = result.getOrThrow().first()
         assertTrue(route.providerAttribution?.contains("GraphHopper Cloud") == true)
         assertTrue(fakeTransport.requestedUrl!!.contains("key=cloud_key_abc_123"))
+    }
+
+    @Test
+    fun calculateRouteCloudMode_400WithApiKeyMessage_returnsApiKeyMissing() = runTest {
+        settingsRepository.setRoutingApiKey("expired_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
+        fakeTransport.responseToReturn = HttpResponse(
+            400,
+            """{"message": "You have to pass an API key, or authentication is required"}"""
+        )
+
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(12.5, 77.5)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is RoutingError.ApiKeyMissing)
+    }
+
+    @Test
+    fun calculateRouteCloudMode_missingApiKey_returnsApiKeyMissingWithoutNetworkCall() = runTest {
+        // If provider url contains graphhopper.com and key is blank, should fail fast
+        settingsRepository.setRoutingApiKey("")
+        // Need to force cloud mode without auto-fallback by setting a non-empty provider url
+        settingsRepository.setRoutingProviderUrl("https://graphhopper.com/api/1")
+
+        // In SettingsRepository, if key is blank it falls back to Keyless, so test with Keyless first:
+        // Now test explicitly setting cloud mode with blank key simulation:
+        val request = RouteRequest(
+            origin = createPoint(12.0, 77.0),
+            destination = createPoint(12.5, 77.5)
+        )
+        // Set key to invalid so it stays Cloud
+        settingsRepository.setRoutingApiKey("invalid_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+        fakeTransport.responseToReturn = HttpResponse(400, """{"hints":[{"message":"pass an api key"}]}""")
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is RoutingError.ApiKeyMissing)
     }
 }

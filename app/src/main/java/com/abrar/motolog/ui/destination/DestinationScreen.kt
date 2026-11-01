@@ -186,6 +186,7 @@ fun DestinationScreen(
                 onToggleMapPinMode = viewModel::setMapPinMode,
                 onConfirmMapPin = viewModel::confirmMapPinDestination,
                 onSaveApiKey = viewModel::saveRoutingApiKey,
+                onSwitchToKeylessMode = viewModel::switchToKeylessMode,
                 onStartNavigation = viewModel::startNavigation,
                 modifier = Modifier.fillMaxSize()
             )
@@ -206,6 +207,7 @@ fun DestinationScreen(
                 onToggleMapPinMode = viewModel::setMapPinMode,
                 onConfirmMapPin = viewModel::confirmMapPinDestination,
                 onSaveApiKey = viewModel::saveRoutingApiKey,
+                onSwitchToKeylessMode = viewModel::switchToKeylessMode,
                 onStartNavigation = viewModel::startNavigation,
                 modifier = Modifier.fillMaxSize()
             )
@@ -230,6 +232,7 @@ private fun DestinationPortraitLayout(
     onToggleMapPinMode: (Boolean) -> Unit,
     onConfirmMapPin: (Double, Double) -> Unit,
     onSaveApiKey: (String) -> Unit,
+    onSwitchToKeylessMode: () -> Unit,
     onStartNavigation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -261,6 +264,10 @@ private fun DestinationPortraitLayout(
                     onSaveApiKey(key)
                     showApiKeyInput = false
                 },
+                onSwitchToKeylessMode = {
+                    onSwitchToKeylessMode()
+                    showApiKeyInput = false
+                },
                 onDismiss = { showApiKeyInput = false },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -274,6 +281,7 @@ private fun DestinationPortraitLayout(
                 message = uiState.errorMessage,
                 palette = palette,
                 onConfigureApiKey = { showApiKeyInput = true },
+                onSwitchToKeylessMode = onSwitchToKeylessMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 4.dp)
@@ -513,9 +521,12 @@ private fun DestinationLandscapeLayout(
     onToggleMapPinMode: (Boolean) -> Unit,
     onConfirmMapPin: (Double, Double) -> Unit,
     onSaveApiKey: (String) -> Unit,
+    onSwitchToKeylessMode: () -> Unit,
     onStartNavigation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showApiKeyInput by remember { mutableStateOf(false) }
+
     Row(modifier = modifier.fillMaxSize()) {
         // Left Half: Map View (either pin picker or route preview)
         Box(
@@ -571,6 +582,38 @@ private fun DestinationLandscapeLayout(
                 },
                 onToggleMapPinMode = { onToggleMapPinMode(!uiState.isMapPinMode) }
             )
+
+            // API Key prompt banner
+            if (uiState.isApiKeyMissing || showApiKeyInput) {
+                ApiKeyPromptCard(
+                    palette = palette,
+                    onSaveKey = { key ->
+                        onSaveApiKey(key)
+                        showApiKeyInput = false
+                    },
+                    onSwitchToKeylessMode = {
+                        onSwitchToKeylessMode()
+                        showApiKeyInput = false
+                    },
+                    onDismiss = { showApiKeyInput = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
+
+            // Error message banner
+            if (uiState.errorMessage != null && !uiState.isApiKeyMissing) {
+                ErrorMessageCard(
+                    message = uiState.errorMessage,
+                    palette = palette,
+                    onConfigureApiKey = { showApiKeyInput = true },
+                    onSwitchToKeylessMode = onSwitchToKeylessMode,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -1525,6 +1568,7 @@ private fun FloatingMapControlButton(
 private fun ApiKeyPromptCard(
     palette: CockpitThemePalette,
     onSaveKey: (String) -> Unit,
+    onSwitchToKeylessMode: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1560,7 +1604,7 @@ private fun ApiKeyPromptCard(
             }
 
             Text(
-                text = "Enter your free GraphHopper API key from graphhopper.com to enable routing and destination search:",
+                text = "GraphHopper Cloud requires an API key from graphhopper.com. Alternatively, switch to Keyless Mode to use free OpenStreetMap search & routing with zero configuration:",
                 color = palette.dialText.copy(alpha = 0.8f),
                 fontSize = 11.sp
             )
@@ -1593,6 +1637,29 @@ private fun ApiKeyPromptCard(
                     Text("Save", color = palette.background, fontWeight = FontWeight.Bold)
                 }
             }
+
+            Button(
+                onClick = onSwitchToKeylessMode,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676).copy(alpha = 0.15f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color(0xFF00E676),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "Switch to Keyless Mode (Free OpenStreetMap)",
+                    color = Color(0xFF00E676),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -1602,37 +1669,59 @@ private fun ErrorMessageCard(
     message: String,
     palette: CockpitThemePalette,
     onConfigureApiKey: () -> Unit,
+    onSwitchToKeylessMode: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isKeyOrProviderIssue = message.contains("API key", ignoreCase = true) ||
+            message.contains("400") ||
+            message.contains("key", ignoreCase = true) ||
+            message.contains("auth", ignoreCase = true) ||
+            message.contains("provider error", ignoreCase = true)
+
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .border(1.dp, Color(0xFFFF1744).copy(alpha = 0.8f), RoundedCornerShape(8.dp)),
         color = Color(0xFFFF1744).copy(alpha = 0.12f)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = Color(0xFFFF1744),
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = message,
-                color = palette.dialText,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.weight(1f)
-            )
-            if (message.contains("API key", ignoreCase = true)) {
-                TextButton(onClick = onConfigureApiKey) {
-                    Text("Enter Key", color = palette.primaryAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFFF1744),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = message,
+                    color = palette.dialText,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (isKeyOrProviderIssue) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onConfigureApiKey) {
+                        Text("Enter Key", color = palette.primaryAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (onSwitchToKeylessMode != null) {
+                        Spacer(Modifier.width(6.dp))
+                        TextButton(onClick = onSwitchToKeylessMode) {
+                            Text("Use Keyless OSM", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }

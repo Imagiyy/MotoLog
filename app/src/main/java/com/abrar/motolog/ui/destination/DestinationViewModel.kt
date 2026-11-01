@@ -80,7 +80,7 @@ class DestinationViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.KEYLESS_GRAPH_HOPPER)
 
     val routingApiKey: StateFlow<String> = settingsRepository.routingApiKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
@@ -220,9 +220,10 @@ class DestinationViewModel @Inject constructor(
                     _uiState.update { it.copy(isSearching = false, searchResults = destinations) }
                 },
                 onFailure = { error ->
-                    val apiKeyMissing = error is RoutingError.ApiKeyMissing
+                    val apiKeyMissing = error is RoutingError.ApiKeyMissing ||
+                            (_uiState.value.routingMode == RoutingMode.GRAPH_HOPPER_CLOUD && routingApiKey.value.isBlank())
                     val msg = if (apiKeyMissing) {
-                        "GraphHopper API key missing. Please enter your API key."
+                        "GraphHopper API key missing. Please enter your API key or switch to Keyless mode."
                     } else {
                         error.message ?: "Search failed. Check your network connection."
                     }
@@ -303,12 +304,13 @@ class DestinationViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    val apiKeyMissing = error is RoutingError.ApiKeyMissing
-                    val msg = when (error) {
-                        is RoutingError.ApiKeyMissing -> "GraphHopper API key is missing."
-                        is RoutingError.NoRouteFound -> "No route found between your location and the destination."
-                        is RoutingError.RateLimitExceeded -> "Routing rate limit exceeded. Please wait a moment and try again."
-                        is RoutingError.NetworkError -> "Network connection error while calculating route."
+                    val apiKeyMissing = error is RoutingError.ApiKeyMissing ||
+                            (_uiState.value.routingMode == RoutingMode.GRAPH_HOPPER_CLOUD && routingApiKey.value.isBlank())
+                    val msg = when {
+                        apiKeyMissing -> "GraphHopper API key is missing. Please enter your API key or switch to Keyless mode."
+                        error is RoutingError.NoRouteFound -> "No route found between your location and the destination."
+                        error is RoutingError.RateLimitExceeded -> "Routing rate limit exceeded. Please wait a moment and try again."
+                        error is RoutingError.NetworkError -> "Network connection error while calculating route."
                         else -> error.message ?: "Failed to calculate route."
                     }
                     _uiState.update {
@@ -388,8 +390,28 @@ class DestinationViewModel @Inject constructor(
     fun saveRoutingApiKey(apiKey: String) {
         viewModelScope.launch {
             settingsRepository.setRoutingApiKey(apiKey)
-            _uiState.update { it.copy(isApiKeyMissing = false, errorMessage = null) }
+            settingsRepository.setRoutingMode(RoutingMode.GRAPH_HOPPER_CLOUD)
+            _uiState.update { it.copy(routingMode = RoutingMode.GRAPH_HOPPER_CLOUD, isApiKeyMissing = false, errorMessage = null) }
             if (_uiState.value.selectedDestination != null) {
+                calculateRouteForSelectedDestination()
+            }
+        }
+    }
+
+    fun switchToKeylessMode() {
+        viewModelScope.launch {
+            settingsRepository.setRoutingMode(RoutingMode.KEYLESS_GRAPH_HOPPER)
+            _uiState.update {
+                it.copy(
+                    routingMode = RoutingMode.KEYLESS_GRAPH_HOPPER,
+                    isApiKeyMissing = false,
+                    errorMessage = null
+                )
+            }
+            val query = _uiState.value.searchQuery
+            if (query.isNotBlank()) {
+                onSearchQueryChanged(query)
+            } else if (_uiState.value.selectedDestination != null) {
                 calculateRouteForSelectedDestination()
             }
         }

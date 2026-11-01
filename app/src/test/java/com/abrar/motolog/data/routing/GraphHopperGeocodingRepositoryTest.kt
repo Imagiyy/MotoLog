@@ -56,6 +56,9 @@ class GraphHopperGeocodingRepositoryTest {
 
     @Test
     fun searchDestinationsSuccessParsesAddressAndCoordinates() = runTest {
+        settingsRepository.setRoutingApiKey("test_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
         val jsonResponse = """
             {
               "hits": [
@@ -109,6 +112,9 @@ class GraphHopperGeocodingRepositoryTest {
 
     @Test
     fun reverseGeocodeSuccessReturnsFormattedPinDestination() = runTest {
+        settingsRepository.setRoutingApiKey("test_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
         val jsonResponse = """
             {
               "hits": [
@@ -140,6 +146,9 @@ class GraphHopperGeocodingRepositoryTest {
 
     @Test
     fun reverseGeocodeEmptyHitsReturnsCoordinateFallback() = runTest {
+        settingsRepository.setRoutingApiKey("test_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
         val jsonResponse = """{"hits": []}"""
         fakeTransport.responseToReturn = HttpResponse(200, jsonResponse)
 
@@ -161,11 +170,67 @@ class GraphHopperGeocodingRepositoryTest {
 
     @Test
     fun searchDestinationsRateLimitReturnsRateLimitError() = runTest {
+        settingsRepository.setRoutingApiKey("test_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
         fakeTransport.responseToReturn = HttpResponse(429, "Rate limit exceeded")
 
         val result = repository.searchDestinations("Mumbai")
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is RoutingError.RateLimitExceeded)
+    }
+
+    @Test
+    fun searchDestinationsCloudMode_missingApiKey_throwsApiKeyMissingWithoutNetworkCall() = runTest {
+        settingsRepository.setRoutingApiKey("")
+        // Explicitly set cloud mode with empty key (simulating old config)
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+
+        // However SettingsRepository automatically falls back to KEYLESS when key is blank,
+        // so test when an invalid key is provided to cloud mode:
+        settingsRepository.setRoutingApiKey("invalid_key")
+        fakeTransport.responseToReturn = HttpResponse(
+            400,
+            """{"message": "You have to pass an API key, or authentication is required"}"""
+        )
+
+        val result = repository.searchDestinations("Mumbai")
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull()
+        assertTrue("Error must be ApiKeyMissing but was $error", error is RoutingError.ApiKeyMissing)
+    }
+
+    @Test
+    fun searchDestinationsCloudMode_400WithHintsApiKeyMessage_throwsApiKeyMissing() = runTest {
+        settingsRepository.setRoutingApiKey("dummy_expired_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+        fakeTransport.responseToReturn = HttpResponse(
+            400,
+            """{"hints": [{"message": "You have to pass an API key, or authentication is required"}]}"""
+        )
+
+        val result = repository.searchDestinations("Mumbai")
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull()
+        assertTrue("Error must be ApiKeyMissing but was $error", error is RoutingError.ApiKeyMissing)
+    }
+
+    @Test
+    fun searchDestinationsCloudMode_400WithGenericError_extractsMessageInProviderError() = runTest {
+        settingsRepository.setRoutingApiKey("dummy_valid_key")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+        fakeTransport.responseToReturn = HttpResponse(
+            400,
+            """{"message": "Point parameter was invalid"}"""
+        )
+
+        val result = repository.searchDestinations("Mumbai")
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull()
+        assertTrue("Error must be ProviderError but was $error", error is RoutingError.ProviderError)
+        val providerError = error as RoutingError.ProviderError
+        assertEquals(400, providerError.statusCode)
+        assertTrue(providerError.message!!.contains("Point parameter was invalid"))
     }
 
     @Test

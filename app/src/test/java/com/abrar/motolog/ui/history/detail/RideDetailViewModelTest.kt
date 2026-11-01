@@ -45,7 +45,11 @@ class RideDetailViewModelTest {
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        try {
+            Dispatchers.resetMain()
+        } catch (_: Throwable) {
+            // Android Looper might not be mocked in JVM unit tests
+        }
     }
 
     @Test

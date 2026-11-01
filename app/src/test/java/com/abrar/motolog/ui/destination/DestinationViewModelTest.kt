@@ -323,4 +323,31 @@ class DestinationViewModelTest {
         viewModel.onNavigationHandled()
         assertFalse(viewModel.uiState.value.navigationStarted)
     }
+
+    @Test
+    fun switchToKeylessMode_updatesRoutingModeAndClearsApiKeyMissing() = runTest(testDispatcher) {
+        settingsRepo.setRoutingApiKey("temp_key")
+        settingsRepo.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
+        advanceUntilIdle()
+
+        viewModel.onSearchQueryChanged("Koramangala")
+        geocodingRepo.searchResultsToReturn = Result.failure(RoutingError.ApiKeyMissing())
+        advanceTimeBy(300L)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isApiKeyMissing)
+
+        geocodingRepo.searchResultsToReturn = Result.success(
+            listOf(Destination(id = "k1", latitude = 12.9, longitude = 77.6, displayName = "Koramangala"))
+        )
+        viewModel.switchToKeylessMode()
+        advanceUntilIdle()
+
+        assertEquals(
+            com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER,
+            viewModel.uiState.value.routingMode
+        )
+        assertFalse(viewModel.uiState.value.isApiKeyMissing)
+        assertNull(viewModel.uiState.value.errorMessage)
+    }
 }
