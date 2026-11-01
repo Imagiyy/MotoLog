@@ -1707,20 +1707,18 @@ private fun ErrorMessageCard(
                 )
             }
 
-            if (isKeyOrProviderIssue) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onConfigureApiKey) {
-                        Text("Enter Key", color = palette.primaryAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    if (onSwitchToKeylessMode != null) {
-                        Spacer(Modifier.width(6.dp))
-                        TextButton(onClick = onSwitchToKeylessMode) {
-                            Text("Use Keyless OSM", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onConfigureApiKey) {
+                    Text("Enter API Key", color = palette.primaryAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                if (onSwitchToKeylessMode != null) {
+                    Spacer(Modifier.width(6.dp))
+                    TextButton(onClick = onSwitchToKeylessMode) {
+                        Text("Use Keyless OSM", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

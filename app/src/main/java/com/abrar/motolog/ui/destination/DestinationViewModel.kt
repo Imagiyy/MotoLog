@@ -80,7 +80,7 @@ class DestinationViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.KEYLESS_GRAPH_HOPPER)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
 
     val routingApiKey: StateFlow<String> = settingsRepository.routingApiKey
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
@@ -304,13 +304,20 @@ class DestinationViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
+                    val isSelfHostedIssue = _uiState.value.routingMode == RoutingMode.KEYLESS_GRAPH_HOPPER &&
+                            (error.message?.contains("self-hosted", ignoreCase = true) == true ||
+                             error.message?.contains("localhost", ignoreCase = true) == true ||
+                             error is RoutingError.NetworkError)
                     val apiKeyMissing = error is RoutingError.ApiKeyMissing ||
-                            (_uiState.value.routingMode == RoutingMode.GRAPH_HOPPER_CLOUD && routingApiKey.value.isBlank())
+                            (_uiState.value.routingMode == RoutingMode.GRAPH_HOPPER_CLOUD && routingApiKey.value.isBlank()) ||
+                            isSelfHostedIssue
                     val msg = when {
+                        isSelfHostedIssue ->
+                            "Cannot connect to local server (localhost:8989). Please enter your GraphHopper Cloud API key below to calculate the route."
                         apiKeyMissing -> "GraphHopper API key is missing. Please enter your API key or switch to Keyless mode."
                         error is RoutingError.NoRouteFound -> "No route found between your location and the destination."
                         error is RoutingError.RateLimitExceeded -> "Routing rate limit exceeded. Please wait a moment and try again."
-                        error is RoutingError.NetworkError -> "Network connection error while calculating route."
+                        error is RoutingError.NetworkError -> error.message ?: "Network connection error while calculating route."
                         else -> error.message ?: "Failed to calculate route."
                     }
                     _uiState.update {

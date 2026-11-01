@@ -56,8 +56,11 @@ class GraphHopperRoutingRepository @Inject constructor(
 
     override suspend fun calculateRoute(request: RouteRequest): Result<List<PlannedRoute>> {
         diagnostics.recordRouteRequest()
+        var currentMode: RoutingMode? = null
+        var currentProviderUrl: String? = null
         return try {
             val mode = settingsRepository.routingMode.first()
+            currentMode = mode
             val (providerUrl, apiKey) = when (mode) {
                 RoutingMode.GRAPH_HOPPER_CLOUD -> {
                     Pair(settingsRepository.routingProviderUrl.first(), settingsRepository.routingApiKey.first())
@@ -66,6 +69,7 @@ class GraphHopperRoutingRepository @Inject constructor(
                     Pair(settingsRepository.routingSelfHostedUrl.first(), "")
                 }
             }
+            currentProviderUrl = providerUrl
 
             val origin = request.origin
             val destination = request.destination
@@ -202,7 +206,12 @@ class GraphHopperRoutingRepository @Inject constructor(
             Result.failure(RoutingError.RequestCancelled())
         } catch (e: IOException) {
             diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NETWORK)
-            Result.failure(RoutingError.NetworkError("Network error calculating route: ${e.message}", e))
+            val msg = if (currentMode == RoutingMode.KEYLESS_GRAPH_HOPPER && (currentProviderUrl?.contains("localhost") == true || currentProviderUrl?.contains("127.0.0.1") == true)) {
+                "Cannot connect to self-hosted server ($currentProviderUrl). Please enter your GraphHopper Cloud API key or configure a server URL in Settings."
+            } else {
+                "Network error calculating route: ${e.message}"
+            }
+            Result.failure(RoutingError.NetworkError(msg, e))
         } catch (e: Exception) {
             diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
             Result.failure(RoutingError.ProviderError(500, e.message ?: "Unknown routing error"))

@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -62,6 +63,9 @@ class GraphHopperRoutingRepositoryTest {
             produceFile = { tempFolder.newFile("test_settings.preferences_pb") }
         )
         settingsRepository = SettingsRepository(testDataStore)
+        kotlinx.coroutines.runBlocking {
+            settingsRepository.setRoutingApiKey("test_key")
+        }
         fakeTransport = FakeHttpTransport()
         repository = GraphHopperRoutingRepository(fakeTransport, settingsRepository)
     }
@@ -368,24 +372,18 @@ class GraphHopperRoutingRepositoryTest {
 
     @Test
     fun calculateRouteCloudMode_missingApiKey_returnsApiKeyMissingWithoutNetworkCall() = runTest {
-        // If provider url contains graphhopper.com and key is blank, should fail fast
         settingsRepository.setRoutingApiKey("")
-        // Need to force cloud mode without auto-fallback by setting a non-empty provider url
         settingsRepository.setRoutingProviderUrl("https://graphhopper.com/api/1")
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
 
-        // In SettingsRepository, if key is blank it falls back to Keyless, so test with Keyless first:
-        // Now test explicitly setting cloud mode with blank key simulation:
         val request = RouteRequest(
             origin = createPoint(12.0, 77.0),
             destination = createPoint(12.5, 77.5)
         )
-        // Set key to invalid so it stays Cloud
-        settingsRepository.setRoutingApiKey("invalid_key")
-        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
-        fakeTransport.responseToReturn = HttpResponse(400, """{"hints":[{"message":"pass an api key"}]}""")
 
         val result = repository.calculateRoute(request)
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is RoutingError.ApiKeyMissing)
+        assertNull("Cloud mode with blank key must not send network call", fakeTransport.requestedUrl)
     }
 }

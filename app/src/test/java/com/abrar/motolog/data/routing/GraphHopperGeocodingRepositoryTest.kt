@@ -50,6 +50,9 @@ class GraphHopperGeocodingRepositoryTest {
             produceFile = { tempFolder.newFile("test_settings.preferences_pb") }
         )
         settingsRepository = SettingsRepository(testDataStore)
+        kotlinx.coroutines.runBlocking {
+            settingsRepository.setRoutingApiKey("test_key")
+        }
         fakeTransport = FakeHttpTransport()
         repository = GraphHopperGeocodingRepository(fakeTransport, settingsRepository)
     }
@@ -183,21 +186,13 @@ class GraphHopperGeocodingRepositoryTest {
     @Test
     fun searchDestinationsCloudMode_missingApiKey_throwsApiKeyMissingWithoutNetworkCall() = runTest {
         settingsRepository.setRoutingApiKey("")
-        // Explicitly set cloud mode with empty key (simulating old config)
         settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.GRAPH_HOPPER_CLOUD)
-
-        // However SettingsRepository automatically falls back to KEYLESS when key is blank,
-        // so test when an invalid key is provided to cloud mode:
-        settingsRepository.setRoutingApiKey("invalid_key")
-        fakeTransport.responseToReturn = HttpResponse(
-            400,
-            """{"message": "You have to pass an API key, or authentication is required"}"""
-        )
 
         val result = repository.searchDestinations("Mumbai")
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull()
         assertTrue("Error must be ApiKeyMissing but was $error", error is RoutingError.ApiKeyMissing)
+        assertNull("Cloud mode with blank key must not make network call", fakeTransport.requestedUrl)
     }
 
     @Test

@@ -412,21 +412,10 @@ class SettingsRepository @Inject constructor(
 
     val routingMode: Flow<RoutingMode> = dataStore.data.map { prefs ->
         val raw = prefs[Keys.ROUTING_MODE]
-        val key = prefs[Keys.ROUTING_API_KEY]
         try {
-            if (raw != null) {
-                val mode = RoutingMode.valueOf(raw)
-                // If saved mode was Cloud but no API key is present, gracefully fallback to Keyless mode
-                if (mode == RoutingMode.GRAPH_HOPPER_CLOUD && key.isNullOrBlank()) {
-                    RoutingMode.KEYLESS_GRAPH_HOPPER
-                } else {
-                    mode
-                }
-            } else {
-                RoutingMode.KEYLESS_GRAPH_HOPPER
-            }
+            if (raw != null) RoutingMode.valueOf(raw) else RoutingMode.GRAPH_HOPPER_CLOUD
         } catch (_: Exception) {
-            RoutingMode.KEYLESS_GRAPH_HOPPER
+            RoutingMode.GRAPH_HOPPER_CLOUD
         }
     }
 

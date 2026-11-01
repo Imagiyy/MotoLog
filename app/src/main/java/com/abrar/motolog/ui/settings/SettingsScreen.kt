@@ -1024,17 +1024,29 @@ fun SettingsScreen(
                                 )
 
                                 var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
-                                OutlinedTextField(
-                                    value = tempApiKey,
-                                    onValueChange = {
-                                        tempApiKey = it
-                                        viewModel.setRoutingApiKey(it.trim())
-                                    },
-                                    label = { Text("GraphHopper Cloud API Key") },
-                                    placeholder = { Text("Enter your GraphHopper key") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = tempApiKey,
+                                        onValueChange = {
+                                            tempApiKey = it
+                                            viewModel.setRoutingApiKey(it.trim())
+                                        },
+                                        label = { Text("GraphHopper Cloud API Key") },
+                                        placeholder = { Text("Enter your GraphHopper key") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Button(
+                                        onClick = { viewModel.setRoutingApiKey(tempApiKey.trim()) },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Text("Save")
+                                    }
+                                }
                             } else {
                                 Text(
                                     text = "Keyless Mode active: Zero API keys transmitted. Connects to your private GraphHopper instance with OpenStreetMap fallback.",
