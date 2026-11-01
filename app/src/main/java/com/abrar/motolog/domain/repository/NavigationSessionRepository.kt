@@ -25,6 +25,9 @@ interface NavigationSessionRepository {
     /** Observe the current active navigation session. */
     fun observeActiveSession(): Flow<NavigationSession?>
 
+    /** Observe the current active navigation session alongside its complete planned route snapshot. */
+    fun observeActiveSessionWithRoute(): Flow<Pair<NavigationSession, PlannedRoute?>?>
+
     /** Mark session completed or arrived. */
     suspend fun finishSession(sessionId: String, finalStatus: NavigationStatus)
 

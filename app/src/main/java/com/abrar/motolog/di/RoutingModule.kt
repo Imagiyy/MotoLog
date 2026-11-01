@@ -6,8 +6,10 @@ import com.abrar.motolog.data.routing.GraphHopperRoutingRepository
 import com.abrar.motolog.data.routing.HttpTransport
 import com.abrar.motolog.shared.domain.repository.GeocodingRepository
 import com.abrar.motolog.shared.domain.repository.RoutingRepository
+import com.abrar.motolog.shared.domain.engine.RouteProgressEngine
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -33,4 +35,9 @@ abstract class RoutingModule {
     abstract fun bindGeocodingRepository(
         impl: GraphHopperGeocodingRepository
     ): GeocodingRepository
+
+    companion object {
+        @Provides
+        fun provideRouteProgressEngine(): RouteProgressEngine = RouteProgressEngine()
+    }
 }

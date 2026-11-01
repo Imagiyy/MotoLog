@@ -86,6 +86,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -112,6 +113,8 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.abrar.motolog.ui.navigation.NavigationUiState
+import com.abrar.motolog.ui.navigation.NavigationViewModel
 import com.abrar.motolog.ui.theme.ThemeMode
 import com.abrar.motolog.ui.theme.CockpitThemePalette
 import com.abrar.motolog.ui.theme.getCockpitThemePalette
@@ -125,11 +128,13 @@ fun LiveScreen(
     modifier: Modifier = Modifier,
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDestination: () -> Unit = {},
-    viewModel: LiveViewModel = hiltViewModel()
+    viewModel: LiveViewModel = hiltViewModel(),
+    navigationViewModel: NavigationViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val navState by navigationViewModel.uiState.collectAsStateWithLifecycle()
     val isDisclaimerAccepted by viewModel.isDisclaimerAccepted.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val batteryGuidanceSeen by viewModel.batteryGuidanceSeen.collectAsStateWithLifecycle()
@@ -261,6 +266,13 @@ fun LiveScreen(
     val defaultMapTheme by viewModel.defaultMapTheme.collectAsStateWithLifecycle()
     var currentViewMode by remember { mutableStateOf(LiveViewMode.COCKPIT) }
 
+    // When an active route navigation session starts or resumes, auto-switch to Map view
+    LaunchedEffect(navState) {
+        if (navState is NavigationUiState.Navigating && currentViewMode != LiveViewMode.MAP) {
+            currentViewMode = LiveViewMode.MAP
+        }
+    }
+
     when (val state = uiState) {
         is LiveUiState.Tracking -> {
             if (currentViewMode == LiveViewMode.MAP && viewModel.mapStyleProvider != null) {
@@ -280,6 +292,13 @@ fun LiveScreen(
                     onStopProgressChange = { viewModel.stopTracking() },
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
                     onNavigateToDestination = onNavigateToDestination,
+                    navigationUiState = navState,
+                    bearingDegrees = state.bearingDegrees?.toDouble(),
+                    onEndNavigation = navigationViewModel::endNavigation,
+                    onToggleCameraMode = navigationViewModel::toggleCameraFollowMode,
+                    onRecenterCamera = navigationViewModel::recenterCamera,
+                    onUserMapInteraction = navigationViewModel::onUserMapInteraction,
+                    onDismissArrival = navigationViewModel::dismissArrival,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     modifier = modifier.fillMaxSize()
@@ -304,6 +323,7 @@ fun LiveScreen(
                     onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToDestination = onNavigateToDestination,
+                    navigationUiState = navState,
                     palette = palette,
                     customColors = customColors,
                     modifier = modifier.fillMaxSize()
@@ -344,6 +364,12 @@ fun LiveScreen(
                     onStopProgressChange = {},
                     onSwitchToCockpit = { currentViewMode = LiveViewMode.COCKPIT },
                     onNavigateToDestination = onNavigateToDestination,
+                    navigationUiState = navState,
+                    onEndNavigation = navigationViewModel::endNavigation,
+                    onToggleCameraMode = navigationViewModel::toggleCameraFollowMode,
+                    onRecenterCamera = navigationViewModel::recenterCamera,
+                    onUserMapInteraction = navigationViewModel::onUserMapInteraction,
+                    onDismissArrival = navigationViewModel::dismissArrival,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     isIdle = true,
@@ -370,6 +396,7 @@ fun LiveScreen(
                     onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToDestination = onNavigateToDestination,
+                    navigationUiState = navState,
                     palette = palette,
                     customColors = customColors,
                     modifier = modifier.fillMaxSize()

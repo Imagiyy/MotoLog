@@ -79,4 +79,8 @@ class FakeTrackingRepository : TrackingRepository {
     override fun updateState(state: TrackingSessionState) {
         _sessionState.value = state
     }
+
+    fun emitSessionState(state: TrackingSessionState) {
+        updateState(state)
+    }
 }

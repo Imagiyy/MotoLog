@@ -15,6 +15,7 @@ class FakeNavigationSessionRepository : NavigationSessionRepository {
     var activeSession: NavigationSession? = null
     var activeRoute: PlannedRoute? = null
     private val activeSessionFlow = MutableStateFlow<NavigationSession?>(null)
+    private val activeSessionWithRouteFlow = MutableStateFlow<Pair<NavigationSession, PlannedRoute?>?>(null)
 
     private val savedDestinations = MutableStateFlow<List<Destination>>(emptyList())
     private val favoriteDestinations = MutableStateFlow<List<Destination>>(emptyList())
@@ -23,11 +24,13 @@ class FakeNavigationSessionRepository : NavigationSessionRepository {
         activeSession = session
         activeRoute = route
         activeSessionFlow.value = session
+        activeSessionWithRouteFlow.value = session to route
     }
 
     override suspend fun checkpointProgress(sessionId: String, progress: RouteProgress) {
         activeSession = activeSession?.copy(lastKnownProgress = progress)
         activeSessionFlow.value = activeSession
+        activeSessionWithRouteFlow.value = activeSession?.let { it to activeRoute }
     }
 
     override suspend fun getActiveSession(): Pair<NavigationSession, PlannedRoute?>? {
@@ -39,15 +42,21 @@ class FakeNavigationSessionRepository : NavigationSessionRepository {
         return activeSessionFlow.asStateFlow()
     }
 
+    override fun observeActiveSessionWithRoute(): Flow<Pair<NavigationSession, PlannedRoute?>?> {
+        return activeSessionWithRouteFlow.asStateFlow()
+    }
+
     override suspend fun finishSession(sessionId: String, finalStatus: NavigationStatus) {
         activeSession = activeSession?.copy(status = finalStatus)
         activeSessionFlow.value = activeSession
+        activeSessionWithRouteFlow.value = activeSession?.let { it to activeRoute }
     }
 
     override suspend fun discardSession(sessionId: String) {
         activeSession = null
         activeRoute = null
         activeSessionFlow.value = null
+        activeSessionWithRouteFlow.value = null
     }
 
     override suspend fun incrementRerouteCount(sessionId: String) {

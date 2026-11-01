@@ -358,4 +358,34 @@ class RouteProgressEngineTest {
         assertEquals(null, engine.lastProgress)
         assertEquals(null, engine.currentRoute)
     }
+
+    @Test
+    fun distanceToInstructionDecreasesAsRiderApproaches() {
+        val route = createRoute(
+            geometry = listOf(
+                createPoint(12.000, 77.500),
+                createPoint(12.005, 77.500),
+                createPoint(12.010, 77.500)
+            ),
+            instructions = listOf(
+                RouteInstruction(
+                    maneuverType = ManeuverType.TURN_RIGHT,
+                    pointIndex = 1,
+                    instructionText = "Turn right at waypoint"
+                )
+            )
+        )
+        val engine = RouteProgressEngine()
+        engine.setRoute(route)
+
+        // At start (12.000, 77.500), distance to pointIndex 1 should be approx ~555m
+        val initialDist = engine.getDistanceToInstruction(0)
+        assertTrue(initialDist > 500.0 && initialDist < 600.0)
+
+        // Move closer to waypoint (12.003, 77.500)
+        engine.onLocationUpdate(createPoint(12.003, 77.500))
+        val closerDist = engine.getDistanceToInstruction(0)
+        assertTrue(closerDist < initialDist)
+        assertTrue(closerDist > 150.0 && closerDist < 250.0)
+    }
 }

@@ -100,6 +100,18 @@ class RouteProgressEngine(
     }
 
     /**
+     * Compute remaining distance along route to a specific instruction maneuver.
+     */
+    fun getDistanceToInstruction(instructionIndex: Int): Double {
+        val route = currentRoute ?: return 0.0
+        if (instructionIndex !in route.instructions.indices) return 0.0
+        val targetPointIndex = route.instructions[instructionIndex].pointIndex.coerceIn(0, cumulativeDistances.lastIndex.coerceAtLeast(0))
+        val targetDist = if (targetPointIndex in cumulativeDistances.indices) cumulativeDistances[targetPointIndex] else 0.0
+        val currentDist = lastProgress?.distanceAlongRouteMeters ?: 0.0
+        return max(0.0, targetDist - currentDist)
+    }
+
+    /**
      * Process an incoming GPS location fix and return updated [RouteProgress].
      */
     fun onLocationUpdate(point: LocationPoint): RouteProgress {

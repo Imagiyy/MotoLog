@@ -82,6 +82,12 @@ class NavigationSessionRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun observeActiveSessionWithRoute(): Flow<Pair<NavigationSession, PlannedRoute?>?> {
+        return navigationSessionDao.observeActiveSession().map { entity ->
+            entity?.let { entityToSessionWithRoute(it) }
+        }
+    }
+
     override suspend fun finishSession(sessionId: String, finalStatus: NavigationStatus) {
         navigationSessionDao.endSession(
             sessionId = sessionId,

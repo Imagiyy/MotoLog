@@ -52,6 +52,8 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
+import com.abrar.motolog.shared.domain.model.ManeuverType
+import com.abrar.motolog.ui.navigation.NavigationUiState
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
@@ -366,6 +368,7 @@ fun RacingTftDashboard(
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDestination: () -> Unit = {},
+    navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
     customColors: DashboardCustomColors = DashboardCustomColors()
 ) {
@@ -443,6 +446,7 @@ fun RacingTftDashboard(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 onNavigateToDestination = onNavigateToDestination,
+                navigationUiState = navigationUiState,
                 palette = palette,
                 customColors = customColors,
                 batteryState = batteryState,
@@ -472,6 +476,7 @@ fun RacingTftDashboard(
                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                 onNavigateToSettings = onNavigateToSettings,
                 onNavigateToDestination = onNavigateToDestination,
+                navigationUiState = navigationUiState,
                 onStartClick = onStartClick,
                 onPauseClick = onPauseClick,
                 onResumeClick = onResumeClick,
@@ -518,6 +523,7 @@ private fun TftLandscapeView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
     batteryState: BatteryState,
@@ -816,6 +822,7 @@ private fun TftPortraitView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
     batteryState: BatteryState,
@@ -942,6 +949,56 @@ private fun TftPortraitView(
             }
 
             Spacer(modifier = Modifier.height(4.dp))
+
+            val navState = navigationUiState as? NavigationUiState.Navigating
+            if (navState != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .clickable { onSwitchToMap() },
+                    color = customColors.componentColor.copy(alpha = 0.9f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ManeuverIcon(
+                            maneuverType = navState.currentInstruction?.maneuverType ?: ManeuverType.CONTINUE,
+                            tint = Color(0xFF00E5FF),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        val distFormatted = CockpitUtils.formatDistance(navState.distanceToNextManeuverMeters, isMetric)
+                        Text(
+                            text = distFormatted,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = navState.currentInstruction?.streetName
+                                ?: navState.currentInstruction?.instructionText
+                                ?: "Continue on route",
+                            color = customColors.textColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "MAP ➔",
+                            color = Color(0xFF00E5FF),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // CENTER: Speed Arc Gauge with Large Digital Speedometer at Center (Preserving size of 0)
             BoxWithConstraints(

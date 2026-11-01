@@ -26,13 +26,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.ui.draw.rotate
+import com.abrar.motolog.shared.domain.model.ManeuverType
+import com.abrar.motolog.ui.navigation.CameraFollowMode
+import com.abrar.motolog.ui.navigation.NavigationUiState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -118,6 +129,13 @@ fun RetroLiveMap(
     onStopProgressChange: (Float) -> Unit,
     onSwitchToCockpit: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    navigationUiState: NavigationUiState = NavigationUiState.Idle,
+    bearingDegrees: Double? = null,
+    onEndNavigation: () -> Unit = {},
+    onToggleCameraMode: () -> Unit = {},
+    onRecenterCamera: () -> Unit = {},
+    onUserMapInteraction: () -> Unit = {},
+    onDismissArrival: () -> Unit = {},
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
@@ -172,12 +190,61 @@ fun RetroLiveMap(
         }
     }
 
+    val navState = navigationUiState as? NavigationUiState.Navigating
+    val cameraFollowMode = navState?.cameraFollowMode ?: CameraFollowMode.FOLLOW_HEAD_UP
+
     val styleUrl = mapStyleProvider.getStyleUrl(isDarkTheme = isDarkMap)
     val mapState = rememberMapState(
         baseStyle = BaseStyle.Uri(styleUrl),
         initialCameraPosition = initialCameraPosition
     ) {
-        // 1. Live route trail line (cached with remember(routeCoordinates) to avoid rebuilding on intermediate ticks)
+        // 0. Planned route trail line (vibrant high-contrast electric blue)
+        val plannedRoute = navState?.route
+        val plannedRouteCoords = remember(plannedRoute?.id) {
+            plannedRoute?.geometry?.map { Pair(it.latitude, it.longitude) } ?: emptyList()
+        }
+        val plannedRouteGeoJson = remember(plannedRouteCoords) {
+            if (plannedRouteCoords.size >= 2) {
+                lineStringJson(plannedRouteCoords)
+            } else {
+                EMPTY_GEOJSON
+            }
+        }
+        val plannedRouteSource = rememberGeoJsonSource(GeoJsonData.JsonString(plannedRouteGeoJson))
+        LineLayer(
+            id = "planned-route-line",
+            source = plannedRouteSource,
+            color = const(Color(0xFF00E5FF)),
+            width = const(6.dp)
+        )
+
+        // 1. Destination Marker (Emerald green beacon)
+        val destLat = navState?.destinationLatitude
+        val destLon = navState?.destinationLongitude
+        val destGeoJson = remember(destLat, destLon) {
+            if (destLat != null && destLon != null && (destLat != 0.0 || destLon != 0.0)) {
+                pointJson(destLat, destLon)
+            } else {
+                EMPTY_GEOJSON
+            }
+        }
+        val destSource = rememberGeoJsonSource(GeoJsonData.JsonString(destGeoJson))
+        CircleLayer(
+            id = "destination-pin-halo",
+            source = destSource,
+            color = const(JewelGreen.copy(alpha = 0.35f)),
+            radius = const(18.dp)
+        )
+        CircleLayer(
+            id = "destination-pin-core",
+            source = destSource,
+            color = const(JewelGreen),
+            radius = const(8.dp),
+            strokeColor = const(Color.White),
+            strokeWidth = const(2.5.dp)
+        )
+
+        // 2. Live completed breadcrumb trail line
         val lineGeoJson = remember(routeCoordinates) {
             if (routeCoordinates.size >= 2) {
                 lineStringJson(routeCoordinates)
@@ -193,7 +260,7 @@ fun RetroLiveMap(
             width = const(4.dp)
         )
 
-        // 2. Rider current location puck (isolated to latitude/longitude to avoid full route re-renders)
+        // 3. Rider current location puck
         val puckGeoJson = remember(latitude, longitude) {
             if (latitude != null && longitude != null) {
                 pointJson(latitude, longitude)
@@ -221,23 +288,29 @@ fun RetroLiveMap(
         )
     }
 
-    // Auto-center camera onto rider ONLY when followRider is true
-    LaunchedEffect(latitude, longitude, followRider) {
-        if (followRider && latitude != null && longitude != null) {
+    // Auto-center / follow camera onto rider
+    LaunchedEffect(latitude, longitude, followRider, cameraFollowMode, bearingDegrees) {
+        if (followRider && latitude != null && longitude != null && cameraFollowMode != CameraFollowMode.FREE) {
             try {
-                val currentZoom = if (mapState.cameraPosition.zoom > 1.0) mapState.cameraPosition.zoom else 16.0
+                val currentZoom = if (mapState.cameraPosition.zoom > 1.0) mapState.cameraPosition.zoom else 16.5
+                val targetBearing = if (cameraFollowMode == CameraFollowMode.FOLLOW_HEAD_UP && bearingDegrees != null && speedKmh >= 3.0) {
+                    bearingDegrees
+                } else {
+                    0.0
+                }
+                val targetTilt = if (cameraFollowMode == CameraFollowMode.FOLLOW_HEAD_UP && speedKmh >= 3.0) 35.0 else 0.0
+
                 mapState.animateCameraPosition(
                     CameraPosition(
-                        bearing = mapState.cameraPosition.bearing,
+                        bearing = targetBearing,
                         target = Position(longitude, latitude),
-                        tilt = mapState.cameraPosition.tilt,
+                        tilt = targetTilt,
                         zoom = currentZoom
                     ),
                     CameraAnimation.Ease(duration = 500.milliseconds)
                 )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                // Non-fatal animation interrupted or viewport measuring
             }
         }
     }
@@ -255,6 +328,7 @@ fun RetroLiveMap(
                     // When user manually drags, zooms, or gestures the map, disable auto-lock
                     if (event.animated != true) {
                         followRider = false
+                        onUserMapInteraction()
                     }
                 }
                 else -> {}
@@ -276,6 +350,7 @@ fun RetroLiveMap(
                     val event = awaitPointerEvent(PointerEventPass.Initial)
                     if (event.changes.size > 1 || event.changes.any { it.positionChanged() }) {
                         followRider = false
+                        onUserMapInteraction()
                     }
                 } while (event.changes.any { it.pressed })
             }
@@ -370,15 +445,19 @@ fun RetroLiveMap(
                     )
                         .clickable {
                             followRider = true
+                            onRecenterCamera()
                             if (latitude != null && longitude != null) {
                                 coroutineScope.launch {
                                     try {
+                                        val isHeadUp = cameraFollowMode == CameraFollowMode.FOLLOW_HEAD_UP
+                                        val targetBearing = if (isHeadUp && bearingDegrees != null && speedKmh >= 3.0) bearingDegrees else 0.0
+                                        val targetTilt = if (isHeadUp && speedKmh >= 3.0) 35.0 else 0.0
                                         mapState.animateCameraPosition(
                                             CameraPosition(
-                                                bearing = 0.0,
+                                                bearing = targetBearing,
                                                 target = Position(longitude, latitude),
-                                                tilt = 0.0,
-                                                zoom = 16.0
+                                                tilt = targetTilt,
+                                                zoom = 16.5
                                             ),
                                             CameraAnimation.Ease(duration = 500.milliseconds)
                                         )
@@ -399,6 +478,18 @@ fun RetroLiveMap(
                 }
             }
 
+        // Turn-by-Turn Navigation Guidance HUD (Top Center)
+        if (navState != null) {
+            NavigationTurnGuidanceCard(
+                navState = navState,
+                isMetric = isMetric,
+                palette = palette,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 64.dp, start = 12.dp, end = 12.dp)
+            )
+        }
+
         // Floating Retro Mini-Cockpit HUD Card at Bottom with vertical slide gesture
         Column(
             modifier = Modifier
@@ -416,6 +507,21 @@ fun RetroLiveMap(
                 },
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Persistent Navigation Metrics Bar (Remaining distance, time, ETA, End Nav)
+            if (navState != null) {
+                NavigationBottomBar(
+                    navState = navState,
+                    isMetric = isMetric,
+                    palette = palette,
+                    onEndNavigation = onEndNavigation,
+                    onToggleCameraMode = onToggleCameraMode,
+                    onRecenterCamera = {
+                        followRider = true
+                        onRecenterCamera()
+                    }
+                )
+            }
+
             // Attribution link & Minimize/Maximize HUD Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -500,6 +606,19 @@ fun RetroLiveMap(
                     onStartClick = onStartClick
                 )
             }
+        }
+
+        // Arrival Overlay Confirmation
+        if (navState != null && navState.isArrived) {
+            NavigationArrivalOverlay(
+                destinationName = navState.destinationName,
+                palette = palette,
+                onFinishNavigation = onEndNavigation,
+                onDismiss = onDismissArrival,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp)
+            )
         }
     }
 }
@@ -1064,5 +1183,461 @@ private fun RetroCompactMinimizedHudPill(
             }
         }
     }
+}
+
+/**
+ * Top turn-by-turn guidance card for glanceable rider navigation.
+ */
+@Composable
+fun NavigationTurnGuidanceCard(
+    navState: NavigationUiState.Navigating,
+    isMetric: Boolean,
+    palette: CockpitThemePalette,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.85f), RoundedCornerShape(16.dp)),
+        color = palette.surface.copy(alpha = 0.94f)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Off-route warning / rerouting / signal loss status badge
+            if (navState.isOffRouteWarning) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(JewelAmber.copy(alpha = 0.2f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(text = "⚠️", fontSize = 14.sp)
+                    Text(
+                        text = "OFF ROUTE — REJOINING ROUTE",
+                        color = JewelAmber,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            } else if (navState.isRerouting) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(JewelAmber.copy(alpha = 0.2f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(text = "🔄", fontSize = 14.sp)
+                    Text(
+                        text = "RECALCULATING ROUTE...",
+                        color = JewelAmber,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            } else if (navState.isGpsLost) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(JewelRed.copy(alpha = 0.2f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(text = "📡", fontSize = 14.sp)
+                    Text(
+                        text = "GPS SIGNAL LOST — HOLDING POSITION",
+                        color = JewelRed,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Primary Maneuver Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Maneuver Icon in high-contrast neon badge
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF00E5FF).copy(alpha = 0.18f),
+                    border = BorderStroke(1.5.dp, Color(0xFF00E5FF).copy(alpha = 0.8f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        ManeuverIcon(
+                            maneuverType = navState.currentInstruction?.maneuverType ?: ManeuverType.CONTINUE,
+                            tint = Color(0xFF00E5FF),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+
+                // Maneuver distance + street instruction
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    val formattedDist = CockpitUtils.formatDistance(navState.distanceToNextManeuverMeters, isMetric)
+                    Text(
+                        text = formattedDist,
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = navState.currentInstruction?.streetName
+                            ?: navState.currentInstruction?.instructionText
+                            ?: "Continue along route",
+                        color = palette.dialText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2
+                    )
+                }
+            }
+
+            // Next instruction secondary hint
+            navState.nextInstruction?.let { next ->
+                Row(
+                    modifier = Modifier.padding(top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "THEN",
+                        color = palette.secondaryAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = next.instructionText,
+                        color = palette.dialText.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Bottom navigation metrics card displaying remaining distance, time, ETA,
+ * camera perspective toggle, recenter button, and end navigation action.
+ */
+@Composable
+fun NavigationBottomBar(
+    navState: NavigationUiState.Navigating,
+    isMetric: Boolean,
+    palette: CockpitThemePalette,
+    onEndNavigation: () -> Unit,
+    onToggleCameraMode: () -> Unit,
+    onRecenterCamera: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.5.dp, palette.surfaceBorder.copy(alpha = 0.85f), RoundedCornerShape(16.dp)),
+        color = palette.surface.copy(alpha = 0.94f)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Metrics row: Remaining distance, Duration, ETA
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Remaining Distance
+                Column {
+                    Text(
+                        text = "REMAINING",
+                        color = palette.secondaryAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = CockpitUtils.formatDistance(navState.remainingDistanceMeters, isMetric),
+                        color = palette.dialText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                // Time & ETA
+                Column(horizontalAlignment = Alignment.End) {
+                    val etaFormatted = CockpitUtils.formatEta(navState.etaTimestampEpochMs)
+                    val minutesRemaining = (navState.remainingDurationSeconds / 60).coerceAtLeast(0)
+                    Text(
+                        text = "ETA • $etaFormatted",
+                        color = palette.secondaryAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = if (minutesRemaining >= 60) {
+                            "${minutesRemaining / 60}h ${minutesRemaining % 60}m"
+                        } else {
+                            "$minutesRemaining min"
+                        },
+                        color = Color(0xFF00E5FF),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Destination display label
+            Text(
+                text = "📍 ${navState.destinationName}",
+                color = palette.dialText.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
+            )
+
+            // Controls row: Camera Mode toggle, Recenter, and END NAV button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Camera Mode button (Head-Up 3D vs North-Up 2D)
+                Surface(
+                    modifier = Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, palette.surfaceBorder, RoundedCornerShape(8.dp))
+                        .clickable { onToggleCameraMode() },
+                    color = palette.background.copy(alpha = 0.8f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Explore,
+                            contentDescription = "Toggle Camera Mode",
+                            tint = if (navState.cameraFollowMode == CameraFollowMode.FOLLOW_HEAD_UP) Color(0xFF00E5FF) else palette.dialText,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (navState.cameraFollowMode == CameraFollowMode.FOLLOW_HEAD_UP) "3D HEAD-UP" else "2D NORTH",
+                            color = palette.dialText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                if (navState.cameraFollowMode == CameraFollowMode.FREE) {
+                    // Recenter button
+                    Surface(
+                        modifier = Modifier
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.5.dp, palette.primaryAccent, RoundedCornerShape(8.dp))
+                            .clickable { onRecenterCamera() },
+                        color = palette.primaryAccent.copy(alpha = 0.2f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GpsFixed,
+                                contentDescription = "Recenter",
+                                tint = palette.primaryAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "RECENTER",
+                                color = palette.primaryAccent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // END NAVIGATION button (Glove-friendly, distinct red tone)
+                Button(
+                    onClick = onEndNavigation,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = JewelRed),
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    Text(
+                        text = "END NAV",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Arrival confirmation dialog displayed when rider reaches the destination.
+ */
+@Composable
+fun NavigationArrivalOverlay(
+    destinationName: String,
+    palette: CockpitThemePalette,
+    onFinishNavigation: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(2.dp, JewelGreen, RoundedCornerShape(16.dp)),
+        color = palette.surface.copy(alpha = 0.96f)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
+                color = JewelGreen.copy(alpha = 0.2f),
+                border = BorderStroke(2.dp, JewelGreen)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Arrived",
+                        tint = JewelGreen,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+            Text(
+                text = "ARRIVED AT DESTINATION",
+                color = JewelGreen,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = destinationName,
+                color = palette.dialText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onFinishNavigation,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = JewelGreen)
+                ) {
+                    Text(
+                        text = "FINISH NAV",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                Surface(
+                    modifier = Modifier
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, palette.surfaceBorder, RoundedCornerShape(8.dp))
+                        .clickable { onDismiss() },
+                    color = palette.surface
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "KEEP MAP",
+                            color = palette.dialText,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Directional maneuver icon renderer.
+ */
+@Composable
+fun ManeuverIcon(
+    maneuverType: ManeuverType,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    val (icon, rotation) = when (maneuverType) {
+        ManeuverType.DEPART, ManeuverType.CONTINUE -> Icons.Default.ArrowUpward to 0f
+        ManeuverType.TURN_SLIGHT_LEFT -> Icons.Default.ArrowUpward to -45f
+        ManeuverType.TURN_LEFT -> Icons.AutoMirrored.Filled.ArrowBack to 0f
+        ManeuverType.TURN_SHARP_LEFT -> Icons.Default.ArrowUpward to -135f
+        ManeuverType.TURN_SLIGHT_RIGHT -> Icons.Default.ArrowUpward to 45f
+        ManeuverType.TURN_RIGHT -> Icons.AutoMirrored.Filled.ArrowForward to 0f
+        ManeuverType.TURN_SHARP_RIGHT -> Icons.Default.ArrowUpward to 135f
+        ManeuverType.U_TURN -> Icons.Default.Refresh to 180f
+        ManeuverType.ROUNDABOUT -> Icons.Default.Refresh to 0f
+        ManeuverType.MERGE, ManeuverType.RAMP, ManeuverType.FORK -> Icons.Default.ArrowUpward to 0f
+        ManeuverType.ARRIVE -> Icons.Default.Place to 0f
+        ManeuverType.UNKNOWN -> Icons.Default.Navigation to 0f
+    }
+    Icon(
+        imageVector = icon,
+        contentDescription = maneuverType.name,
+        tint = tint,
+        modifier = modifier.rotate(rotation)
+    )
 }
 

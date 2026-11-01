@@ -216,6 +216,25 @@ class NavigationSessionRepositoryTest {
     }
 
     @Test
+    fun observeActiveSessionWithRouteEmitsSessionAndRouteSnapshot() = runTest {
+        val route = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "session_obs",
+            plannedRouteId = route.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        repository.saveActiveSession(session, route)
+
+        val emitted = repository.observeActiveSessionWithRoute().first()
+        assertNotNull(emitted)
+        assertEquals("session_obs", emitted!!.first.sessionId)
+        assertNotNull(emitted.second)
+        assertEquals(route.id, emitted.second!!.id)
+        assertEquals(route.geometry.size, emitted.second!!.geometry.size)
+    }
+
+    @Test
     fun destinationSaveFavoriteAndDelete() = runTest {
         val dest = Destination(
             id = "dest_1",
