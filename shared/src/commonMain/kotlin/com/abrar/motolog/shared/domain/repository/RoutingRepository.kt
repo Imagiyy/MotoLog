@@ -25,4 +25,13 @@ interface RoutingRepository : RoutingProvider {
      * Cancel any currently active or pending routing network requests.
      */
     fun cancelActiveRequests()
+
+    /**
+     * Calculate driving road distances in meters from [origin] to each location in [destinations].
+     * Returns a list with the corresponding road distance for each destination, or null if unreachable.
+     */
+    suspend fun calculateRoadDistances(
+        origin: LocationPoint,
+        destinations: List<LocationPoint>
+    ): Result<List<Double?>> = Result.success(emptyList())
 }

@@ -38,4 +38,13 @@ class FakeRoutingRepository : RoutingRepository {
     override fun cancelActiveRequests() {
         cancelCalled = true
     }
+
+    var roadDistancesToReturn: Result<List<Double?>>? = null
+
+    override suspend fun calculateRoadDistances(
+        origin: LocationPoint,
+        destinations: List<LocationPoint>
+    ): Result<List<Double?>> {
+        return roadDistancesToReturn ?: Result.success(destinations.map { 15_000.0 })
+    }
 }

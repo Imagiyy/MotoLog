@@ -20,6 +20,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -480,6 +482,71 @@ class GraphHopperRoutingRepository @Inject constructor(
             "ramp", "on ramp", "off ramp" -> if (roadName != null) "Take ramp onto $roadName" else "Take ramp"
             "new name", "continue" -> if (roadName != null) "Continue onto $roadName" else "Continue straight"
             else -> if (roadName != null) "Continue onto $roadName" else "Continue"
+        }
+    }
+
+    override suspend fun calculateRoadDistances(
+        origin: LocationPoint,
+        destinations: List<LocationPoint>
+    ): Result<List<Double?>> {
+        if (destinations.isEmpty()) {
+            return Result.success(emptyList())
+        }
+
+        if (origin.latitude.isNaN() || origin.longitude.isNaN() ||
+            origin.latitude < -90.0 || origin.latitude > 90.0 ||
+            origin.longitude < -180.0 || origin.longitude > 180.0
+        ) {
+            return Result.failure(RoutingError.InvalidCoordinates())
+        }
+
+        val validDestinations = destinations.map {
+            if (it.latitude.isNaN() || it.longitude.isNaN() ||
+                it.latitude < -90.0 || it.latitude > 90.0 ||
+                it.longitude < -180.0 || it.longitude > 180.0
+            ) null else it
+        }
+
+        return try {
+            val coords = buildString {
+                append("${origin.longitude},${origin.latitude}")
+                for (dest in destinations) {
+                    val lat = dest.latitude.takeIf { !it.isNaN() } ?: 0.0
+                    val lon = dest.longitude.takeIf { !it.isNaN() } ?: 0.0
+                    append(";${lon},${lat}")
+                }
+            }
+            val destIndexes = (1..destinations.size).joinToString(";")
+            val url = "https://router.project-osrm.org/table/v1/driving/$coords?sources=0&destinations=$destIndexes&annotations=distance"
+
+            val response = httpTransport.get(url)
+            if (response.statusCode in 200..299) {
+                val jsonObject = json.parseToJsonElement(response.body).jsonObject
+                val distancesArray = jsonObject["distances"]?.jsonArray
+                if (distancesArray != null && distancesArray.isNotEmpty()) {
+                    val firstRow = distancesArray[0].jsonArray
+                    val resultList = firstRow.mapIndexed { index, element ->
+                        if (validDestinations.getOrNull(index) == null) {
+                            null
+                        } else {
+                            element.jsonPrimitive.contentOrNull?.toDoubleOrNull()
+                        }
+                    }
+                    Result.success(resultList)
+                } else {
+                    Result.success(List(destinations.size) { null })
+                }
+            } else {
+                Result.failure(RoutingError.ProviderError(response.statusCode, "Failed to calculate distances: HTTP ${response.statusCode}"))
+            }
+        } catch (e: SocketTimeoutException) {
+            Result.failure(RoutingError.Timeout("Distance calculation timed out"))
+        } catch (e: CancellationException) {
+            Result.failure(RoutingError.RequestCancelled())
+        } catch (e: IOException) {
+            Result.failure(RoutingError.NetworkError("Network error calculating distances: ${e.message}", e))
+        } catch (e: Exception) {
+            Result.failure(RoutingError.ProviderError(500, e.message ?: "Unknown distance calculation error"))
         }
     }
 }

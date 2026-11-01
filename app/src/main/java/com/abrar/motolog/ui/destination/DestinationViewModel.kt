@@ -79,6 +79,7 @@ class DestinationViewModel @Inject constructor(
     val uiState: StateFlow<DestinationUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+    private var roadDistanceJob: Job? = null
 
     val routingMode: StateFlow<RoutingMode> = settingsRepository.routingMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RoutingMode.GRAPH_HOPPER_CLOUD)
@@ -212,11 +213,15 @@ class DestinationViewModel @Inject constructor(
         if (_uiState.value.selectedDestination != null && _uiState.value.routeCandidates.isEmpty() && !_uiState.value.isCalculatingRoute) {
             calculateRouteForSelectedDestination()
         }
+        if (_uiState.value.searchResults.isNotEmpty() && _uiState.value.searchResults.any { it.roadDistanceMeters == null }) {
+            fetchRoadDistances(point, _uiState.value.searchResults)
+        }
     }
 
     fun onSearchQueryChanged(query: String) {
         _uiState.update { it.copy(searchQuery = query, errorMessage = null) }
         searchJob?.cancel()
+        roadDistanceJob?.cancel()
 
         if (query.trim().isEmpty()) {
             _uiState.update { it.copy(isSearching = false, searchResults = emptyList()) }
@@ -234,6 +239,9 @@ class DestinationViewModel @Inject constructor(
             result.fold(
                 onSuccess = { destinations ->
                     _uiState.update { it.copy(isSearching = false, searchResults = destinations) }
+                    if (currentLoc != null && destinations.isNotEmpty()) {
+                        fetchRoadDistances(currentLoc, destinations)
+                    }
                 },
                 onFailure = { error ->
                     val apiKeyMissing = error is RoutingError.ApiKeyMissing ||
@@ -252,6 +260,35 @@ class DestinationViewModel @Inject constructor(
                     }
                 }
             )
+        }
+    }
+
+    private fun fetchRoadDistances(origin: LocationPoint, destinations: List<Destination>) {
+        roadDistanceJob?.cancel()
+        roadDistanceJob = viewModelScope.launch {
+            val destPoints = destinations.map {
+                LocationPoint(
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+            val result = routingRepository.calculateRoadDistances(origin, destPoints)
+            result.getOrNull()?.let { distances ->
+                if (distances.size == destinations.size) {
+                    _uiState.update { current ->
+                        if (current.searchResults.map { it.id } == destinations.map { it.id }) {
+                            val updated = current.searchResults.mapIndexed { index, dest ->
+                                val roadDist = distances.getOrNull(index)
+                                if (roadDist != null) dest.copy(roadDistanceMeters = roadDist) else dest
+                            }
+                            current.copy(searchResults = updated)
+                        } else {
+                            current
+                        }
+                    }
+                }
+            }
         }
     }
 

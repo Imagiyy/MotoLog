@@ -109,6 +109,30 @@ class DestinationViewModelTest {
     }
 
     @Test
+    fun searchQuery_withCurrentLocation_populatesRoadDistance() = runTest(testDispatcher) {
+        trackingRepo.updateState(
+            TrackingSessionState.Tracking(
+                rideId = 101L,
+                isPaused = false,
+                latitude = 12.9716,
+                longitude = 77.5946,
+                accuracyMeters = 5.0f
+            )
+        )
+        advanceUntilIdle()
+
+        routingRepo.roadDistancesToReturn = Result.success(listOf(21_300.0))
+
+        viewModel.onSearchQueryChanged("Amrita")
+        advanceTimeBy(400L)
+        advanceUntilIdle()
+
+        val results = viewModel.uiState.value.searchResults
+        assertEquals(1, results.size)
+        assertEquals(21_300.0, results.first().roadDistanceMeters ?: 0.0, 0.1)
+    }
+
+    @Test
     fun searchQuery_blank_clearsResultsImmediately() = runTest(testDispatcher) {
         viewModel.onSearchQueryChanged("Nandi Hills")
         advanceTimeBy(400L)

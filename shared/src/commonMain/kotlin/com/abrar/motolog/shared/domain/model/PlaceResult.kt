@@ -22,6 +22,7 @@ data class PlaceResult(
     val latitude: Double,
     val longitude: Double,
     val distanceFromUserMeters: Double? = null,
+    val roadDistanceMeters: Double? = null,
     val provider: String = "GraphHopper",
     val isFartherMatch: Boolean = false
 ) {
@@ -54,7 +55,8 @@ data class PlaceResult(
             providerPlaceId = id,
             sourceType = sourceType,
             createdAtTimestamp = 0L,
-            isFartherMatch = isFartherMatch
+            isFartherMatch = isFartherMatch,
+            roadDistanceMeters = roadDistanceMeters
         )
     }
 }

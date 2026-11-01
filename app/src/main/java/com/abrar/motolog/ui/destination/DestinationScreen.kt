@@ -815,13 +815,18 @@ private fun DestinationSearchResultItem(
 ) {
     val haptic = LocalHapticFeedback.current
     val distanceDisplay = remember(destination, currentLocation, useMetricUnits) {
-        if (currentLocation != null) {
-            val distMeters = RideCalculator.haversineDistanceMeters(
+        val distMeters = destination.roadDistanceMeters ?: if (currentLocation != null) {
+            RideCalculator.haversineDistanceMeters(
                 lat1 = currentLocation.latitude,
                 lon1 = currentLocation.longitude,
                 lat2 = destination.latitude,
                 lon2 = destination.longitude
             )
+        } else {
+            null
+        }
+
+        if (distMeters != null) {
             if (useMetricUnits) {
                 if (distMeters >= 1000) {
                     String.format(Locale.US, "%.1f km", distMeters / 1000.0)
@@ -880,7 +885,15 @@ private fun DestinationSearchResultItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (destination.isFartherMatch && distanceDisplay != null) {
+                if (destination.roadDistanceMeters != null && distanceDisplay != null) {
+                    Text(
+                        text = "$distanceDisplay by road",
+                        color = palette.primaryAccent,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium
+                    )
+                } else if (destination.isFartherMatch && distanceDisplay != null) {
                     Text(
                         text = "Farther match • $distanceDisplay",
                         color = palette.dialText.copy(alpha = 0.65f),
@@ -1051,7 +1064,7 @@ private fun RouteSummaryCockpitCard(
                 ) {
                     Column {
                         Text(
-                            text = "DISTANCE",
+                            text = "ROAD DISTANCE",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
