@@ -25,6 +25,7 @@ import com.abrar.motolog.shared.domain.repository.RoutingRepository
 import com.abrar.motolog.shared.domain.repository.TrackingSessionState
 import com.abrar.motolog.shared.domain.model.RoutingMode
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.Priority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -174,27 +175,42 @@ class DestinationViewModel @Inject constructor(
             try {
                 client.lastLocation.addOnSuccessListener { loc ->
                     if (loc != null) {
-                        val point = LocationPoint(
-                            latitude = loc.latitude,
-                            longitude = loc.longitude,
-                            speedMps = if (loc.hasSpeed()) loc.speed else null,
-                            accuracyMeters = if (loc.hasAccuracy()) loc.accuracy else Float.MAX_VALUE,
-                            timestamp = if (loc.time > 0L) loc.time else System.currentTimeMillis(),
-                            altitudeMeters = if (loc.hasAltitude()) loc.altitude else null,
-                            elapsedTimestampMs = loc.elapsedRealtimeNanos / 1_000_000L
-                        )
-                        _uiState.update { current ->
-                            current.copy(
-                                currentLocation = point,
-                                mapCenterLatitude = if (current.mapCenterLatitude == 0.0) point.latitude else current.mapCenterLatitude,
-                                mapCenterLongitude = if (current.mapCenterLongitude == 0.0) point.longitude else current.mapCenterLongitude
-                            )
-                        }
+                        applyFetchedLocation(loc)
+                    } else {
+                        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                            .addOnSuccessListener { curLoc ->
+                                if (curLoc != null) {
+                                    applyFetchedLocation(curLoc)
+                                }
+                            }
                     }
                 }
             } catch (_: Exception) {
                 // Ignore failure to fetch last known location
             }
+        }
+    }
+
+    private fun applyFetchedLocation(loc: android.location.Location) {
+        val point = LocationPoint(
+            latitude = loc.latitude,
+            longitude = loc.longitude,
+            speedMps = if (loc.hasSpeed()) loc.speed else null,
+            accuracyMeters = if (loc.hasAccuracy()) loc.accuracy else Float.MAX_VALUE,
+            timestamp = if (loc.time > 0L) loc.time else System.currentTimeMillis(),
+            altitudeMeters = if (loc.hasAltitude()) loc.altitude else null,
+            elapsedTimestampMs = loc.elapsedRealtimeNanos / 1_000_000L
+        )
+        _uiState.update { current ->
+            current.copy(
+                currentLocation = point,
+                mapCenterLatitude = if (current.mapCenterLatitude == 0.0) point.latitude else current.mapCenterLatitude,
+                mapCenterLongitude = if (current.mapCenterLongitude == 0.0) point.longitude else current.mapCenterLongitude,
+                errorMessage = if (current.errorMessage?.contains("location", ignoreCase = true) == true) null else current.errorMessage
+            )
+        }
+        if (_uiState.value.selectedDestination != null && _uiState.value.routeCandidates.isEmpty() && !_uiState.value.isCalculatingRoute) {
+            calculateRouteForSelectedDestination()
         }
     }
 

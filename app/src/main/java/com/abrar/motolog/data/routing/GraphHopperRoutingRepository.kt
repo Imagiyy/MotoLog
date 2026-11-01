@@ -117,6 +117,10 @@ class GraphHopperRoutingRepository @Inject constructor(
                 )
             }
 
+            if (mode == RoutingMode.KEYLESS_GRAPH_HOPPER && (providerUrl.contains("localhost") || providerUrl.contains("127.0.0.1"))) {
+                return calculateRouteKeylessOsm(request)
+            }
+
             if (apiKey.isNotBlank()) {
                 queryParams.add("key=${URLEncoder.encode(apiKey, "UTF-8")}")
             }
@@ -205,13 +209,11 @@ class GraphHopperRoutingRepository @Inject constructor(
             diagnostics.recordCancellation()
             Result.failure(RoutingError.RequestCancelled())
         } catch (e: IOException) {
-            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NETWORK)
-            val msg = if (currentMode == RoutingMode.KEYLESS_GRAPH_HOPPER && (currentProviderUrl?.contains("localhost") == true || currentProviderUrl?.contains("127.0.0.1") == true)) {
-                "Cannot connect to self-hosted server ($currentProviderUrl). Please enter your GraphHopper Cloud API key or configure a server URL in Settings."
-            } else {
-                "Network error calculating route: ${e.message}"
+            if (currentMode == RoutingMode.KEYLESS_GRAPH_HOPPER) {
+                return calculateRouteKeylessOsm(request)
             }
-            Result.failure(RoutingError.NetworkError(msg, e))
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NETWORK)
+            Result.failure(RoutingError.NetworkError("Network error calculating route: ${e.message}", e))
         } catch (e: Exception) {
             diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
             Result.failure(RoutingError.ProviderError(500, e.message ?: "Unknown routing error"))
@@ -338,4 +340,147 @@ class GraphHopperRoutingRepository @Inject constructor(
                 lower.contains("unauthorized") ||
                 lower.contains("pass an api key")
     }
+
+    private suspend fun calculateRouteKeylessOsm(request: RouteRequest): Result<List<PlannedRoute>> {
+        return try {
+            val origin = request.origin
+            val destination = request.destination
+            val url = "https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline&steps=true"
+            val response = httpTransport.get(url)
+
+            if (response.statusCode !in 200..299) {
+                val errorMsg = extractErrorMessage(response.body) ?: "HTTP ${response.statusCode}"
+                diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
+                return Result.failure(RoutingError.ProviderError(response.statusCode, errorMsg))
+            }
+
+            val dto = try {
+                json.decodeFromString<OsrmRouteResponseDto>(response.body)
+            } catch (e: Exception) {
+                return Result.failure(
+                    RoutingError.ProviderError(response.statusCode, "Failed to parse OSM route: ${e.message}")
+                )
+            }
+
+            if (dto.routes.isEmpty() || dto.code != "Ok") {
+                diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NO_ROUTE)
+                return Result.failure(RoutingError.NoRouteFound(dto.message ?: "No route found between locations"))
+            }
+
+            val routes = dto.routes.map { route ->
+                mapOsrmRouteToPlannedRoute(route, request)
+            }
+
+            lastSuccessfulRequest = request
+            diagnostics.recordRouteSuccess()
+            Result.success(routes)
+        } catch (e: SocketTimeoutException) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.TIMEOUT)
+            Result.failure(RoutingError.Timeout("Routing request timed out"))
+        } catch (e: CancellationException) {
+            diagnostics.recordCancellation()
+            Result.failure(RoutingError.RequestCancelled())
+        } catch (e: IOException) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.NETWORK)
+            Result.failure(RoutingError.NetworkError("Network error calculating route: ${e.message}", e))
+        } catch (e: Exception) {
+            diagnostics.recordRouteFailure(NavigationDiagnostics.FailureCategory.OTHER)
+            Result.failure(RoutingError.ProviderError(500, e.message ?: "Unknown routing error"))
+        }
+    }
+
+    private fun mapOsrmRouteToPlannedRoute(
+        route: OsrmRouteDto,
+        request: RouteRequest
+    ): PlannedRoute {
+        val decodedPoints = if (route.geometry.isNotBlank()) {
+            PolylineDecoder.decode(route.geometry)
+        } else {
+            listOf(request.origin, request.destination)
+        }
+
+        val boundingBox = if (decodedPoints.isNotEmpty()) {
+            RouteBoundingBox(
+                minLatitude = decodedPoints.minOf { it.latitude },
+                minLongitude = decodedPoints.minOf { it.longitude },
+                maxLatitude = decodedPoints.maxOf { it.latitude },
+                maxLongitude = decodedPoints.maxOf { it.longitude }
+            )
+        } else null
+
+        val instructions = route.legs.flatMap { it.steps }.mapIndexed { index, step ->
+            RouteInstruction(
+                maneuverType = mapOsrmManeuver(step.maneuver?.type, step.maneuver?.modifier),
+                streetName = step.name.takeIf { it.isNotBlank() } ?: step.ref,
+                distanceMeters = step.distance,
+                durationSeconds = step.duration.toLong(),
+                instructionText = buildOsrmInstructionText(step),
+                pointIndex = index,
+                bearingDegrees = step.maneuver?.bearingAfter
+            )
+        }
+
+        return PlannedRoute(
+            id = UUID.randomUUID().toString(),
+            geometry = decodedPoints,
+            totalDistanceMeters = route.distance,
+            expectedDurationSeconds = route.duration.toLong(),
+            bounds = boundingBox,
+            instructions = instructions,
+            providerAttribution = "Routing data © Keyless GraphHopper & OpenStreetMap contributors",
+            calculatedAtTimestamp = System.currentTimeMillis()
+        )
+    }
+
+    private fun mapOsrmManeuver(type: String?, modifier: String?): ManeuverType {
+        return when (type) {
+            "depart" -> ManeuverType.DEPART
+            "arrive" -> ManeuverType.ARRIVE
+            "roundabout", "rotary" -> ManeuverType.ROUNDABOUT
+            "merge" -> ManeuverType.MERGE
+            "fork" -> ManeuverType.FORK
+            "ramp", "on ramp", "off ramp" -> ManeuverType.RAMP
+            "turn", "end of road" -> when (modifier) {
+                "slight left" -> ManeuverType.TURN_SLIGHT_LEFT
+                "left" -> ManeuverType.TURN_LEFT
+                "sharp left" -> ManeuverType.TURN_SHARP_LEFT
+                "slight right" -> ManeuverType.TURN_SLIGHT_RIGHT
+                "right" -> ManeuverType.TURN_RIGHT
+                "sharp right" -> ManeuverType.TURN_SHARP_RIGHT
+                "u turn" -> ManeuverType.U_TURN
+                else -> ManeuverType.CONTINUE
+            }
+            else -> ManeuverType.CONTINUE
+        }
+    }
+
+    private fun buildOsrmInstructionText(step: OsrmStepDto): String {
+        val roadName = step.name.takeIf { it.isNotBlank() } ?: step.ref
+        val modifier = step.maneuver?.modifier
+        val type = step.maneuver?.type
+        return when (type) {
+            "arrive" -> "Arrive at destination"
+            "depart" -> if (roadName != null) "Depart onto $roadName" else "Depart"
+            "roundabout", "rotary" -> "Enter roundabout"
+            "turn", "end of road" -> {
+                val action = when (modifier) {
+                    "slight left" -> "Turn slight left"
+                    "left" -> "Turn left"
+                    "sharp left" -> "Turn sharp left"
+                    "slight right" -> "Turn slight right"
+                    "right" -> "Turn right"
+                    "sharp right" -> "Turn sharp right"
+                    "u turn" -> "Make a U-turn"
+                    else -> "Turn"
+                }
+                if (roadName != null) "$action onto $roadName" else action
+            }
+            "merge" -> if (roadName != null) "Merge onto $roadName" else "Merge"
+            "fork" -> if (modifier != null) "Keep $modifier at fork" else "Keep at fork"
+            "ramp", "on ramp", "off ramp" -> if (roadName != null) "Take ramp onto $roadName" else "Take ramp"
+            "new name", "continue" -> if (roadName != null) "Continue onto $roadName" else "Continue straight"
+            else -> if (roadName != null) "Continue onto $roadName" else "Continue"
+        }
+    }
 }
+

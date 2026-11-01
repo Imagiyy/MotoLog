@@ -386,4 +386,77 @@ class GraphHopperRoutingRepositoryTest {
         assertTrue(result.exceptionOrNull() is RoutingError.ApiKeyMissing)
         assertNull("Cloud mode with blank key must not send network call", fakeTransport.requestedUrl)
     }
+
+    @Test
+    fun calculateRouteKeylessMode_localhost_routesViaOsrmOpenStreetMap() = runTest {
+        settingsRepository.setRoutingMode(com.abrar.motolog.shared.domain.model.RoutingMode.KEYLESS_GRAPH_HOPPER)
+        settingsRepository.setRoutingSelfHostedUrl("http://localhost:8989")
+
+        val osrmSample = """
+            {
+              "code": "Ok",
+              "routes": [
+                {
+                  "distance": 3200.0,
+                  "duration": 240.0,
+                  "geometry": "aqdnA{erxMCJEPABUv@GPA@GT",
+                  "legs": [
+                    {
+                      "distance": 3200.0,
+                      "duration": 240.0,
+                      "steps": [
+                        {
+                          "distance": 500.0,
+                          "duration": 45.0,
+                          "name": "Avinashi Road",
+                          "maneuver": {
+                            "type": "depart",
+                            "modifier": null,
+                            "bearing_after": 90.0
+                          }
+                        },
+                        {
+                          "distance": 2700.0,
+                          "duration": 195.0,
+                          "name": "Trichy Road",
+                          "maneuver": {
+                            "type": "turn",
+                            "modifier": "right",
+                            "bearing_after": 180.0
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        fakeTransport.responseToReturn = HttpResponse(200, osrmSample)
+
+        val request = RouteRequest(
+            origin = createPoint(11.0168, 76.9558),
+            destination = createPoint(10.9900, 76.9700)
+        )
+
+        val result = repository.calculateRoute(request)
+        assertTrue(result.isSuccess)
+
+        val routes = result.getOrThrow()
+        assertEquals(1, routes.size)
+        val route = routes.first()
+
+        assertEquals(3200.0, route.totalDistanceMeters, 0.01)
+        assertEquals(240L, route.expectedDurationSeconds)
+        assertTrue(route.geometry.isNotEmpty())
+        assertEquals(2, route.instructions.size)
+        assertEquals(ManeuverType.DEPART, route.instructions[0].maneuverType)
+        assertEquals("Avinashi Road", route.instructions[0].streetName)
+        assertEquals(ManeuverType.TURN_RIGHT, route.instructions[1].maneuverType)
+        assertEquals("Trichy Road", route.instructions[1].streetName)
+        assertTrue(fakeTransport.requestedUrl!!.contains("router.project-osrm.org"))
+        assertFalse(fakeTransport.requestedUrl!!.contains("key="))
+    }
 }
+

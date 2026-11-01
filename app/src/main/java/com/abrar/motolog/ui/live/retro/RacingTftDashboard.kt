@@ -98,6 +98,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.abrar.motolog.shared.domain.model.PauseState
@@ -303,7 +304,9 @@ fun BatteryIndicator(
     batteryState: BatteryState,
     textColor: Color,
     accentColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 18.dp,
+    fontSize: TextUnit = 13.sp
 ) {
     val icon = when {
         batteryState.isCharging -> Icons.Default.BatteryChargingFull
@@ -322,18 +325,18 @@ fun BatteryIndicator(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = "Battery ${batteryState.level}%",
             tint = iconTint,
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(iconSize)
         )
         Text(
             text = "${batteryState.level}%",
             color = textColor,
-            fontSize = 11.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )
@@ -853,9 +856,9 @@ private fun TftPortraitView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(customColors.componentColor)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -863,60 +866,62 @@ private fun TftPortraitView(
                 BatteryIndicator(
                     batteryState = batteryState,
                     textColor = customColors.textColor,
-                    accentColor = customColors.accentColor
+                    accentColor = customColors.accentColor,
+                    iconSize = 20.dp,
+                    fontSize = 14.sp
                 )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     IconButton(
                         onClick = onToggleKeepScreenOn,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = if (keepScreenOn) Icons.Default.ScreenLockPortrait else Icons.Default.ScreenRotation,
                             contentDescription = "Keep Screen On",
                             tint = if (keepScreenOn) customColors.accentColor else customColors.textColor.copy(alpha = 0.5f),
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
                     IconButton(
                         onClick = onNavigateToSettings,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = customColors.textColor.copy(alpha = 0.6f),
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
                     Surface(
                         modifier = Modifier
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
                             .clickable { onSwitchToMap() },
                         color = customColors.componentColor
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 6.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Map,
                                 contentDescription = "Map",
                                 tint = customColors.accentColor,
-                                modifier = Modifier.size(12.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "MAP",
                                 color = customColors.textColor,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -926,27 +931,27 @@ private fun TftPortraitView(
                     if (isNavigationEnabled) {
                         Surface(
                             modifier = Modifier
-                                .height(24.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
                                 .clickable { onNavigateToDestination() },
                             color = customColors.componentColor
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 6.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Navigation,
                                     contentDescription = "Navigation",
                                     tint = customColors.accentColor,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Text(
                                     text = "NAV",
                                     color = customColors.textColor,
-                                    fontSize = 9.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -1721,27 +1726,27 @@ private fun TftLandscapeBottomBar(
             ) {
                 Surface(
                     modifier = Modifier
-                        .height(34.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
                         .clickable { onSwitchToMap() },
                     color = customColors.componentColor
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Map,
                             contentDescription = "Map",
                             tint = customColors.accentColor,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "MAP",
                             color = customColors.textColor,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
                         )
@@ -1751,27 +1756,27 @@ private fun TftLandscapeBottomBar(
                 if (isNavigationEnabled) {
                     Surface(
                         modifier = Modifier
-                            .height(34.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
                             .clickable { onNavigateToDestination() },
                         color = customColors.componentColor
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Navigation,
                                 contentDescription = "Navigate",
                                 tint = customColors.accentColor,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "NAV",
                                 color = customColors.textColor,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )

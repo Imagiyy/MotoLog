@@ -132,3 +132,70 @@ data class PhotonPropertiesDto(
     @SerialName("housenumber")
     val housenumber: String? = null
 )
+
+// ============================================================
+// OSRM Public Routing DTOs (Free OpenStreetMap Keyless Fallback)
+// ============================================================
+
+@Serializable
+data class OsrmRouteResponseDto(
+    @SerialName("code")
+    val code: String = "",
+    @SerialName("message")
+    val message: String? = null,
+    @SerialName("routes")
+    val routes: List<OsrmRouteDto> = emptyList()
+)
+
+@Serializable
+data class OsrmRouteDto(
+    @SerialName("distance")
+    val distance: Double = 0.0,
+    @SerialName("duration")
+    val duration: Double = 0.0,
+    @SerialName("geometry")
+    val geometry: String = "",
+    @SerialName("legs")
+    val legs: List<OsrmLegDto> = emptyList()
+)
+
+@Serializable
+data class OsrmLegDto(
+    @SerialName("distance")
+    val distance: Double = 0.0,
+    @SerialName("duration")
+    val duration: Double = 0.0,
+    @SerialName("steps")
+    val steps: List<OsrmStepDto> = emptyList()
+)
+
+@Serializable
+data class OsrmStepDto(
+    @SerialName("distance")
+    val distance: Double = 0.0,
+    @SerialName("duration")
+    val duration: Double = 0.0,
+    @SerialName("geometry")
+    val geometry: String? = null,
+    @SerialName("name")
+    val name: String = "",
+    @SerialName("ref")
+    val ref: String? = null,
+    @SerialName("maneuver")
+    val maneuver: OsrmManeuverDto? = null
+)
+
+@Serializable
+data class OsrmManeuverDto(
+    @SerialName("type")
+    val type: String = "",
+    @SerialName("modifier")
+    val modifier: String? = null,
+    @SerialName("bearing_before")
+    val bearingBefore: Double? = null,
+    @SerialName("bearing_after")
+    val bearingAfter: Double? = null,
+    @SerialName("location")
+    val location: List<Double> = emptyList()
+)
+
