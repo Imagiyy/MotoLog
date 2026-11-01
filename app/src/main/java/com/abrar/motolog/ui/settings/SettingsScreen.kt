@@ -2,9 +2,12 @@ package com.abrar.motolog.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -923,6 +926,7 @@ fun SettingsScreen(
 
             val routingApiKey by viewModel.routingApiKey.collectAsStateWithLifecycle()
             val routingAutoRerouteEnabled by viewModel.routingAutoRerouteEnabled.collectAsStateWithLifecycle()
+            val navigationFeatureEnabled by viewModel.navigationFeatureEnabled.collectAsStateWithLifecycle()
 
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -932,41 +936,6 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Routing Provider (GraphHopper)",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Required for destination search and motorcycle route planning",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
-                    OutlinedTextField(
-                        value = tempApiKey,
-                        onValueChange = {
-                            tempApiKey = it
-                            viewModel.setRoutingApiKey(it.trim())
-                        },
-                        label = { Text("GraphHopper API Key") },
-                        placeholder = { Text("Enter your GraphHopper key") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -974,20 +943,143 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Automatic Re-routing",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
+                                text = "Enable Navigation Subsystem",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Recalculate route automatically when off-track",
+                                text = "Destination planning, live route guidance, and acoustic voice turns",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
-                            checked = routingAutoRerouteEnabled,
-                            onCheckedChange = { viewModel.setRoutingAutoRerouteEnabled(it) }
+                            checked = navigationFeatureEnabled,
+                            onCheckedChange = { viewModel.setNavigationFeatureEnabled(it) }
                         )
+                    }
+
+                    if (navigationFeatureEnabled) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Routing Provider (GraphHopper)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Required for destination search and motorcycle route planning",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        var tempApiKey by remember(routingApiKey) { mutableStateOf(routingApiKey) }
+                        OutlinedTextField(
+                            value = tempApiKey,
+                            onValueChange = {
+                                tempApiKey = it
+                                viewModel.setRoutingApiKey(it.trim())
+                            },
+                            label = { Text("GraphHopper API Key") },
+                            placeholder = { Text("Enter your GraphHopper key") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Automatic Re-routing",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Recalculate route automatically when off-track",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = routingAutoRerouteEnabled,
+                                onCheckedChange = { viewModel.setRoutingAutoRerouteEnabled(it) }
+                            )
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Pilot Diagnostics & Telemetry",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "100% anonymized metrics. Contains zero GPS coordinates, search queries, or API keys.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            var diagSnapshot by remember { mutableStateOf(viewModel.getDiagnosticsSnapshot()) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                PilotCounterCard("Requests", "${diagSnapshot.totalRouteRequests}")
+                                PilotCounterCard("Reroutes", "${diagSnapshot.totalReroutesTriggered}")
+                                PilotCounterCard("Arrivals", "${diagSnapshot.arrivalsConfirmed}")
+                                PilotCounterCard("GPS Loss", "${diagSnapshot.gpsSignalLossEvents}")
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                @Suppress("DEPRECATION")
+                                val clipboardManager = LocalClipboardManager.current
+                                val context = LocalContext.current
+                                OutlinedButton(
+                                    onClick = {
+                                        val json = viewModel.getDiagnosticsJson()
+                                        clipboardManager.setText(AnnotatedString(json))
+                                        Toast.makeText(context, "Anonymized JSON copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Copy JSON", fontSize = 12.sp)
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.resetDiagnostics()
+                                        diagSnapshot = viewModel.getDiagnosticsSnapshot()
+                                        Toast.makeText(context, "Counters reset", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Reset", fontSize = 12.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1724,3 +1816,29 @@ private fun ColorSelectorRow(
         }
     }
 }
+
+@Composable
+private fun PilotCounterCard(label: String, value: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            fontFamily = FontFamily.Monospace
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 10.sp
+        )
+    }
+}
+

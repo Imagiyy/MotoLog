@@ -54,6 +54,7 @@ class SettingsRepository @Inject constructor(
         val ROUTING_API_KEY = stringPreferencesKey("routing_api_key")
         val ROUTING_PROVIDER_URL = stringPreferencesKey("routing_provider_url")
         val ROUTING_AUTO_REROUTE_ENABLED = booleanPreferencesKey("routing_auto_reroute_enabled")
+        val NAVIGATION_FEATURE_ENABLED = booleanPreferencesKey("navigation_feature_enabled")
     }
 
     // ============================================================
@@ -378,6 +379,16 @@ class SettingsRepository @Inject constructor(
     suspend fun setRoutingAutoRerouteEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[Keys.ROUTING_AUTO_REROUTE_ENABLED] = enabled
+        }
+    }
+
+    val navigationFeatureEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.NAVIGATION_FEATURE_ENABLED] ?: true
+    }
+
+    suspend fun setNavigationFeatureEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.NAVIGATION_FEATURE_ENABLED] = enabled
         }
     }
 }

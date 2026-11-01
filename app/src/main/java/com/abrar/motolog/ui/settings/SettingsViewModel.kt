@@ -60,7 +60,8 @@ class SettingsViewModel @Inject constructor(
     private val ridePointDao: RidePointDao,
     private val backupManager: BackupManager,
     @ApplicationContext private val context: Context? = null,
-    private val database: MotoLogDatabase? = null
+    private val database: MotoLogDatabase? = null,
+    private val navigationDiagnostics: com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics = com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnostics()
 ) : ViewModel() {
 
     // ============================================================
@@ -130,6 +131,9 @@ class SettingsViewModel @Inject constructor(
     val routingAutoRerouteEnabled: StateFlow<Boolean> = settingsRepository.routingAutoRerouteEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
+    val navigationFeatureEnabled: StateFlow<Boolean> = settingsRepository.navigationFeatureEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
+
     // UI Dialog & Snack State
     private val _messageChannel = Channel<String>(Channel.BUFFERED)
     val messageFlow = _messageChannel.receiveAsFlow()
@@ -191,6 +195,20 @@ class SettingsViewModel @Inject constructor(
 
     fun setRoutingAutoRerouteEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setRoutingAutoRerouteEnabled(enabled) }
+    }
+
+    fun setNavigationFeatureEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setNavigationFeatureEnabled(enabled) }
+    }
+
+    fun getDiagnosticsSnapshot(): com.abrar.motolog.shared.domain.diagnostics.NavigationDiagnosticsSnapshot =
+        navigationDiagnostics.getSnapshot(System.currentTimeMillis())
+
+    fun getDiagnosticsJson(): String =
+        navigationDiagnostics.exportDiagnosticsJson(System.currentTimeMillis())
+
+    fun resetDiagnostics() {
+        navigationDiagnostics.reset()
     }
 
     fun setThemeMode(mode: ThemeMode) {

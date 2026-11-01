@@ -921,3 +921,11 @@
 - **Accessibility & Ergonomics**: All navigation touch targets meet or exceed 48x48dp (action buttons >= 56dp for motorcycle gloves).
 - **Verification**: All unit tests pass across `:shared` and `:app`, and `./gradlew assembleDebug` builds cleanly.
 
+### Phase 9: Pilot Rollout & Internal Testing
+**Status:** COMPLETED & VERIFIED
+- **Feature Flag Control**: Added `navigationFeatureEnabled` preference in DataStore and `SettingsRepository`, allowing instant enabling/disabling of the navigation subsystem and hiding of cockpit "NAV" entry points.
+- **Pilot Diagnostics UI**: Added in-app diagnostic telemetry dashboard in Settings with live non-sensitive counters (requests, reroutes, arrivals, GPS losses), instant "Copy JSON" action for pilot bug reporting, and counter reset action.
+- **Pilot Testing Guide**: Created `docs/play-store/PILOT_TESTING_GUIDE.md` detailing test scenarios (search, route matching, off-route recalculation, Bluetooth helmet audio, offline tunnels) and closed track promotion criteria.
+- **Verification**: All unit tests across `:shared` and `:app` pass, and `./gradlew assembleDebug` builds cleanly.
+
+

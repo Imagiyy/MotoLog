@@ -118,6 +118,13 @@ class LiveViewModel @Inject constructor(
             initialValue = SettingsRepository.DEFAULT_DASHBOARD_COMPONENT_COLOR
         )
 
+    val isNavigationFeatureEnabled: StateFlow<Boolean> = settingsRepository.navigationFeatureEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = true
+        )
+
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(
             scope = viewModelScope,

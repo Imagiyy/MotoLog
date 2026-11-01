@@ -135,6 +135,7 @@ fun LiveScreen(
     val activity = context as? Activity
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navState by navigationViewModel.uiState.collectAsStateWithLifecycle()
+    val isNavigationFeatureEnabled by viewModel.isNavigationFeatureEnabled.collectAsStateWithLifecycle()
     val isDisclaimerAccepted by viewModel.isDisclaimerAccepted.collectAsStateWithLifecycle()
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val batteryGuidanceSeen by viewModel.batteryGuidanceSeen.collectAsStateWithLifecycle()
@@ -326,6 +327,7 @@ fun LiveScreen(
                     onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                     onNavigateToSettings = onNavigateToSettings,
                     onNavigateToDestination = onNavigateToDestination,
+                    isNavigationEnabled = isNavigationFeatureEnabled,
                     navigationUiState = navState,
                     palette = palette,
                     customColors = customColors,
@@ -342,6 +344,7 @@ fun LiveScreen(
                 onToggleKeepScreenOn = { viewModel.setKeepScreenOn(!keepScreenOn) },
                 onNavigateToSettings = onNavigateToSettings,
                 onNavigateToDestination = onNavigateToDestination,
+                isNavigationEnabled = isNavigationFeatureEnabled,
                 onStopConfirmed = { viewModel.stopTracking() },
                 palette = palette,
                 modifier = modifier.fillMaxSize()
@@ -704,6 +707,7 @@ private fun TftWaitingForGpsView(
     onToggleKeepScreenOn: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    isNavigationEnabled: Boolean = true,
     onStopConfirmed: () -> Unit,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT)
@@ -757,15 +761,17 @@ private fun TftWaitingForGpsView(
                             tint = if (keepScreenOn) tftAccent else tftMuted
                         )
                     }
-                    IconButton(
-                        onClick = onNavigateToDestination,
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = "Navigate",
-                            tint = tftAccent
-                        )
+                    if (isNavigationEnabled) {
+                        IconButton(
+                            onClick = onNavigateToDestination,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = "Navigate",
+                                tint = tftAccent
+                            )
+                        }
                     }
                     IconButton(
                         onClick = onNavigateToSettings,

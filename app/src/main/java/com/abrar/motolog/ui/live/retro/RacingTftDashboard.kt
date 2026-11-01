@@ -368,6 +368,7 @@ fun RacingTftDashboard(
     onToggleKeepScreenOn: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDestination: () -> Unit = {},
+    isNavigationEnabled: Boolean = true,
     navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
     customColors: DashboardCustomColors = DashboardCustomColors()
@@ -446,6 +447,7 @@ fun RacingTftDashboard(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 onNavigateToDestination = onNavigateToDestination,
+                isNavigationEnabled = isNavigationEnabled,
                 navigationUiState = navigationUiState,
                 palette = palette,
                 customColors = customColors,
@@ -476,6 +478,7 @@ fun RacingTftDashboard(
                 onToggleKeepScreenOn = onToggleKeepScreenOn,
                 onNavigateToSettings = onNavigateToSettings,
                 onNavigateToDestination = onNavigateToDestination,
+                isNavigationEnabled = isNavigationEnabled,
                 navigationUiState = navigationUiState,
                 onStartClick = onStartClick,
                 onPauseClick = onPauseClick,
@@ -523,6 +526,7 @@ private fun TftLandscapeView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    isNavigationEnabled: Boolean = true,
     navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
@@ -778,6 +782,7 @@ private fun TftLandscapeView(
                 onStopConfirmed = onStopConfirmed,
                 onSwitchToMap = onSwitchToMap,
                 onNavigateToDestination = onNavigateToDestination,
+                isNavigationEnabled = isNavigationEnabled,
                 palette = palette,
                 customColors = customColors,
                 batteryState = batteryState,
@@ -822,6 +827,7 @@ private fun TftPortraitView(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    isNavigationEnabled: Boolean = true,
     navigationUiState: NavigationUiState = NavigationUiState.Idle,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors,
@@ -917,32 +923,34 @@ private fun TftPortraitView(
                         }
                     }
 
-                    Surface(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                            .clickable { onNavigateToDestination() },
-                        color = customColors.componentColor
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    if (isNavigationEnabled) {
+                        Surface(
+                            modifier = Modifier
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .border(1.dp, customColors.accentColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                .clickable { onNavigateToDestination() },
+                            color = customColors.componentColor
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Navigation,
-                                contentDescription = "Navigation",
-                                tint = customColors.accentColor,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "NAV",
-                                color = customColors.textColor,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Navigation,
+                                    contentDescription = "Navigation",
+                                    tint = customColors.accentColor,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "NAV",
+                                    color = customColors.textColor,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
                         }
                     }
                 }
@@ -1638,6 +1646,7 @@ private fun TftLandscapeBottomBar(
     onStopConfirmed: () -> Unit,
     onSwitchToMap: () -> Unit,
     onNavigateToDestination: () -> Unit = {},
+    isNavigationEnabled: Boolean = true,
     palette: CockpitThemePalette,
     customColors: DashboardCustomColors = DashboardCustomColors(),
     batteryState: BatteryState,
@@ -1739,32 +1748,34 @@ private fun TftLandscapeBottomBar(
                     }
                 }
 
-                Surface(
-                    modifier = Modifier
-                        .height(34.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                        .clickable { onNavigateToDestination() },
-                    color = customColors.componentColor
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                if (isNavigationEnabled) {
+                    Surface(
+                        modifier = Modifier
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.2.dp, customColors.accentColor.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                            .clickable { onNavigateToDestination() },
+                        color = customColors.componentColor
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = "Navigate",
-                            tint = customColors.accentColor,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "NAV",
-                            color = customColors.textColor,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = "Navigate",
+                                tint = customColors.accentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "NAV",
+                                color = customColors.textColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                     }
                 }
 
