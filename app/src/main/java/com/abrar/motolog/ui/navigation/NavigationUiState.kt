@@ -50,6 +50,7 @@ sealed interface NavigationUiState {
         val isOffRouteWarning: Boolean = false,
         val isRerouting: Boolean = false,
         val isGpsLost: Boolean = false,
-        val rerouteErrorMessage: String? = null
+        val rerouteErrorMessage: String? = null,
+        val isMuted: Boolean = false
     ) : NavigationUiState
 }

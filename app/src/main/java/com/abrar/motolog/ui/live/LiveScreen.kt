@@ -301,6 +301,7 @@ fun LiveScreen(
                     onDismissArrival = navigationViewModel::dismissArrival,
                     onManualReroute = navigationViewModel::requestManualReroute,
                     onDismissRerouteError = navigationViewModel::dismissRerouteError,
+                    onToggleMute = navigationViewModel::toggleMute,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     modifier = modifier.fillMaxSize()
@@ -374,6 +375,7 @@ fun LiveScreen(
                     onDismissArrival = navigationViewModel::dismissArrival,
                     onManualReroute = navigationViewModel::requestManualReroute,
                     onDismissRerouteError = navigationViewModel::dismissRerouteError,
+                    onToggleMute = navigationViewModel::toggleMute,
                     defaultMapTheme = defaultMapTheme,
                     palette = palette,
                     isIdle = true,

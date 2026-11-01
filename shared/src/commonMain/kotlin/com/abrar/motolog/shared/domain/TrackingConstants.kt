@@ -232,4 +232,20 @@ object TrackingConstants {
 
     /** Maximum allowed backward jump in meters due to GPS jitter on the same segment. */
     const val NAV_PROGRESS_JITTER_TOLERANCE_METERS: Double = 10.0
+
+    // ============================================================
+    // Navigation Voice & Instruction Guidance
+    // ============================================================
+
+    /** Distance threshold (meters) for advance warning of upcoming maneuver. */
+    const val NAV_VOICE_DISTANCE_FAR_METERS: Double = 500.0
+
+    /** Distance threshold (meters) for intermediate preparation announcement. */
+    const val NAV_VOICE_DISTANCE_NEAR_METERS: Double = 150.0
+
+    /** Distance threshold (meters) for imminent maneuver execution announcement. */
+    const val NAV_VOICE_DISTANCE_IMMINENT_METERS: Double = 35.0
+
+    /** Minimum interval (seconds) between general voice announcements to avoid helmet chatter. */
+    const val NAV_VOICE_MIN_INTERVAL_SECONDS: Long = 4L
 }

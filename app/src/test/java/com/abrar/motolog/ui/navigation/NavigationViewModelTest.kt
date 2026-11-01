@@ -5,6 +5,7 @@ import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.fake.FakeNavigationSessionRepository
 import com.abrar.motolog.fake.FakeRoutingRepository
 import com.abrar.motolog.fake.FakeTrackingRepository
+import com.abrar.motolog.shared.domain.engine.RouteProgressEngine
 import com.abrar.motolog.shared.domain.model.RoutingError
 import com.abrar.motolog.shared.domain.model.LocationPoint
 import com.abrar.motolog.shared.domain.model.ManeuverType
@@ -47,10 +48,44 @@ class NavigationViewModelTest {
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var routingRepo: FakeRoutingRepository
     private lateinit var fakeClock: FakeClock
+    private lateinit var fakeVoiceAnnouncer: FakeVoiceAnnouncer
     private lateinit var viewModel: NavigationViewModel
 
     class FakeClock(var time: Long = 1000L) : com.abrar.motolog.shared.domain.time.Clock {
         override fun currentTimeMillis(): Long = time
+    }
+
+    class FakeVoiceAnnouncer : com.abrar.motolog.shared.domain.voice.VoiceAnnouncer {
+        var lastSpokenText: String? = null
+        var lastIsUrgent: Boolean = false
+        val spokenTexts = mutableListOf<String>()
+        var isMutedState = false
+        var stopCalled = false
+        var isGloballyEnabledState = true
+
+        override fun speak(text: String, isUrgent: Boolean) {
+            lastSpokenText = text
+            lastIsUrgent = isUrgent
+            spokenTexts.add(text)
+        }
+
+        override fun setMuted(muted: Boolean) {
+            isMutedState = muted
+        }
+
+        override fun isMuted(): Boolean = isMutedState
+
+        override fun setGloballyEnabled(enabled: Boolean) {
+            isGloballyEnabledState = enabled
+        }
+
+        override fun stop() {
+            stopCalled = true
+        }
+
+        override fun shutdown() {
+            stopCalled = true
+        }
     }
 
     private fun createSampleRoute(): PlannedRoute {
@@ -100,6 +135,7 @@ class NavigationViewModelTest {
         trackingRepo = FakeTrackingRepository()
         routingRepo = FakeRoutingRepository()
         fakeClock = FakeClock(1000L)
+        fakeVoiceAnnouncer = FakeVoiceAnnouncer()
 
         val testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope,
@@ -112,7 +148,10 @@ class NavigationViewModelTest {
             trackingRepository = trackingRepo,
             settingsRepository = settingsRepo,
             routingRepository = routingRepo,
-            clock = fakeClock
+            routeProgressEngine = RouteProgressEngine(),
+            clock = fakeClock,
+            voiceEngine = com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine(),
+            voiceAnnouncer = fakeVoiceAnnouncer
         )
     }
 
@@ -526,5 +565,83 @@ class NavigationViewModelTest {
 
         assertTrue(routingRepo.cancelCalled)
         assertEquals(NavigationUiState.Idle, viewModel.uiState.value)
+    }
+
+    @Test
+    fun voiceAnnouncementDeliveredWhenApproachingManeuver() = runTest {
+        val route = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_voice_01",
+            plannedRouteId = route.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, route)
+        advanceUntilIdle()
+
+        // Waypoint 1 is at index 1 (~500m ahead from MG Road)
+        fakeClock.time = 1000L
+        trackingRepo.emitSessionState(
+            TrackingSessionState.Tracking(
+                rideId = 1L,
+                stats = RideStats(),
+                pauseState = PauseState.RECORDING,
+                accuracyMeters = 5f,
+                latitude = 12.9716,
+                longitude = 77.5946
+            )
+        )
+        advanceUntilIdle()
+
+        // An announcement should have been dispatched to the voice announcer
+        assertNotNull(fakeVoiceAnnouncer.lastSpokenText)
+        assertTrue(fakeVoiceAnnouncer.spokenTexts.isNotEmpty())
+    }
+
+    @Test
+    fun toggleMuteUpdatesUiStateAndVoiceAnnouncer() = runTest {
+        val route = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_mute",
+            plannedRouteId = route.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, route)
+        advanceUntilIdle()
+
+        val initial = viewModel.uiState.value as NavigationUiState.Navigating
+        assertFalse(initial.isMuted)
+        assertFalse(fakeVoiceAnnouncer.isMuted())
+
+        // Toggle mute ON
+        viewModel.toggleMute()
+        val muted = viewModel.uiState.value as NavigationUiState.Navigating
+        assertTrue(muted.isMuted)
+        assertTrue(fakeVoiceAnnouncer.isMuted())
+
+        // Toggle mute OFF
+        viewModel.toggleMute()
+        val unmuted = viewModel.uiState.value as NavigationUiState.Navigating
+        assertFalse(unmuted.isMuted)
+        assertFalse(fakeVoiceAnnouncer.isMuted())
+    }
+
+    @Test
+    fun endNavigationStopsVoiceAnnouncer() = runTest {
+        val route = createSampleRoute()
+        val session = NavigationSession(
+            sessionId = "sess_stop_voice",
+            plannedRouteId = route.id,
+            status = NavigationStatus.ON_ROUTE,
+            startedAtTimestamp = 1000L
+        )
+        navSessionRepo.saveActiveSession(session, route)
+        advanceUntilIdle()
+
+        viewModel.endNavigation()
+        advanceUntilIdle()
+
+        assertTrue(fakeVoiceAnnouncer.stopCalled)
     }
 }

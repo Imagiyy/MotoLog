@@ -97,4 +97,20 @@ class TrackingConstantsTest {
         assertEquals(1000L, TrackingConstants.LOCATION_UPDATE_INTERVAL_MS)
         assertEquals(1000L, TrackingConstants.LOCATION_FASTEST_INTERVAL_MS)
     }
+
+    @Test
+    fun navigationVoiceThresholdsAreOrderedCorrectly() {
+        assertTrue(
+            TrackingConstants.NAV_VOICE_DISTANCE_FAR_METERS > TrackingConstants.NAV_VOICE_DISTANCE_NEAR_METERS,
+            "Far voice distance must exceed near distance"
+        )
+        assertTrue(
+            TrackingConstants.NAV_VOICE_DISTANCE_NEAR_METERS > TrackingConstants.NAV_VOICE_DISTANCE_IMMINENT_METERS,
+            "Near voice distance must exceed imminent distance"
+        )
+        assertTrue(
+            TrackingConstants.NAV_VOICE_MIN_INTERVAL_SECONDS > 0,
+            "Minimum interval must be positive"
+        )
+    }
 }

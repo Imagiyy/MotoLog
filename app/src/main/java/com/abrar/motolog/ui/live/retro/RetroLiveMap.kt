@@ -139,6 +139,7 @@ fun RetroLiveMap(
     onDismissArrival: () -> Unit = {},
     onManualReroute: () -> Unit = {},
     onDismissRerouteError: () -> Unit = {},
+    onToggleMute: () -> Unit = {},
     defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference = com.abrar.motolog.shared.domain.model.MapThemePreference.LIGHT,
     modifier: Modifier = Modifier,
     palette: CockpitThemePalette = getCockpitThemePalette(ThemeMode.RACING_TFT),
@@ -489,6 +490,7 @@ fun RetroLiveMap(
                 palette = palette,
                 onManualReroute = onManualReroute,
                 onDismissRerouteError = onDismissRerouteError,
+                onToggleMute = onToggleMute,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 64.dp, start = 12.dp, end = 12.dp)
@@ -1200,6 +1202,7 @@ fun NavigationTurnGuidanceCard(
     palette: CockpitThemePalette,
     onManualReroute: () -> Unit = {},
     onDismissRerouteError: () -> Unit = {},
+    onToggleMute: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1398,6 +1401,27 @@ fun NavigationTurnGuidanceCard(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2
                     )
+                }
+
+                // Mute / Unmute Voice Guidance Button (Glove-friendly >= 48dp)
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(
+                            1.5.dp,
+                            if (navState.isMuted) JewelAmber.copy(alpha = 0.8f) else Color(0xFF00E5FF).copy(alpha = 0.7f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable { onToggleMute() },
+                    color = if (navState.isMuted) JewelAmber.copy(alpha = 0.2f) else Color(0xFF00E5FF).copy(alpha = 0.15f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (navState.isMuted) "🔇" else "🔊",
+                            fontSize = 20.sp
+                        )
+                    }
                 }
             }
 

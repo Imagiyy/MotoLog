@@ -29,9 +29,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.max
 
+import com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine
+import com.abrar.motolog.shared.domain.voice.VoiceAnnouncer
+
 /**
  * ViewModel managing active route navigation, real-time GPS progress matching,
- * turn-by-turn guidance, off-route detection, rerouting, and camera perspective modes.
+ * turn-by-turn guidance, off-route detection, rerouting, camera perspective modes,
+ * and motorcycle acoustic voice guidance with Bluetooth helmet audio focus.
  *
  * Keeps navigation logic cleanly decoupled from LiveViewModel's ride telemetry.
  */
@@ -42,7 +46,9 @@ class NavigationViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val routingRepository: RoutingRepository,
     private val routeProgressEngine: RouteProgressEngine = RouteProgressEngine(),
-    private val clock: Clock = DefaultClock
+    private val clock: Clock = DefaultClock,
+    private val voiceEngine: NavigationVoiceEngine = NavigationVoiceEngine(),
+    private val voiceAnnouncer: VoiceAnnouncer? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NavigationUiState>(NavigationUiState.Idle)
@@ -134,6 +140,13 @@ class NavigationViewModel @Inject constructor(
                 }
             }
         }
+
+        // 3. Observe voice announcements preference
+        viewModelScope.launch {
+            settingsRepository.voiceAnnouncementsEnabled.collect { enabled ->
+                voiceAnnouncer?.setGloballyEnabled(enabled)
+            }
+        }
     }
 
     private fun setupActiveRoute(
@@ -191,7 +204,8 @@ class NavigationViewModel @Inject constructor(
             cameraFollowMode = currentFollowMode,
             isOffRouteWarning = initialProgress.status == NavigationStatus.OFF_ROUTE_WARNING,
             isRerouting = initialProgress.status == NavigationStatus.OFF_ROUTE_REROUTE_NEEDED,
-            isGpsLost = false
+            isGpsLost = false,
+            isMuted = voiceAnnouncer?.isMuted() ?: false
         )
     }
 
@@ -249,6 +263,20 @@ class NavigationViewModel @Inject constructor(
             if (rerouteJob?.isActive != true && backoffElapsed) {
                 triggerReroute(current, fix)
             }
+        }
+
+        // Evaluate acoustic voice guidance
+        val announcement = voiceEngine.evaluateAnnouncement(
+            instruction = currentInstruction,
+            instructionIndex = currIdx,
+            distanceToManeuverMeters = distToManeuver,
+            currentSpeedKmh = currentSpeedKmh,
+            isMetric = useMetricUnits.value,
+            status = updatedProgress.status,
+            nowMs = nowMs
+        )
+        if (announcement != null) {
+            voiceAnnouncer?.speak(announcement.text, isUrgent = announcement.isUrgent)
         }
 
         // Throttled checkpointing to Room database
@@ -374,6 +402,10 @@ class NavigationViewModel @Inject constructor(
                 )
             } else state
         }
+
+        val nextStreet = newRoute.instructions.firstOrNull()?.streetName
+        val announcement = voiceEngine.onRerouteCompleted(nextStreet)
+        voiceAnnouncer?.speak(announcement.text, isUrgent = announcement.isUrgent)
     }
 
     private fun applyRerouteFailure(message: String) {
@@ -418,6 +450,8 @@ class NavigationViewModel @Inject constructor(
      * Cancels any pending or in-flight reroute network requests.
      */
     fun endNavigation() {
+        voiceAnnouncer?.stop()
+        voiceEngine.reset()
         rerouteJob?.cancel()
         routingRepository.cancelActiveRequests()
         val current = _uiState.value
@@ -435,6 +469,7 @@ class NavigationViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        voiceAnnouncer?.stop()
         rerouteJob?.cancel()
         routingRepository.cancelActiveRequests()
     }
@@ -492,6 +527,18 @@ class NavigationViewModel @Inject constructor(
             if (state is NavigationUiState.Navigating) {
                 state.copy(isArrived = false)
             } else state
+        }
+    }
+
+    /**
+     * Toggle voice guidance mute for the active navigation session.
+     */
+    fun toggleMute() {
+        val current = _uiState.value
+        if (current is NavigationUiState.Navigating) {
+            val nextMuted = !current.isMuted
+            voiceAnnouncer?.setMuted(nextMuted)
+            _uiState.value = current.copy(isMuted = nextMuted)
         }
     }
 }

@@ -36,8 +36,18 @@ abstract class RoutingModule {
         impl: GraphHopperGeocodingRepository
     ): GeocodingRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindVoiceAnnouncer(
+        impl: com.abrar.motolog.service.NavigationVoiceAnnouncer
+    ): com.abrar.motolog.shared.domain.voice.VoiceAnnouncer
+
     companion object {
         @Provides
         fun provideRouteProgressEngine(): RouteProgressEngine = RouteProgressEngine()
+
+        @Provides
+        fun provideNavigationVoiceEngine(): com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine =
+            com.abrar.motolog.shared.domain.engine.NavigationVoiceEngine()
     }
 }

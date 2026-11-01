@@ -59,7 +59,10 @@ class RideNotificationManager @Inject constructor(
         isWaitingGps: Boolean = false,
         pauseState: PauseState = if (isPaused) PauseState.MANUALLY_PAUSED else PauseState.RECORDING,
         isGpsLost: Boolean = false,
-        isMetric: Boolean = true
+        isMetric: Boolean = true,
+        destinationName: String? = null,
+        remainingDistanceMeters: Double? = null,
+        nextInstructionText: String? = null
     ): Notification {
         // Content Intent: Open MainActivity
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -127,6 +130,7 @@ class RideNotificationManager @Inject constructor(
         ).build()
 
         val title = when {
+            destinationName != null -> "To $destinationName"
             isWaitingGps -> "MotoLog: Waiting for GPS"
             isGpsLost -> "MotoLog: GPS Signal Lost"
             pauseState == PauseState.AUTO_PAUSED -> "MotoLog: AUTO-PAUSED"
@@ -148,6 +152,12 @@ class RideNotificationManager @Inject constructor(
         val speedStr = com.abrar.motolog.shared.domain.engine.UnitConverter.formatSpeedWithUnit(stats.currentSpeedKmh, isMetric)
 
         val contentText = when {
+            destinationName != null && nextInstructionText != null -> {
+                val remDistStr = remainingDistanceMeters?.let {
+                    com.abrar.motolog.shared.domain.engine.UnitConverter.formatDistanceWithUnit(it, isMetric)
+                } ?: "--"
+                "$nextInstructionText • Rem: $remDistStr"
+            }
             isWaitingGps -> {
                 val acc = if (accuracyMeters < Float.MAX_VALUE) "${accuracyMeters.toInt()}m" else "--"
                 "Waiting for precise fix (current accuracy: ±$acc)"
