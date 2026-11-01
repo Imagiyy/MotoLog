@@ -160,7 +160,7 @@ class GraphHopperGeocodingRepository @Inject constructor(
         val queryParams = mutableListOf(
             "q=$encodedQuery",
             "locale=en",
-            "limit=20"
+            "limit=10"
         )
 
         if (nearbyEnabled && nearLocation != null && !nearLocation.latitude.isNaN() && !nearLocation.longitude.isNaN()) {
@@ -190,12 +190,23 @@ class GraphHopperGeocodingRepository @Inject constructor(
         }
 
         val errorMsg = extractErrorMessage(response.body)
-        when {
-            isApiKeyError(response.statusCode, errorMsg) -> {
-                throw RoutingError.ApiKeyMissing(
-                    errorMsg ?: "Invalid or missing GraphHopper Cloud API key. Please check your key in settings or switch to Keyless mode."
-                )
+        if (isApiKeyError(response.statusCode, errorMsg)) {
+            throw RoutingError.ApiKeyMissing(
+                errorMsg ?: "Invalid or missing GraphHopper Cloud API key. Please check your key in settings or switch to Keyless mode."
+            )
+        }
+
+        // Fallback to OSM Photon if Cloud provider fails or limits are exceeded
+        try {
+            val fallbackResults = searchKeyless(query, nearLocation, nearbyEnabled)
+            if (fallbackResults.isNotEmpty()) {
+                return fallbackResults
             }
+        } catch (_: Exception) {
+            // Proceed to throw provider error
+        }
+
+        when {
             response.statusCode == 429 -> throw RoutingError.RateLimitExceeded()
             else -> throw RoutingError.ProviderError(
                 response.statusCode,
@@ -268,7 +279,7 @@ class GraphHopperGeocodingRepository @Inject constructor(
             val queryParams = mutableListOf(
                 "q=$encodedQuery",
                 "locale=en",
-                "limit=20"
+                "limit=10"
             )
             if (nearbyEnabled && nearLocation != null && !nearLocation.latitude.isNaN() && !nearLocation.longitude.isNaN()) {
                 queryParams.add("point=${nearLocation.latitude},${nearLocation.longitude}")
@@ -297,7 +308,7 @@ class GraphHopperGeocodingRepository @Inject constructor(
         }
 
         // 2. Fall back to OpenStreetMap Photon public geocoder (no key required)
-        val photonParams = mutableListOf("q=$encodedQuery", "limit=20")
+        val photonParams = mutableListOf("q=$encodedQuery", "limit=10")
         if (nearbyEnabled && nearLocation != null && !nearLocation.latitude.isNaN() && !nearLocation.longitude.isNaN()) {
             photonParams.add("lat=${nearLocation.latitude}")
             photonParams.add("lon=${nearLocation.longitude}")
