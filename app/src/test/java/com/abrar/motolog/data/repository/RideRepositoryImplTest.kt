@@ -268,6 +268,8 @@ private class FakeRidePointDao : RidePointDao {
 
     override suspend fun getPointsForRideOnce(rideId: Long): List<RidePointEntity> =
         pointsMap[rideId].orEmpty()
+    override suspend fun getPointsForRidePaged(rideId: Long, limit: Int, offset: Int): List<RidePointEntity> =
+        pointsMap[rideId].orEmpty().drop(offset).take(limit)
 
     override suspend fun getPointCount(rideId: Long): Int =
         pointsMap[rideId]?.size ?: 0

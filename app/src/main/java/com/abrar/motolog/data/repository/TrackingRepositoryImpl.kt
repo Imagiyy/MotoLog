@@ -2,7 +2,9 @@ package com.abrar.motolog.data.repository
 
 import android.content.Context
 import android.content.Intent
+import androidx.room.withTransaction
 import androidx.core.content.ContextCompat
+import com.abrar.motolog.data.local.MotoLogDatabase
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.local.entity.RideEntity
@@ -30,6 +32,7 @@ class TrackingRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val rideDao: RideDao,
     private val ridePointDao: RidePointDao,
+    private val database: MotoLogDatabase,
     private val maintenanceNotificationManager: javax.inject.Provider<com.abrar.motolog.service.MaintenanceNotificationManager>
 ) : TrackingRepository {
 
@@ -72,30 +75,45 @@ class TrackingRepositoryImpl @Inject constructor(
         val activeRide = rideDao.findActiveRide() ?: return@withContext null
         val pointCount = ridePointDao.getPointCount(activeRide.id)
         if (pointCount == 0) {
-            ridePointDao.deletePointsForRide(activeRide.id)
-            rideDao.delete(activeRide)
+            database.withTransaction {
+                ridePointDao.deletePointsForRide(activeRide.id)
+                rideDao.delete(activeRide)
+            }
             return@withContext null
         }
         activeRide
     }
 
     override suspend fun recoverRide(activeRide: RideEntity): RideStats = withContext(Dispatchers.IO) {
-        val rawPoints = ridePointDao.getPointsForRideOnce(activeRide.id)
-        val gpsPoints = rawPoints.map { p ->
-            GpsPoint(
-                timestampEpochMs = p.timestamp,
-                latitude = p.latitude,
-                longitude = p.longitude,
-                speedMps = p.speedMs.toFloat(),
-                accuracyMeters = p.accuracyMeters,
-                isPaused = p.isPaused,
-                isGap = p.isGap
-            )
+        // Replay in pages so recovery does not materialize an entire long ride in memory.
+        val calculator = RideCalculator()
+        var lastPointTimestamp = System.currentTimeMillis()
+        var offset = 0
+        val pageSize = 1_000
+        while (true) {
+            val page = ridePointDao.getPointsPagedForRide(activeRide.id, pageSize, offset)
+            if (page.isEmpty()) break
+            page.forEach { point ->
+                calculator.process(
+                    GpsPoint(
+                        timestampEpochMs = point.timestamp,
+                        latitude = point.latitude,
+                        longitude = point.longitude,
+                        speedMps = point.speedMs.toFloat(),
+                        accuracyMeters = point.accuracyMeters,
+                        isPaused = point.isPaused,
+                        isGap = point.isGap
+                    )
+                )
+                lastPointTimestamp = point.timestamp
+            }
+            offset += page.size
+            if (page.size < pageSize) break
         }
 
         // Replay through pure RideCalculator engine
-        val recoveredStats = RideCalculator.processAll(gpsPoints)
-        val endTime = rawPoints.lastOrNull()?.timestamp ?: System.currentTimeMillis()
+        val recoveredStats = calculator.stats
+        val endTime = lastPointTimestamp
 
         val rideName = if (activeRide.name.isBlank()) {
             com.abrar.motolog.shared.domain.util.RideNameGenerator.defaultNameForTimestamp(activeRide.startTime)
@@ -114,7 +132,9 @@ class TrackingRepositoryImpl @Inject constructor(
             maxSpeedMs = recoveredStats.maxSpeedKmh / 3.6,
             status = RideStatus.RECOVERED
         )
-        rideDao.update(recoveredRide)
+        database.withTransaction {
+            rideDao.update(recoveredRide)
+        }
 
         _sessionState.value = TrackingSessionState.Stopped(recoveredStats)
         try {
@@ -126,8 +146,10 @@ class TrackingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun discardRide(activeRide: RideEntity) = withContext(Dispatchers.IO) {
-        ridePointDao.deletePointsForRide(activeRide.id)
-        rideDao.delete(activeRide)
+        database.withTransaction {
+            ridePointDao.deletePointsForRide(activeRide.id)
+            rideDao.delete(activeRide)
+        }
         _sessionState.value = TrackingSessionState.Idle
     }
 

@@ -7,6 +7,7 @@ import androidx.navigation.toRoute
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.entity.RidePointEntity
+import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.data.map.MapLibreMapProvider
 import com.abrar.motolog.data.map.OpenFreeMapStyleProvider
 import com.abrar.motolog.domain.engine.RouteMapPreparer
@@ -54,7 +55,8 @@ class RideDetailViewModel @Inject constructor(
     private val bikeDao: BikeDao,
     savedStateHandle: SavedStateHandle,
     private val mapProvider: MapProvider,
-    private val settingsRepository: SettingsRepository? = null
+    private val settingsRepository: SettingsRepository? = null,
+    private val ridePointDao: RidePointDao? = null
 ) : ViewModel() {
 
     constructor(
@@ -68,6 +70,7 @@ class RideDetailViewModel @Inject constructor(
         bikeDao,
         savedStateHandle,
         MapLibreMapProvider(OpenFreeMapStyleProvider()),
+        null,
         null
     )
 
@@ -119,7 +122,7 @@ class RideDetailViewModel @Inject constructor(
             }
 
             val visuals = withContext(defaultDispatcher) {
-                val points = rideRepository.getPointsForRide(rideId)
+                val points = loadDisplayPoints(rideId)
                 cachedGpsPoints = points
                 val entities = points.map { point ->
                     RidePointEntity(
@@ -134,6 +137,7 @@ class RideDetailViewModel @Inject constructor(
                         isGap = point.isGap
                     )
                 }
+
                 val isMetric = settingsRepository?.useMetricUnits?.firstOrNull() ?: true
                 val baseDistance = if (isMetric) 1000.0 else UnitConverter.METERS_PER_MILE
                 val splitDistanceMeters = baseDistance * _uiState.value.selectedSplitInterval.distanceMultiplier
@@ -155,6 +159,41 @@ class RideDetailViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private suspend fun loadDisplayPoints(rideId: Long): List<com.abrar.motolog.shared.domain.model.GpsPoint> {
+        val dao = ridePointDao ?: return rideRepository.getPointsForRide(rideId)
+        val entities = ArrayList<RidePointEntity>(MAX_DISPLAY_POINTS)
+        var offset = 0
+        while (entities.size < MAX_DISPLAY_POINTS) {
+            val page = dao.getPointsPagedForRide(
+                rideId = rideId,
+                limit = minOf(DISPLAY_PAGE_SIZE, MAX_DISPLAY_POINTS - entities.size),
+                offset = offset
+            )
+            if (page.isEmpty()) break
+            entities.addAll(page)
+            offset += page.size
+            if (page.size < DISPLAY_PAGE_SIZE) break
+        }
+        return entities.map { point ->
+            com.abrar.motolog.shared.domain.model.GpsPoint(
+                timestampEpochMs = point.timestamp,
+                latitude = point.latitude,
+                longitude = point.longitude,
+                speedMps = point.speedMs.toFloat(),
+                accuracyMeters = point.accuracyMeters,
+                speedAccuracyMps = null,
+                altitudeMeters = point.altitudeMeters,
+                isPaused = point.isPaused,
+                isGap = point.isGap
+            )
+        }
+    }
+
+    private companion object {
+        const val DISPLAY_PAGE_SIZE = 1_000
+        const val MAX_DISPLAY_POINTS = 20_000
     }
 
     fun setSplitInterval(interval: SplitInterval) {

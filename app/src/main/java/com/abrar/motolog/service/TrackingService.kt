@@ -301,8 +301,12 @@ class TrackingService : Service() {
         locationJob = serviceScope.launch {
             locationSource.getLocationUpdates(activeTrackingMode)
                 .catch {
-                    // Location stream failure: safely stop and preserve session data
-                    handleStop()
+                    // Stop from a separate coroutine so cleanup is not cancelled by the
+                    // failing location collection job itself.
+                    Log.e("TrackingService", "Location stream failed; stopping ride safely", it)
+                    serviceScope.launch {
+                        commandMutex.withLock { handleStop() }
+                    }
                 }
                 .collect { locationPoint ->
                     lastLocationCallbackTime = clock.currentTimeMillis()
@@ -1019,7 +1023,13 @@ class TrackingService : Service() {
             toneGenerator?.release()
             toneGenerator = null
         } catch (_: Exception) {}
-        serviceScope.cancel()
+
+        // Do not cancel the parent scope before the closed point channel has been
+        // drained. The writer is the last durable path for points queued in memory.
+        // It cancels the scope when it completes; an OS process kill can still
+        // interrupt this, so checkpoints remain the recovery boundary.
+        batchWriterJob?.invokeOnCompletion {
+            serviceScope.cancel()
+        }
     }
 }
-

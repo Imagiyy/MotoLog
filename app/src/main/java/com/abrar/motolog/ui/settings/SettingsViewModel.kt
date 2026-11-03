@@ -331,9 +331,11 @@ class SettingsViewModel @Inject constructor(
             try {
                 val rides = rideDao.getAllRidesOnce()
                 ctx.contentResolver.openOutputStream(uri)?.use { stream ->
-                    GpxExporter.exportRidesStreaming(
+                    GpxExporter.exportRidesPaged(
                         rides = rides,
-                        pointsProvider = { rideId -> ridePointDao.getPointsForRideOnce(rideId) },
+                        pointsProvider = { rideId, offset, limit ->
+                            ridePointDao.getPointsPagedForRide(rideId, limit, offset)
+                        },
                         outputStream = stream
                     )
                 }
@@ -368,9 +370,11 @@ class SettingsViewModel @Inject constructor(
                 val exportFile = File(exportDir, "motolog_all_rides.gpx")
 
                 FileOutputStream(exportFile).use { stream ->
-                    GpxExporter.exportRidesStreaming(
+                    GpxExporter.exportRidesPaged(
                         rides = rides,
-                        pointsProvider = { rideId -> ridePointDao.getPointsForRideOnce(rideId) },
+                        pointsProvider = { rideId, offset, limit ->
+                            ridePointDao.getPointsPagedForRide(rideId, limit, offset)
+                        },
                         outputStream = stream
                     )
                 }

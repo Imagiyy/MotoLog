@@ -1,5 +1,7 @@
 package com.abrar.motolog.data.repository
 
+import androidx.room.withTransaction
+import com.abrar.motolog.data.local.MotoLogDatabase
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
@@ -22,6 +24,7 @@ class RideRepositoryImpl(
     private val rideDao: RideDao,
     private val ridePointDao: RidePointDao,
     private val bikeDao: BikeDao?,
+    private val database: MotoLogDatabase?,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : RideRepository {
 
@@ -29,14 +32,22 @@ class RideRepositoryImpl(
     constructor(
         rideDao: RideDao,
         ridePointDao: RidePointDao,
-        bikeDao: BikeDao
-    ) : this(rideDao, ridePointDao, bikeDao, Dispatchers.IO)
+        bikeDao: BikeDao,
+        database: MotoLogDatabase
+    ) : this(rideDao, ridePointDao, bikeDao, database, Dispatchers.IO)
+
+    constructor(
+        rideDao: RideDao,
+        ridePointDao: RidePointDao,
+        bikeDao: BikeDao,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ) : this(rideDao, ridePointDao, bikeDao, null, ioDispatcher)
 
     constructor(
         rideDao: RideDao,
         ridePointDao: RidePointDao,
         ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-    ) : this(rideDao, ridePointDao, null, ioDispatcher)
+    ) : this(rideDao, ridePointDao, null, null, ioDispatcher)
 
     /** In-memory set of ride IDs pending deletion during the undo window */
     private val _pendingDeletionRideIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -82,8 +93,8 @@ class RideRepositoryImpl(
 
     override suspend fun commitDeletion(rideId: Long) = withContext(ioDispatcher) {
         _pendingDeletionRideIds.update { it - rideId }
-        val ride = rideDao.getRideById(rideId)
-        if (ride != null) {
+        suspend fun deleteRideAtomically() {
+            val ride = rideDao.getRideById(rideId) ?: return
             // When a ride is deleted from ride history, its distance should NOT reduce
             // the vehicle's odometer in the garage. Instead, transfer its distance into
             // the bike's unlogged/calibration offset (odometerOffsetKm).
@@ -104,6 +115,11 @@ class RideRepositoryImpl(
             // Explicitly delete points first, then the ride itself
             ridePointDao.deletePointsForRide(rideId)
             rideDao.delete(ride)
+        }
+        if (database != null) {
+            database.withTransaction { deleteRideAtomically() }
+        } else {
+            deleteRideAtomically()
         }
     }
 }

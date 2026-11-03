@@ -68,8 +68,11 @@ android {
                 "proguard-rules.pro"
             )
             val releaseSigning = signingConfigs.getByName("release")
-            if (System.getenv("CI_REQUIRE_RELEASE_SIGNING") == "true" && releaseSigning.storeFile == null) {
-                throw GradleException("Release build requested with CI_REQUIRE_RELEASE_SIGNING=true, but release keystore is not configured.")
+            val releaseTaskRequested = gradle.startParameter.taskNames.any {
+                it.contains("release", ignoreCase = true)
+            }
+            if (releaseTaskRequested && releaseSigning.storeFile == null) {
+                throw GradleException("Release build requires a configured release keystore. Set keystore.properties or KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD.")
             }
             signingConfig = if (releaseSigning.storeFile != null) {
                 releaseSigning

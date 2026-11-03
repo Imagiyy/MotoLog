@@ -27,6 +27,12 @@ interface RidePointDao {
     @Query("SELECT * FROM ride_points WHERE rideId = :rideId ORDER BY timestamp ASC")
     suspend fun getPointsForRideOnce(rideId: Long): List<RidePointEntity>
 
+    @Query("SELECT * FROM ride_points WHERE rideId = :rideId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    suspend fun getPointsForRidePaged(rideId: Long, limit: Int, offset: Int): List<RidePointEntity>
+
+    suspend fun getPointsPagedForRide(rideId: Long, limit: Int, offset: Int): List<RidePointEntity> =
+        getPointsForRidePaged(rideId, limit, offset)
+
     @Query("SELECT COUNT(*) FROM ride_points WHERE rideId = :rideId")
     suspend fun getPointCount(rideId: Long): Int
 

@@ -182,7 +182,7 @@ class RideNotificationManager @Inject constructor(
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
 
         if (!isWaitingGps) {
             builder.addAction(pauseResumeAction)

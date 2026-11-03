@@ -89,6 +89,72 @@ object GpxExporter {
     }
 
     /**
+     * Exports points page-by-page so a large ride never has to be materialized
+     * as a complete list before writing begins.
+     */
+    suspend fun exportRidesPaged(
+        rides: List<RideEntity>,
+        pointsProvider: suspend (rideId: Long, offset: Int, limit: Int) -> List<RidePointEntity>,
+        outputStream: OutputStream,
+        pageSize: Int = 1_000,
+        onProgress: ((Float) -> Unit)? = null
+    ) {
+        val writer = BufferedWriter(OutputStreamWriter(outputStream, StandardCharsets.UTF_8))
+        writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+        writer.write("<gpx version=\"1.1\" creator=\"MotoLog\" ")
+        writer.write("xmlns=\"http://www.topografix.com/GPX/1/1\" ")
+        writer.write("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
+        writer.write("xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\">\n")
+        val firstRide = rides.firstOrNull()
+        writer.write("  <metadata>\n")
+        writer.write("    <name>${escapeXml(firstRide?.name ?: "MotoLog Export")}</name>\n")
+        writer.write("    <time>${iso8601Format.format(Date(firstRide?.startTime ?: System.currentTimeMillis()))}</time>\n")
+        writer.write("  </metadata>\n")
+
+        for ((rideIndex, ride) in rides.withIndex()) {
+            writer.write("  <trk>\n")
+            writer.write("    <name>${escapeXml(ride.name)}</name>\n")
+            var offset = 0
+            var inSegment = false
+            var lastPointTime: Long? = null
+            while (true) {
+                val page = pointsProvider(ride.id, offset, pageSize)
+                if (page.isEmpty()) break
+                for (point in page) {
+                    val deltaMs = lastPointTime?.let { point.timestamp - it } ?: 0L
+                    val isGap = point.isGap || deltaMs > TrackingConstants.GAP_THRESHOLD_MS
+                    if (!inSegment || isGap) {
+                        if (inSegment) writer.write("    </trkseg>\n")
+                        writer.write("    <trkseg>\n")
+                        inSegment = true
+                    }
+                    writeTrackPoint(writer, point)
+                    lastPointTime = point.timestamp
+                }
+                offset += page.size
+                if (page.size < pageSize) break
+            }
+            if (inSegment) writer.write("    </trkseg>\n")
+            writer.write("  </trk>\n")
+            onProgress?.invoke(((rideIndex + 1).toFloat() / rides.size.coerceAtLeast(1)).coerceAtMost(1f))
+        }
+        writer.write("</gpx>\n")
+        writer.flush()
+    }
+
+    private fun writeTrackPoint(writer: BufferedWriter, point: RidePointEntity) {
+        val lat = String.format(Locale.US, "%.6f", point.latitude)
+        val lon = String.format(Locale.US, "%.6f", point.longitude)
+        writer.write("      <trkpt lat=\"$lat\" lon=\"$lon\">\n")
+        if (point.altitudeMeters > 0.0) {
+            writer.write("        <ele>${String.format(Locale.US, "%.1f", point.altitudeMeters)}</ele>\n")
+        }
+        writer.write("        <time>${iso8601Format.format(Date(point.timestamp))}</time>\n")
+        writer.write("        <extensions><speed>${String.format(Locale.US, "%.2f", point.speedMs)}</speed><accuracy>${String.format(Locale.US, "%.1f", point.accuracyMeters)}</accuracy></extensions>\n")
+        writer.write("      </trkpt>\n")
+    }
+
+    /**
      * Streams multiple rides into a GPX document by querying points ride-by-ride,
      * preventing all points across all rides from being loaded into heap memory simultaneously.
      */

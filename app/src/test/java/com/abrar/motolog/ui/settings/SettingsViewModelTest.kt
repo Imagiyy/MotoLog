@@ -324,6 +324,8 @@ class SettingsViewModelTest {
         override suspend fun insert(point: RidePointEntity): Long { points.add(point); return point.id }
         override fun getPointsForRide(rideId: Long): Flow<List<RidePointEntity>> = MutableStateFlow(points.filter { it.rideId == rideId })
         override suspend fun getPointsForRideOnce(rideId: Long): List<RidePointEntity> = points.filter { it.rideId == rideId }
+        override suspend fun getPointsForRidePaged(rideId: Long, limit: Int, offset: Int): List<RidePointEntity> =
+            points.filter { it.rideId == rideId }.drop(offset).take(limit)
         override suspend fun getPointCount(rideId: Long): Int = points.count { it.rideId == rideId }
         override suspend fun deletePointsForRide(rideId: Long) { points.removeAll { it.rideId == rideId } }
         override suspend fun getAllPointsOnce(): List<RidePointEntity> = points.toList()

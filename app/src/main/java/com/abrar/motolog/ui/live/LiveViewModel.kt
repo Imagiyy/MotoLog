@@ -228,12 +228,34 @@ class LiveViewModel @Inject constructor(
         currentTrackingRideId = rideId
         activeRidePointsJob?.cancel()
         activeRidePointsJob = viewModelScope.launch(Dispatchers.IO) {
-            val entities = ridePointDao?.getPointsForRideOnce(rideId) ?: emptyList()
+            val entities = ridePointDao?.loadPointsForRouteDisplay(rideId) ?: emptyList()
             val initial = entities.map { Pair(it.latitude, it.longitude) }
             rawRoutePoints.clear()
             rawRoutePoints.addAll(initial)
             _routePoints.value = if (initial.size > 500) simplifyRoute(initial, 0.00005) else initial
         }
+
+    }
+
+    private suspend fun RidePointDao.loadPointsForRouteDisplay(
+        rideId: Long,
+        pageSize: Int = 1_000,
+        maxPoints: Int = 10_000
+    ): List<com.abrar.motolog.data.local.entity.RidePointEntity> {
+        val points = ArrayList<com.abrar.motolog.data.local.entity.RidePointEntity>(maxPoints)
+        var offset = 0
+        while (points.size < maxPoints) {
+            val page = getPointsPagedForRide(
+                rideId = rideId,
+                limit = minOf(pageSize, maxPoints - points.size),
+                offset = offset
+            )
+            if (page.isEmpty()) break
+            points.addAll(page)
+            offset += page.size
+            if (page.size < pageSize) break
+        }
+        return points
     }
 
     private fun stopObservingRidePoints() {

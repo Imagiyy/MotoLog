@@ -486,7 +486,6 @@ class NavigationViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         voiceAnnouncer?.stop()
         rerouteJob?.cancel()
         routingRepository.cancelActiveRequests()

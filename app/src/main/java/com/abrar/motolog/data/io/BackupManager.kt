@@ -501,6 +501,30 @@ class BackupManager @Inject constructor(
             )
         }
 
+        // Validate settings before replacing any database data. Invalid enum values
+        // would otherwise be silently skipped after the database had been replaced.
+        val validatedSettings = settings?.let { s ->
+            val fuelUnit = enumSettingOrError<FuelUnit>(s.fuelUnit, "fuel unit")
+            val trackingMode = enumSettingOrError<TrackingMode>(s.trackingMode, "tracking mode")
+            val speedAlertStyle = enumSettingOrError<SpeedAlertStyle>(s.speedAlertStyle, "speed alert style")
+            val themeMode = enumSettingOrError<ThemeMode>(s.themeMode, "theme mode")
+            val defaultMapTheme = enumSettingOrError<com.abrar.motolog.shared.domain.model.MapThemePreference>(
+                s.defaultMapTheme,
+                "map theme"
+            )
+            require(s.speedAlertThresholdKmh.isFinite() && s.speedAlertThresholdKmh >= 0.0) {
+                "Invalid speed alert threshold '${s.speedAlertThresholdKmh}'."
+            }
+            ValidatedSettings(
+                source = s,
+                fuelUnit = fuelUnit,
+                trackingMode = trackingMode,
+                speedAlertStyle = speedAlertStyle,
+                themeMode = themeMode,
+                defaultMapTheme = defaultMapTheme
+            )
+        }
+
         // 5. Atomically replace database contents ONLY after all validation passes
         val executeRestore: suspend () -> Unit = {
             ridePointDao.deleteAllPoints()
@@ -527,26 +551,17 @@ class BackupManager @Inject constructor(
         }
 
         // 6. Restore settings (with validation for enum values)
-        settings?.let { s ->
+        validatedSettings?.let { validated ->
+            val s = validated.source
             settingsRepository.setUseMetricUnits(s.useMetricUnits)
-            try { settingsRepository.setFuelUnit(FuelUnit.valueOf(s.fuelUnit)) } catch (e: Exception) {
-                Log.w("BackupManager", "Invalid fuel unit '${s.fuelUnit}', skipping")
-            }
+            settingsRepository.setFuelUnit(validated.fuelUnit)
             settingsRepository.setCurrencySymbol(s.currencySymbol)
-            try { settingsRepository.setTrackingMode(TrackingMode.valueOf(s.trackingMode)) } catch (e: Exception) {
-                Log.w("BackupManager", "Invalid tracking mode '${s.trackingMode}', skipping")
-            }
+            settingsRepository.setTrackingMode(validated.trackingMode)
             settingsRepository.setSpeedAlertEnabled(s.speedAlertEnabled)
             settingsRepository.setSpeedAlertThresholdKmh(s.speedAlertThresholdKmh)
-            try { settingsRepository.setSpeedAlertStyle(SpeedAlertStyle.valueOf(s.speedAlertStyle)) } catch (e: Exception) {
-                Log.w("BackupManager", "Invalid speed alert style '${s.speedAlertStyle}', skipping")
-            }
-            try { settingsRepository.setThemeMode(ThemeMode.valueOf(s.themeMode)) } catch (e: Exception) {
-                Log.w("BackupManager", "Invalid theme mode '${s.themeMode}', skipping")
-            }
-            try { settingsRepository.setDefaultMapTheme(com.abrar.motolog.shared.domain.model.MapThemePreference.valueOf(s.defaultMapTheme)) } catch (e: Exception) {
-                Log.w("BackupManager", "Invalid map theme '${s.defaultMapTheme}', skipping")
-            }
+            settingsRepository.setSpeedAlertStyle(validated.speedAlertStyle)
+            settingsRepository.setThemeMode(validated.themeMode)
+            settingsRepository.setDefaultMapTheme(validated.defaultMapTheme)
             settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
             settingsRepository.setKeepScreenOn(s.keepScreenOn)
 
@@ -570,6 +585,22 @@ class BackupManager @Inject constructor(
 
         parsedManifest
     }
+
+    private data class ValidatedSettings(
+        val source: BackupSettings,
+        val fuelUnit: FuelUnit,
+        val trackingMode: TrackingMode,
+        val speedAlertStyle: SpeedAlertStyle,
+        val themeMode: ThemeMode,
+        val defaultMapTheme: com.abrar.motolog.shared.domain.model.MapThemePreference
+    )
+
+    private inline fun <reified T : Enum<T>> enumSettingOrError(value: String, label: String): T =
+        try {
+            enumValueOf<T>(value)
+        } catch (_: IllegalArgumentException) {
+            throw IllegalArgumentException("Invalid $label '$value' in backup.")
+        }
 
     /**
      * Reads a ZIP entry with bounded size enforcement.
