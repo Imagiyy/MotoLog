@@ -223,6 +223,8 @@ private class FakeRideDao : RideDao {
         ridesMap.values.find { it.status == RideStatus.ACTIVE }
 
     override fun getFinishedRides(): Flow<List<RideEntity>> = finishedRidesFlow
+    override fun getFinishedRidesPaged(limit: Int, offset: Int): Flow<List<RideEntity>> =
+        MutableStateFlow(finishedRidesFlow.value.drop(offset).take(limit))
 
     override suspend fun updateRideName(rideId: Long, name: String) {
         val existing = ridesMap[rideId]

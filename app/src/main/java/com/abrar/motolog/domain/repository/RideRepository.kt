@@ -3,6 +3,7 @@ package com.abrar.motolog.domain.repository
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.shared.domain.model.GpsPoint
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Repository interface for accessing and managing completed and recovered rides.
@@ -14,6 +15,13 @@ interface RideRepository {
      * Excludes currently ACTIVE rides and rides pending deletion in the undo window.
      */
     fun getFinishedRides(): Flow<List<RideEntity>>
+
+    /**
+     * Loads one bounded history page. Implementations should apply pagination in
+     * the database so older rides do not all occupy memory at once.
+     */
+    fun getFinishedRidesPage(offset: Int, limit: Int): Flow<List<RideEntity>> =
+        getFinishedRides().map { it.drop(offset).take(limit) }
 
     /**
      * Fetches a single ride by ID.

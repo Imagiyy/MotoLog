@@ -58,6 +58,12 @@ class RideRepositoryImpl(
         }
     }
 
+    override fun getFinishedRidesPage(offset: Int, limit: Int): Flow<List<RideEntity>> {
+        return rideDao.getFinishedRidesPaged(limit, offset).combine(_pendingDeletionRideIds) { rides, pendingIds ->
+            rides.filter { it.id !in pendingIds }
+        }
+    }
+
     override suspend fun getRideById(rideId: Long): RideEntity? = withContext(ioDispatcher) {
         rideDao.getRideById(rideId)
     }

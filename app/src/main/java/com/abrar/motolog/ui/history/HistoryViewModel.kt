@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -26,6 +27,10 @@ class HistoryViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
+    private companion object {
+        const val PAGE_SIZE = 100
+    }
+
     val useMetricUnits: StateFlow<Boolean> = settingsRepository.useMetricUnits
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), true)
 
@@ -35,26 +40,37 @@ class HistoryViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HistoryUiState(isLoading = true))
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
+    private var loadedPageCount = 0
+
     init {
+        loadPage(reset = true)
+    }
+
+    private fun loadPage(reset: Boolean = false) {
+        if (_uiState.value.isLoadingMore) return
         viewModelScope.launch {
-            combine(
-                rideRepository.getFinishedRides(),
-                _recentlyDeletedRide
-            ) { rides, deletedRide ->
-                val visibleRides = if (deletedRide != null) {
-                    rides.filter { it.id != deletedRide.id }
-                } else {
-                    rides
-                }
-                HistoryUiState(
+            _uiState.update { it.copy(isLoadingMore = true) }
+            val pageIndex = if (reset) 0 else loadedPageCount
+            val page = rideRepository.getFinishedRidesPage(
+                offset = pageIndex * PAGE_SIZE,
+                limit = PAGE_SIZE
+            ).first()
+            val combined = if (reset) page else (_uiState.value.rides + page).distinctBy { it.id }
+            loadedPageCount = pageIndex + 1
+            _uiState.update {
+                it.copy(
                     isLoading = false,
-                    rides = visibleRides,
-                    recentlyDeletedRide = deletedRide
+                    rides = combined,
+                    canLoadMore = page.size == PAGE_SIZE,
+                    isLoadingMore = false,
+                    recentlyDeletedRide = _recentlyDeletedRide.value
                 )
-            }.collect { newState ->
-                _uiState.value = newState
             }
         }
+    }
+
+    fun loadMore() {
+        loadPage()
     }
 
     /**
@@ -70,6 +86,12 @@ class HistoryViewModel @Inject constructor(
         }
 
         _recentlyDeletedRide.value = ride
+        _uiState.update {
+            it.copy(
+                recentlyDeletedRide = ride,
+                rides = it.rides.filterNot { visibleRide -> visibleRide.id == ride.id }
+            )
+        }
         viewModelScope.launch {
             rideRepository.markForDeletion(ride.id)
         }
@@ -88,6 +110,12 @@ class HistoryViewModel @Inject constructor(
         val rideToRestore = _recentlyDeletedRide.value ?: return
         pendingDeleteJob?.cancel()
         _recentlyDeletedRide.value = null
+        _uiState.update { state ->
+            state.copy(
+                recentlyDeletedRide = null,
+                rides = (state.rides + rideToRestore).sortedByDescending { it.startTime }
+            )
+        }
         viewModelScope.launch {
             rideRepository.undoDeletion(rideToRestore.id)
         }
@@ -104,6 +132,7 @@ class HistoryViewModel @Inject constructor(
         val rideToDelete = _recentlyDeletedRide.value ?: return
         pendingDeleteJob?.cancel()
         _recentlyDeletedRide.value = null
+        _uiState.update { it.copy(recentlyDeletedRide = null) }
         viewModelScope.launch {
             rideRepository.commitDeletion(rideToDelete.id)
         }

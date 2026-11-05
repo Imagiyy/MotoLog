@@ -210,6 +210,8 @@ class RideDetailViewModelTest {
         override fun getRidesForBike(bikeId: Long): Flow<List<RideEntity>> = MutableStateFlow(rides.values.filter { it.bikeId == bikeId })
         override suspend fun findActiveRide(): RideEntity? = rides.values.find { it.status == RideStatus.ACTIVE }
         override fun getFinishedRides(): Flow<List<RideEntity>> = MutableStateFlow(rides.values.toList())
+        override fun getFinishedRidesPaged(limit: Int, offset: Int): Flow<List<RideEntity>> =
+            MutableStateFlow(rides.values.toList().drop(offset).take(limit))
         override suspend fun updateRideName(rideId: Long, name: String) {
             rides[rideId] = rides[rideId]?.copy(name = name) ?: return
         }

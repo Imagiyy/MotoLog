@@ -8,5 +8,7 @@ import com.abrar.motolog.data.local.entity.RideEntity
 data class HistoryUiState(
     val isLoading: Boolean = true,
     val rides: List<RideEntity> = emptyList(),
-    val recentlyDeletedRide: RideEntity? = null
+    val recentlyDeletedRide: RideEntity? = null,
+    val canLoadMore: Boolean = false,
+    val isLoadingMore: Boolean = false
 )

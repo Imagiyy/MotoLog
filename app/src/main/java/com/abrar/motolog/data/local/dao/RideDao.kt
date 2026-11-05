@@ -45,6 +45,9 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE status IN ('COMPLETED', 'RECOVERED') ORDER BY startTime DESC")
     fun getFinishedRides(): Flow<List<RideEntity>>
 
+    @Query("SELECT * FROM rides WHERE status IN ('COMPLETED', 'RECOVERED') ORDER BY startTime DESC LIMIT :limit OFFSET :offset")
+    fun getFinishedRidesPaged(limit: Int, offset: Int): Flow<List<RideEntity>>
+
     /** Updates the name of a ride */
     @Query("UPDATE rides SET name = :name WHERE id = :rideId")
     suspend fun updateRideName(rideId: Long, name: String)

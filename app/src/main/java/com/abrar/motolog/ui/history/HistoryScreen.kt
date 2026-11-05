@@ -35,6 +35,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -154,6 +155,22 @@ fun HistoryScreen(
                                 onClick = { onNavigateToRideDetail(ride.id) },
                                 onDeleteClick = { viewModel.deleteRide(ride) }
                             )
+                        }
+
+                        if (uiState.canLoadMore) {
+                            item {
+                                TextButton(
+                                    onClick = viewModel::loadMore,
+                                    enabled = !uiState.isLoadingMore,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (uiState.isLoadingMore) {
+                                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                    } else {
+                                        Text("Load older rides")
+                                    }
+                                }
+                            }
                         }
 
                         item { Spacer(modifier = Modifier.height(16.dp)) }
