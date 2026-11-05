@@ -288,22 +288,36 @@ class RideDetailViewModel @Inject constructor(
         val currentRide = _uiState.value.ride ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val points = rideRepository.getPointsForRide(currentRide.id)
-                val entities = points.map { pt ->
-                    RidePointEntity(
-                        rideId = currentRide.id,
-                        timestamp = pt.timestampEpochMs,
-                        latitude = pt.latitude,
-                        longitude = pt.longitude,
-                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
-                        accuracyMeters = pt.accuracyMeters,
-                        altitudeMeters = pt.altitudeMeters ?: 0.0,
-                        isPaused = pt.isPaused,
-                        isGap = pt.isGap
-                    )
-                }
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    GpxExporter.exportRide(currentRide, entities, stream)
+                    val dao = ridePointDao
+                    if (dao != null) {
+                        GpxExporter.exportRidesPaged(
+                            rides = listOf(currentRide),
+                            pointsProvider = { rideId, offset, limit ->
+                                dao.getPointsPagedForRide(rideId, limit, offset)
+                            },
+                            outputStream = stream
+                        )
+                    } else {
+                        val points = rideRepository.getPointsForRide(currentRide.id)
+                        GpxExporter.exportRide(
+                            currentRide,
+                            points.map { pt ->
+                                RidePointEntity(
+                                    rideId = currentRide.id,
+                                    timestamp = pt.timestampEpochMs,
+                                    latitude = pt.latitude,
+                                    longitude = pt.longitude,
+                                    speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                                    accuracyMeters = pt.accuracyMeters,
+                                    altitudeMeters = pt.altitudeMeters ?: 0.0,
+                                    isPaused = pt.isPaused,
+                                    isGap = pt.isGap
+                                )
+                            },
+                            stream
+                        )
+                    }
                 }
             } catch (_: Exception) {}
         }
@@ -313,22 +327,34 @@ class RideDetailViewModel @Inject constructor(
         val currentRide = _uiState.value.ride ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val points = rideRepository.getPointsForRide(currentRide.id)
-                val entities = points.map { pt ->
-                    RidePointEntity(
-                        rideId = currentRide.id,
-                        timestamp = pt.timestampEpochMs,
-                        latitude = pt.latitude,
-                        longitude = pt.longitude,
-                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
-                        accuracyMeters = pt.accuracyMeters,
-                        altitudeMeters = pt.altitudeMeters ?: 0.0,
-                        isPaused = pt.isPaused,
-                        isGap = pt.isGap
-                    )
-                }
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    CsvExporter.exportRidePoints(entities, stream)
+                    val dao = ridePointDao
+                    if (dao != null) {
+                        CsvExporter.exportRidePointsPaged(
+                            outputStream = stream,
+                            loadPage = { offset, limit ->
+                                dao.getPointsPagedForRide(currentRide.id, limit, offset)
+                            }
+                        )
+                    } else {
+                        val points = rideRepository.getPointsForRide(currentRide.id)
+                        CsvExporter.exportRidePoints(
+                            points.map { pt ->
+                                RidePointEntity(
+                                    rideId = currentRide.id,
+                                    timestamp = pt.timestampEpochMs,
+                                    latitude = pt.latitude,
+                                    longitude = pt.longitude,
+                                    speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                                    accuracyMeters = pt.accuracyMeters,
+                                    altitudeMeters = pt.altitudeMeters ?: 0.0,
+                                    isPaused = pt.isPaused,
+                                    isGap = pt.isGap
+                                )
+                            },
+                            stream
+                        )
+                    }
                 }
             } catch (_: Exception) {}
         }
@@ -339,26 +365,39 @@ class RideDetailViewModel @Inject constructor(
         val appContext = context.applicationContext
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val points = rideRepository.getPointsForRide(currentRide.id)
-                val entities = points.map { pt ->
-                    RidePointEntity(
-                        rideId = currentRide.id,
-                        timestamp = pt.timestampEpochMs,
-                        latitude = pt.latitude,
-                        longitude = pt.longitude,
-                        speedMs = pt.speedMps?.toDouble() ?: 0.0,
-                        accuracyMeters = pt.accuracyMeters,
-                        altitudeMeters = pt.altitudeMeters ?: 0.0,
-                        isPaused = pt.isPaused,
-                        isGap = pt.isGap
-                    )
-                }
-
                 val exportDir = File(appContext.cacheDir, "exports").apply { mkdirs() }
                 val exportFile = File(exportDir, "ride_${currentRide.id}.gpx")
 
                 FileOutputStream(exportFile).use { stream ->
-                    GpxExporter.exportRide(currentRide, entities, stream)
+                    val dao = ridePointDao
+                    if (dao != null) {
+                        GpxExporter.exportRidesPaged(
+                            rides = listOf(currentRide),
+                            pointsProvider = { rideId, offset, limit ->
+                                dao.getPointsPagedForRide(rideId, limit, offset)
+                            },
+                            outputStream = stream
+                        )
+                    } else {
+                        val points = rideRepository.getPointsForRide(currentRide.id)
+                        GpxExporter.exportRide(
+                            currentRide,
+                            points.map { pt ->
+                                RidePointEntity(
+                                    rideId = currentRide.id,
+                                    timestamp = pt.timestampEpochMs,
+                                    latitude = pt.latitude,
+                                    longitude = pt.longitude,
+                                    speedMs = pt.speedMps?.toDouble() ?: 0.0,
+                                    accuracyMeters = pt.accuracyMeters,
+                                    altitudeMeters = pt.altitudeMeters ?: 0.0,
+                                    isPaused = pt.isPaused,
+                                    isGap = pt.isGap
+                                )
+                            },
+                            stream
+                        )
+                    }
                 }
 
                 val contentUri = FileProvider.getUriForFile(

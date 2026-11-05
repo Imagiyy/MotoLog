@@ -12,6 +12,7 @@ import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.NavigationSessionDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
+import com.abrar.motolog.data.local.dao.RestoreJournalDao
 import com.abrar.motolog.data.local.dao.SavedDestinationDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
@@ -20,6 +21,7 @@ import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.NavigationSessionEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
+import com.abrar.motolog.data.local.entity.RestoreJournalEntity
 import com.abrar.motolog.data.local.entity.SavedDestinationEntity
 
 /**
@@ -38,9 +40,10 @@ import com.abrar.motolog.data.local.entity.SavedDestinationEntity
         FuelLogEntity::class,
         MileageCycleEntity::class,
         SavedDestinationEntity::class,
-        NavigationSessionEntity::class
+        NavigationSessionEntity::class,
+        RestoreJournalEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -53,6 +56,7 @@ abstract class MotoLogDatabase : RoomDatabase() {
     abstract fun mileageCycleDao(): MileageCycleDao
     abstract fun savedDestinationDao(): SavedDestinationDao
     abstract fun navigationSessionDao(): NavigationSessionDao
+    abstract fun restoreJournalDao(): RestoreJournalDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -197,6 +201,19 @@ abstract class MotoLogDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_navigation_sessions_startedAtTimestamp` ON `navigation_sessions` (`startedAtTimestamp`)")
             }
         }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `restore_journal` (
+                        `id` INTEGER NOT NULL,
+                        `settingsJson` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
     }
 }
-

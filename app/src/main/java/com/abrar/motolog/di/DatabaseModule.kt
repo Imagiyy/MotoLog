@@ -41,7 +41,8 @@ object DatabaseModule {
                 MotoLogDatabase.MIGRATION_5_6,
                 MotoLogDatabase.MIGRATION_6_7,
                 MotoLogDatabase.MIGRATION_7_8,
-                MotoLogDatabase.MIGRATION_8_9
+                MotoLogDatabase.MIGRATION_8_9,
+                MotoLogDatabase.MIGRATION_9_10
             )
             .build()
     }
@@ -69,4 +70,8 @@ object DatabaseModule {
 
     @Provides
     fun provideNavigationSessionDao(database: MotoLogDatabase): com.abrar.motolog.data.local.dao.NavigationSessionDao = database.navigationSessionDao()
+
+    @Provides
+    fun provideRestoreJournalDao(database: MotoLogDatabase): com.abrar.motolog.data.local.dao.RestoreJournalDao =
+        database.restoreJournalDao()
 }

@@ -12,6 +12,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Generates RFC 4180 compliant CSV files with spreadsheet formula injection protection.
@@ -99,6 +101,37 @@ object CsvExporter {
         }
 
         writer.flush()
+    }
+
+    /**
+     * Exports raw GPS points without retaining the complete ride in memory.
+     */
+    suspend fun exportRidePointsPaged(
+        pageSize: Int = 1_000,
+        outputStream: OutputStream,
+        loadPage: suspend (offset: Int, limit: Int) -> List<RidePointEntity>
+    ) = withContext(Dispatchers.IO) {
+        val writer = BufferedWriter(OutputStreamWriter(outputStream, StandardCharsets.UTF_8))
+        val dateFormat = iso8601Format
+        writer.write("timestamp_epoch_ms,timestamp_utc,latitude,longitude,speed_mps,accuracy_meters,altitude_meters,is_paused,is_gap\n")
+
+        var offset = 0
+        while (true) {
+            val page = loadPage(offset, pageSize)
+            if (page.isEmpty()) break
+            for (point in page) {
+                val isoTime = dateFormat.format(Date(point.timestamp))
+                val lat = String.format(Locale.US, "%.6f", point.latitude)
+                val lon = String.format(Locale.US, "%.6f", point.longitude)
+                val spd = String.format(Locale.US, "%.2f", point.speedMs)
+                val acc = String.format(Locale.US, "%.1f", point.accuracyMeters)
+                val alt = String.format(Locale.US, "%.1f", point.altitudeMeters)
+                writer.write("${point.timestamp},$isoTime,$lat,$lon,$spd,$acc,$alt,${point.isPaused},${point.isGap}\n")
+            }
+            writer.flush()
+            offset += page.size
+            if (page.size < pageSize) break
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import com.abrar.motolog.data.local.dao.MaintenanceDao
 import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
+import com.abrar.motolog.data.local.dao.RestoreJournalDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
@@ -16,6 +17,7 @@ import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import com.abrar.motolog.data.local.entity.RestoreJournalEntity
 import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.shared.domain.model.FuelUnit
 import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
@@ -94,7 +96,8 @@ class BackupManager @Inject constructor(
     private val fuelLogDao: FuelLogDao,
     private val mileageCycleDao: MileageCycleDao,
     private val settingsRepository: SettingsRepository,
-    private val database: MotoLogDatabase? = null
+    private val database: MotoLogDatabase? = null,
+    private val restoreJournalDao: RestoreJournalDao? = null
 ) {
     companion object {
         const val CURRENT_FORMAT_VERSION: Int = 2
@@ -121,6 +124,7 @@ class BackupManager @Inject constructor(
             encodeDefaults = true
             prettyPrint = false
         }
+
     }
 
     /**
@@ -504,29 +508,17 @@ class BackupManager @Inject constructor(
         // Validate settings before replacing any database data. Invalid enum values
         // would otherwise be silently skipped after the database had been replaced.
         val validatedSettings = settings?.let { s ->
-            val fuelUnit = enumSettingOrError<FuelUnit>(s.fuelUnit, "fuel unit")
-            val trackingMode = enumSettingOrError<TrackingMode>(s.trackingMode, "tracking mode")
-            val speedAlertStyle = enumSettingOrError<SpeedAlertStyle>(s.speedAlertStyle, "speed alert style")
-            val themeMode = enumSettingOrError<ThemeMode>(s.themeMode, "theme mode")
-            val defaultMapTheme = enumSettingOrError<com.abrar.motolog.shared.domain.model.MapThemePreference>(
-                s.defaultMapTheme,
-                "map theme"
-            )
-            require(s.speedAlertThresholdKmh.isFinite() && s.speedAlertThresholdKmh >= 0.0) {
-                "Invalid speed alert threshold '${s.speedAlertThresholdKmh}'."
-            }
-            ValidatedSettings(
-                source = s,
-                fuelUnit = fuelUnit,
-                trackingMode = trackingMode,
-                speedAlertStyle = speedAlertStyle,
-                themeMode = themeMode,
-                defaultMapTheme = defaultMapTheme
-            )
+            validateSettings(s)
         }
+        val settingsJson = validatedSettings?.let { json.encodeToString(it.source) }
 
-        // 5. Atomically replace database contents ONLY after all validation passes
+        // 5. Atomically replace database contents and stage settings together.
+        // The journal is committed with the replacement data, allowing startup
+        // to retry settings if the process dies during DataStore writes.
         val executeRestore: suspend () -> Unit = {
+            if (settingsJson != null) {
+                restoreJournalDao?.insert(RestoreJournalEntity(settingsJson = settingsJson))
+            }
             ridePointDao.deleteAllPoints()
             rideDao.deleteAllRides()
             maintenanceDao.deleteAllMaintenance()
@@ -550,40 +542,48 @@ class BackupManager @Inject constructor(
             executeRestore()
         }
 
-        // 6. Restore settings (with validation for enum values)
-        validatedSettings?.let { validated ->
-            val s = validated.source
-            settingsRepository.setUseMetricUnits(s.useMetricUnits)
-            settingsRepository.setFuelUnit(validated.fuelUnit)
-            settingsRepository.setCurrencySymbol(s.currencySymbol)
-            settingsRepository.setTrackingMode(validated.trackingMode)
-            settingsRepository.setSpeedAlertEnabled(s.speedAlertEnabled)
-            settingsRepository.setSpeedAlertThresholdKmh(s.speedAlertThresholdKmh)
-            settingsRepository.setSpeedAlertStyle(validated.speedAlertStyle)
-            settingsRepository.setThemeMode(validated.themeMode)
-            settingsRepository.setDefaultMapTheme(validated.defaultMapTheme)
-            settingsRepository.setAutoPauseEnabled(s.autoPauseEnabled)
-            settingsRepository.setKeepScreenOn(s.keepScreenOn)
-
-            // Fix #23: Restore additional settings
-            settingsRepository.setVoiceAnnouncementsEnabled(s.voiceAnnouncementsEnabled)
-            settingsRepository.setThermalEcoMode(s.thermalEcoMode)
-            s.dashboardTextColor?.let { settingsRepository.setDashboardTextColor(it) }
-            s.dashboardBgColor?.let { settingsRepository.setDashboardBgColor(it) }
-            s.dashboardAccentColor?.let { settingsRepository.setDashboardAccentColor(it) }
-            s.dashboardComponentColor?.let { settingsRepository.setDashboardComponentColor(it) }
-
-            // Validate currentBikeId references an actual restored bike
-            val restoredBikeIds = actualBikes.map { it.id }.toSet()
-            val validBikeId = if (s.currentBikeId != null && s.currentBikeId in restoredBikeIds) {
-                s.currentBikeId
-            } else {
-                null // Clear dangling reference
-            }
-            settingsRepository.setCurrentBikeId(validBikeId)
+        // 6. Apply settings only after the database transaction has committed.
+        validatedSettings?.let {
+            applySettings(it.source, actualBikes.map { bike -> bike.id }.toSet())
+            restoreJournalDao?.delete()
         }
 
         parsedManifest
+    }
+
+    /**
+     * Completes settings for a restore that committed before the process stopped.
+     * Safe to call at every application startup; a successful completion removes
+     * the journal, while any DataStore failure leaves it for a later retry.
+     */
+    suspend fun recoverPendingRestore() = withContext(Dispatchers.IO) {
+        val journal = restoreJournalDao?.get() ?: return@withContext
+        val pendingSettings = json.decodeFromString<BackupSettings>(journal.settingsJson)
+        val bikeIds = bikeDao.getAllBikesOnce().map { it.id }.toSet()
+        applySettings(pendingSettings, bikeIds)
+        restoreJournalDao.delete()
+    }
+
+    private suspend fun applySettings(settings: BackupSettings, bikeIds: Set<Long>) {
+        val validated = validateSettings(settings)
+        settingsRepository.setUseMetricUnits(settings.useMetricUnits)
+        settingsRepository.setFuelUnit(validated.fuelUnit)
+        settingsRepository.setCurrencySymbol(settings.currencySymbol)
+        settingsRepository.setTrackingMode(validated.trackingMode)
+        settingsRepository.setSpeedAlertEnabled(settings.speedAlertEnabled)
+        settingsRepository.setSpeedAlertThresholdKmh(settings.speedAlertThresholdKmh)
+        settingsRepository.setSpeedAlertStyle(validated.speedAlertStyle)
+        settingsRepository.setThemeMode(validated.themeMode)
+        settingsRepository.setDefaultMapTheme(validated.defaultMapTheme)
+        settingsRepository.setAutoPauseEnabled(settings.autoPauseEnabled)
+        settingsRepository.setKeepScreenOn(settings.keepScreenOn)
+        settingsRepository.setVoiceAnnouncementsEnabled(settings.voiceAnnouncementsEnabled)
+        settingsRepository.setThermalEcoMode(settings.thermalEcoMode)
+        settings.dashboardTextColor?.let { settingsRepository.setDashboardTextColor(it) }
+        settings.dashboardBgColor?.let { settingsRepository.setDashboardBgColor(it) }
+        settings.dashboardAccentColor?.let { settingsRepository.setDashboardAccentColor(it) }
+        settings.dashboardComponentColor?.let { settingsRepository.setDashboardComponentColor(it) }
+        settingsRepository.setCurrentBikeId(settings.currentBikeId?.takeIf { it in bikeIds })
     }
 
     private data class ValidatedSettings(
@@ -601,6 +601,21 @@ class BackupManager @Inject constructor(
         } catch (_: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid $label '$value' in backup.")
         }
+
+    private fun validateSettings(s: BackupSettings): ValidatedSettings {
+        val fuelUnit = enumSettingOrError<FuelUnit>(s.fuelUnit, "fuel unit")
+        val trackingMode = enumSettingOrError<TrackingMode>(s.trackingMode, "tracking mode")
+        val speedAlertStyle = enumSettingOrError<SpeedAlertStyle>(s.speedAlertStyle, "speed alert style")
+        val themeMode = enumSettingOrError<ThemeMode>(s.themeMode, "theme mode")
+        val defaultMapTheme = enumSettingOrError<com.abrar.motolog.shared.domain.model.MapThemePreference>(
+            s.defaultMapTheme,
+            "map theme"
+        )
+        require(s.speedAlertThresholdKmh.isFinite() && s.speedAlertThresholdKmh >= 0.0) {
+            "Invalid speed alert threshold '${s.speedAlertThresholdKmh}'."
+        }
+        return ValidatedSettings(s, fuelUnit, trackingMode, speedAlertStyle, themeMode, defaultMapTheme)
+    }
 
     /**
      * Reads a ZIP entry with bounded size enforcement.
