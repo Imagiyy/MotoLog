@@ -364,6 +364,10 @@ class BackupManagerTest {
         override suspend fun update(log: FuelLogEntity) {}
         override suspend fun delete(log: FuelLogEntity) { logs.remove(log) }
         override fun getLogsForBike(bikeId: Long): Flow<List<FuelLogEntity>> = MutableStateFlow(logs.filter { it.bikeId == bikeId })
+        override fun getRecentLogsForBike(bikeId: Long, limit: Int): Flow<List<FuelLogEntity>> =
+            MutableStateFlow(logs.filter { it.bikeId == bikeId }.take(limit))
+        override fun getLogCountForBike(bikeId: Long): Flow<Int> =
+            MutableStateFlow(logs.count { it.bikeId == bikeId })
         override fun getAllFuelLogsFlow(): Flow<List<FuelLogEntity>> = MutableStateFlow(logs.toList())
         override suspend fun getLogsForBikeAscending(bikeId: Long): List<FuelLogEntity> = logs.filter { it.bikeId == bikeId }
         override suspend fun getLogById(id: Long): FuelLogEntity? = logs.find { it.id == id }

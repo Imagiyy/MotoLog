@@ -15,6 +15,7 @@ data class BikeDetailUiState(
     val recordedRidesDistanceKm: Double = 0.0,
     val maintenanceEvaluations: List<MaintenanceEvaluation> = emptyList(),
     val fuelLogs: List<FuelLogEntity> = emptyList(),
+    val fuelLogCount: Int = 0,
     val fuelStats: FuelMileageStats = FuelMileageStats(),
     val mileageCycles: List<MileageCycleEntity> = emptyList(),
     val selectedTab: Int = 0, // 0 = Fuel Log, 1 = Maintenance

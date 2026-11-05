@@ -6,6 +6,7 @@ import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
 import com.abrar.motolog.shared.domain.model.FuelMileageStats
 import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Repository interface for managing garage data:
@@ -42,6 +43,10 @@ interface GarageRepository {
     // Fuel
     fun observeAllFuelLogs(): Flow<List<FuelLogEntity>>
     fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>>
+    fun observeFuelLogsForDisplay(bikeId: Long, limit: Int = 200): Flow<List<FuelLogEntity>> =
+        observeFuelLogs(bikeId).map { it.take(limit) }
+    fun observeFuelLogCount(bikeId: Long): Flow<Int> =
+        observeFuelLogs(bikeId).map { it.size }
     fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats>
     suspend fun addFuelLog(
         bikeId: Long,

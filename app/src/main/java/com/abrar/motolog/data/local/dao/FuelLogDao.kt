@@ -24,6 +24,12 @@ interface FuelLogDao {
     @Query("SELECT * FROM fuel_logs WHERE bikeId = :bikeId ORDER BY odometerKm DESC, timestampEpochMs DESC")
     fun getLogsForBike(bikeId: Long): Flow<List<FuelLogEntity>>
 
+    @Query("SELECT * FROM fuel_logs WHERE bikeId = :bikeId ORDER BY odometerKm DESC, timestampEpochMs DESC LIMIT :limit")
+    fun getRecentLogsForBike(bikeId: Long, limit: Int): Flow<List<FuelLogEntity>>
+
+    @Query("SELECT COUNT(*) FROM fuel_logs WHERE bikeId = :bikeId")
+    fun getLogCountForBike(bikeId: Long): Flow<Int>
+
     @Query("SELECT * FROM fuel_logs ORDER BY odometerKm ASC, timestampEpochMs ASC")
     fun getAllFuelLogsFlow(): Flow<List<FuelLogEntity>>
 

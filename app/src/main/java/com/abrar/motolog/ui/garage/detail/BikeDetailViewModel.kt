@@ -59,24 +59,33 @@ class BikeDetailViewModel @Inject constructor(
         val maintenanceEvals: List<com.abrar.motolog.shared.domain.model.MaintenanceEvaluation>,
         val fuelLogs: List<com.abrar.motolog.data.local.entity.FuelLogEntity>,
         val fuelStats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
-        val mileageCycles: List<com.abrar.motolog.data.local.entity.MileageCycleEntity>
+        val mileageCycles: List<com.abrar.motolog.data.local.entity.MileageCycleEntity>,
+        val fuelLogCount: Int
     )
 
     private val fuelDataFlow = combine(
-        garageRepository.observeFuelLogs(bikeId),
+        garageRepository.observeFuelLogsForDisplay(bikeId),
+        garageRepository.observeFuelLogCount(bikeId),
         garageRepository.observeFuelStats(bikeId),
         garageRepository.observeMileageCycles(bikeId)
-    ) { logs, stats, cycles ->
-        Triple(logs, stats, cycles)
+    ) { logs, count, stats, cycles ->
+        FuelData(logs, count, stats, cycles)
     }
+
+    private data class FuelData(
+        val logs: List<FuelLogEntity>,
+        val count: Int,
+        val stats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
+        val cycles: List<com.abrar.motolog.data.local.entity.MileageCycleEntity>
+    )
 
     private val bikeDataFlow = combine(
         garageRepository.observeBike(bikeId),
         garageRepository.observeBikeOdometer(bikeId),
         garageRepository.observeMaintenanceEvaluations(bikeId),
         fuelDataFlow
-    ) { bike, odo, maintenanceEvals, (fuelLogs, fuelStats, mileageCycles) ->
-        BikeData(bike, odo, maintenanceEvals, fuelLogs, fuelStats, mileageCycles)
+    ) { bike, odo, maintenanceEvals, fuelData ->
+        BikeData(bike, odo, maintenanceEvals, fuelData.logs, fuelData.stats, fuelData.cycles, fuelData.count)
     }
 
     private val bikeDetailFlow = combine(
@@ -110,6 +119,7 @@ class BikeDetailViewModel @Inject constructor(
                     recordedRidesDistanceKm = totalDistanceMeters / 1000.0,
                     maintenanceEvaluations = data.maintenanceEvals,
                     fuelLogs = data.fuelLogs,
+                    fuelLogCount = data.fuelLogCount,
                     fuelStats = data.fuelStats,
                     mileageCycles = data.mileageCycles,
                     selectedTab = dialogState.selectedTab,

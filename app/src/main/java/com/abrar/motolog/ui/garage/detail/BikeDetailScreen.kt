@@ -175,7 +175,15 @@ fun BikeDetailScreen(
                             Tab(
                                 selected = uiState.selectedTab == 0,
                                 onClick = { viewModel.selectTab(0) },
-                                text = { Text("Fuel Log (${uiState.fuelLogs.size})") }
+                                text = {
+                                    Text(
+                                        if (uiState.fuelLogCount > uiState.fuelLogs.size) {
+                                            "Fuel Log (${uiState.fuelLogs.size} recent of ${uiState.fuelLogCount})"
+                                        } else {
+                                            "Fuel Log (${uiState.fuelLogCount})"
+                                        }
+                                    )
+                                }
                             )
                             Tab(
                                 selected = uiState.selectedTab == 1,
