@@ -11,10 +11,13 @@ import com.abrar.motolog.data.local.entity.RideStatus
 import com.abrar.motolog.shared.domain.model.FuelMileageStats
 import com.abrar.motolog.shared.domain.model.MaintenanceEvaluation
 import com.abrar.motolog.domain.repository.GarageRepository
+import com.abrar.motolog.domain.engine.calculate
+import com.abrar.motolog.shared.domain.engine.FuelMileageCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -248,12 +251,17 @@ class GarageViewModelTest {
         override suspend fun markMaintenanceDone(itemId: Long, odometerKm: Double, dateEpochMs: Long) {}
         val allFuelLogsFlow = MutableStateFlow<List<FuelLogEntity>>(emptyList())
         override fun observeAllFuelLogs(): Flow<List<FuelLogEntity>> = allFuelLogsFlow
-        override fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>> = MutableStateFlow(emptyList())
-        override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> = MutableStateFlow(FuelMileageStats())
+        override fun observeFuelLogs(bikeId: Long): Flow<List<FuelLogEntity>> =
+            allFuelLogsFlow.map { logs -> logs.filter { it.bikeId == bikeId } }
+        override fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats> =
+            observeFuelLogs(bikeId).map { logs ->
+                FuelMileageCalculator.calculate(logs, currentOdometerKm = 5350.0)
+            }
         override suspend fun addFuelLog(bikeId: Long, odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestampEpochMs: Long): Long = 1L
         override suspend fun updateFuelLog(log: FuelLogEntity) {}
         override suspend fun deleteFuelLog(log: FuelLogEntity) {}
-        override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? = null
+        override suspend fun getLatestFuelLog(bikeId: Long): FuelLogEntity? =
+            allFuelLogsFlow.value.filter { it.bikeId == bikeId }.maxByOrNull { it.odometerKm }
         override suspend fun resetMileage(bikeId: Long, currentOdometerKm: Double, clearLogs: Boolean) {}
         override suspend fun clearMileageReset(bikeId: Long) {}
         override fun observeMileageCycles(bikeId: Long): Flow<List<com.abrar.motolog.data.local.entity.MileageCycleEntity>> = MutableStateFlow(emptyList())

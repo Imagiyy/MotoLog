@@ -11,7 +11,6 @@ import com.abrar.motolog.shared.domain.engine.MaintenanceCalculator
 import com.abrar.motolog.shared.domain.engine.OdometerCalculator
 import com.abrar.motolog.domain.repository.GarageRepository
 import com.abrar.motolog.domain.engine.calculate
-import com.abrar.motolog.shared.domain.engine.FuelMileageCalculator
 import com.abrar.motolog.shared.domain.model.FuelUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,12 +18,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
+@OptIn(ExperimentalCoroutinesApi::class)
 class GarageViewModel @Inject constructor(
     private val garageRepository: GarageRepository,
     private val bikeDao: BikeDao,
@@ -32,6 +35,12 @@ class GarageViewModel @Inject constructor(
     private val maintenanceDao: MaintenanceDao,
     private val settingsRepository: com.abrar.motolog.data.settings.SettingsRepository
 ) : ViewModel() {
+
+    private data class FuelSummary(
+        val stats: com.abrar.motolog.shared.domain.model.FuelMileageStats,
+        val count: Int,
+        val latestOdometerKm: Double?
+    )
 
     private val _dialogState = MutableStateFlow(DialogState())
 
@@ -48,10 +57,34 @@ class GarageViewModel @Inject constructor(
         viewModelScope.launch {
             val garageDataFlow = combine(
                 garageRepository.activeBikes,
-                garageRepository.currentBikeId,
-                garageRepository.observeAllFuelLogs()
-            ) { bikes, currentBikeId, allFuelLogs ->
-                Triple(bikes, currentBikeId, allFuelLogs)
+                garageRepository.currentBikeId
+            ) { bikes, currentBikeId ->
+                bikes to currentBikeId
+            }.flatMapLatest { (bikes, currentBikeId) ->
+                if (bikes.isEmpty()) {
+                    flowOf(Triple(bikes, currentBikeId, emptyMap<Long, FuelSummary>()))
+                } else {
+                    combine(
+                        bikes.map { bike ->
+                            combine(
+                                garageRepository.observeFuelStats(bike.id),
+                                garageRepository.observeFuelLogCount(bike.id)
+                            ) { stats, count ->
+                                bike.id to FuelSummary(
+                                    stats = stats,
+                                    count = count,
+                                    latestOdometerKm = garageRepository.getLatestFuelLog(bike.id)?.odometerKm
+                                )
+                            }
+                        }
+                    ) { summaries ->
+                        Triple(
+                            bikes,
+                            currentBikeId,
+                            summaries.toMap()
+                        )
+                    }
+                }
             }
 
             val settingsFlow = combine(
@@ -66,7 +99,7 @@ class GarageViewModel @Inject constructor(
                 garageDataFlow,
                 settingsFlow,
                 _dialogState
-            ) { (bikes, currentBikeId, allFuelLogs), (useMetricUnits, fuelUnit, currencySymbol), dialogState ->
+            ) { (bikes, currentBikeId, fuelSummaries), (useMetricUnits, fuelUnit, currencySymbol), dialogState ->
                 val now = System.currentTimeMillis()
                 val bikeItems = bikes.map { bike ->
                     val totalDistanceMeters = rideDao.getTotalDistanceMetersForBikeOnce(bike.id) ?: 0.0
@@ -79,31 +112,20 @@ class GarageViewModel @Inject constructor(
                     val evaluations = items.map { item ->
                         MaintenanceCalculator.evaluate(item, currentOdo, now)
                     }
-                    val resetOdo = bike.mileageResetOdometerKm
-                    val resetEpoch = bike.mileageResetEpochMs
-                    val logsForBike = allFuelLogs.filter { it.bikeId == bike.id }
-                    val activeLogs = if (resetEpoch != null) {
-                        logsForBike.filter { it.timestampEpochMs >= resetEpoch }
-                    } else if (resetOdo != null) {
-                        logsForBike.filter { it.odometerKm >= resetOdo }
-                    } else {
-                        logsForBike
-                    }
-                    val fuelStats = FuelMileageCalculator.calculate(
-                        logs = activeLogs,
-                        currentOdometerKm = currentOdo,
-                        startOdometerKm = resetOdo
+                    val fuelSummary = fuelSummaries[bike.id] ?: FuelSummary(
+                        stats = com.abrar.motolog.shared.domain.model.FuelMileageStats(),
+                        count = 0,
+                        latestOdometerKm = null
                     )
-                    val latestFuelLogOdo = logsForBike.maxByOrNull { it.odometerKm }?.odometerKm
 
                     BikeListItem(
                         bike = bike,
                         currentOdometerKm = currentOdo,
                         isCurrentBike = bike.id == currentBikeId,
                         maintenanceEvaluations = evaluations,
-                        fuelStats = fuelStats,
-                        fuelLogsCount = logsForBike.size,
-                        latestFuelLogOdometerKm = latestFuelLogOdo
+                        fuelStats = fuelSummary.stats,
+                        fuelLogsCount = fuelSummary.count,
+                        latestFuelLogOdometerKm = fuelSummary.latestOdometerKm
                     )
                 }
 

@@ -7,6 +7,7 @@ import com.abrar.motolog.data.local.dao.MaintenanceDao
 import com.abrar.motolog.data.local.dao.MileageCycleDao
 import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
+import com.abrar.motolog.data.local.dao.RestoreJournalDao
 import com.abrar.motolog.data.local.entity.BikeEntity
 import com.abrar.motolog.data.local.entity.FuelLogEntity
 import com.abrar.motolog.data.local.entity.MaintenanceItemEntity
@@ -14,6 +15,7 @@ import com.abrar.motolog.data.local.entity.MileageCycleEntity
 import com.abrar.motolog.data.local.entity.RideEntity
 import com.abrar.motolog.data.local.entity.RidePointEntity
 import com.abrar.motolog.data.local.entity.RideStatus
+import com.abrar.motolog.data.local.entity.RestoreJournalEntity
 import com.abrar.motolog.data.settings.SettingsRepository
 import com.abrar.motolog.shared.domain.model.FuelUnit
 import com.abrar.motolog.shared.domain.model.SpeedAlertStyle
@@ -52,6 +54,7 @@ class BackupManagerTest {
     private lateinit var maintenanceDao: FakeMaintenanceDao
     private lateinit var fuelLogDao: FakeFuelLogDao
     private lateinit var mileageCycleDao: FakeMileageCycleDao
+    private lateinit var restoreJournalDao: FakeRestoreJournalDao
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var backupManager: BackupManager
 
@@ -63,6 +66,7 @@ class BackupManagerTest {
         maintenanceDao = FakeMaintenanceDao()
         fuelLogDao = FakeFuelLogDao()
         mileageCycleDao = FakeMileageCycleDao()
+        restoreJournalDao = FakeRestoreJournalDao()
 
         val testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope,
@@ -78,7 +82,8 @@ class BackupManagerTest {
             fuelLogDao = fuelLogDao,
             mileageCycleDao = mileageCycleDao,
             settingsRepository = settingsRepository,
-            database = null
+            database = null,
+            restoreJournalDao = restoreJournalDao
         )
     }
 
@@ -279,6 +284,54 @@ class BackupManagerTest {
         assertTrue(thrown)
     }
 
+    @Test
+    fun invalidRestoreSettings_leaveExistingDatabaseAndJournalUntouched() = runTest(testDispatcher) {
+        val existingBike = BikeEntity(id = 7L, name = "Existing", makeModel = "Test")
+        bikeDao.insert(existingBike)
+
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.putNextEntry(ZipEntry("settings.json"))
+            zip.write("""{"fuelUnit":"INVALID"}""".toByteArray(Charsets.UTF_8))
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("bikes.json"))
+            zip.write("""[{"id":1,"name":"Replacement","makeModel":"Test"}]""".toByteArray(Charsets.UTF_8))
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("manifest.json"))
+            zip.write(
+                """{"formatVersion":1,"appVersion":"1.0.0","createdAtEpochMs":1,"bikeCount":1,"rideCount":0,"pointCount":0,"maintenanceCount":0,"fuelLogCount":0}"""
+                    .toByteArray(Charsets.UTF_8)
+            )
+            zip.closeEntry()
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runTest(testDispatcher) {
+                backupManager.restoreBackup(ByteArrayInputStream(out.toByteArray()))
+            }
+        }
+
+        assertEquals(listOf(existingBike), bikeDao.getAllBikesOnce())
+        assertEquals(null, restoreJournalDao.get())
+    }
+
+    @Test
+    fun recoverPendingRestore_appliesSettingsAndClearsJournal() = runTest(testDispatcher) {
+        restoreJournalDao.insert(
+            RestoreJournalEntity(
+                settingsJson = """{"useMetricUnits":false,"currencySymbol":"£","trackingMode":"BATTERY_SAVER","themeMode":"RACING_TFT"}"""
+            )
+        )
+
+        backupManager.recoverPendingRestore()
+
+        assertEquals(false, settingsRepository.useMetricUnits.first())
+        assertEquals("£", settingsRepository.currencySymbol.first())
+        assertEquals(TrackingMode.BATTERY_SAVER, settingsRepository.trackingMode.first())
+        assertEquals(ThemeMode.RACING_TFT, settingsRepository.themeMode.first())
+        assertEquals(null, restoreJournalDao.get())
+    }
+
     private class FakeBikeDao : BikeDao {
         val bikes = mutableListOf<BikeEntity>()
         override suspend fun insert(bike: BikeEntity): Long { bikes.add(bike); return bike.id }
@@ -401,5 +454,16 @@ class BackupManagerTest {
             cycles.clear()
         }
         override suspend fun getAllOnce(): List<MileageCycleEntity> = cycles.toList()
+    }
+
+    private class FakeRestoreJournalDao : RestoreJournalDao {
+        private var journal: RestoreJournalEntity? = null
+        override suspend fun insert(journal: RestoreJournalEntity) {
+            this.journal = journal
+        }
+        override suspend fun get(): RestoreJournalEntity? = journal
+        override suspend fun delete() {
+            journal = null
+        }
     }
 }

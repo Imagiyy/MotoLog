@@ -131,4 +131,24 @@ class ElevationCalculatorTest {
         assertEquals(expected.lossMeters, actual.lossMeters, 0.001)
         assertTrue(accumulator.hasNonZeroElevation())
     }
+
+    @Test
+    fun streamingCalculationHandlesLargeRideWithoutBuildingElevationProfile() {
+        val accumulator = ElevationCalculator.StreamingAccumulator(
+            minimumChangeThreshold = 3.0,
+            smoothingWindow = 5
+        )
+
+        repeat(100_000) { index ->
+            accumulator.add(index.toDouble())
+        }
+
+        val result = accumulator.finish()
+
+        assertEquals(100_000, accumulator.sampleCount())
+        assertTrue(result.gainMeters.isFinite())
+        assertTrue(result.lossMeters.isFinite())
+        assertTrue(result.gainMeters > 99_000.0)
+        assertTrue(result.smoothedProfile.isEmpty())
+    }
 }

@@ -91,7 +91,7 @@ ride_tracker/
 - **Android UI:** Jetpack Compose (Material 3) with hardware-accelerated Canvas graphics and zero allocations inside `DrawScope`
 - **Dependency Injection:** Dagger Hilt (`@HiltAndroidApp`, `@HiltViewModel`)
 - **Persistence:**
-  - **Room Database (v4):** Continuous batching of GPS coordinates (`RidePoint`), rides (`Ride`), bikes (`Bike`), maintenance logs, and fuel entries
+  - **Room Database (v10):** Continuous batching of GPS coordinates (`RidePoint`), rides (`Ride`), bikes (`Bike`), maintenance logs, fuel entries, and crash-safe restore journaling
   - **Jetpack DataStore:** Asynchronous preferences for themes, units, tracking mode, and speed alerts
 - **Location:** Google Play Services `FusedLocationProviderClient` with `PRIORITY_HIGH_ACCURACY` and 1-second cadence
 - **Background Processing:** Android Foreground Service (`ServiceType.LOCATION`) with ongoing lock-screen notifications and `NotificationCompat.Action` buttons
@@ -123,6 +123,7 @@ cd motolog
 ./gradlew :shared:testAndroidHostTest
 
 # Compile iOS KLIBs (can run on Linux and macOS)
+# Compile shared iOS code (simulator targets require macOS)
 ./gradlew :shared:compileKotlinIosSimulatorArm64
 
 # Assemble Debug APK
@@ -161,7 +162,8 @@ The calculation engine and application are covered by comprehensive unit tests:
   - **Spike Rejection:** Implied speeds > 250 km/h and accelerations > 15 m/s² are rejected.
   - **Auto-Pause & Recovery:** Validates the auto-pause state machine and crash-recovery reconstruction.
 - **App & ViewModel Tests (`:app:testDebugUnitTest`):**
-  - Database schema migrations (v1 → v2, v2 → v3, v3 → v4).
+  - Database schema migrations through v10, including restore-journal recovery.
+  - Paged history, export, recovery, and elevation processing for large rides.
   - Lifecycle state transitions, permissions flow, and repository coordination.
 
 ---
@@ -169,4 +171,3 @@ The calculation engine and application are covered by comprehensive unit tests:
 ## 📄 License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
-
