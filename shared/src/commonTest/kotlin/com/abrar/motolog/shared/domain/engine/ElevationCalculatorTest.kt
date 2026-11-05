@@ -87,4 +87,48 @@ class ElevationCalculatorTest {
         // Middle spike 50.0 smoothed with neighbors (10 + 50 + 10) / 3 = 23.33
         assertEquals(23.333, smoothed[2], 0.01)
     }
+
+    @Test
+    fun streamingCalculationMatchesBatchCalculationAcrossPages() {
+        val elevations = listOf(
+            100.0, 100.0, 112.0, 125.0, 122.0,
+            115.0, 115.0, 130.0, 142.0, 140.0
+        )
+        val expected = ElevationCalculator.calculate(
+            rawElevations = elevations,
+            minimumChangeThreshold = 3.0,
+            smoothingWindow = 5
+        )
+        val accumulator = ElevationCalculator.StreamingAccumulator(
+            minimumChangeThreshold = 3.0,
+            smoothingWindow = 5
+        )
+        elevations.chunked(3).forEach(accumulator::addAll)
+
+        val actual = accumulator.finish()
+
+        assertEquals(expected.gainMeters, actual.gainMeters, 0.001)
+        assertEquals(expected.lossMeters, actual.lossMeters, 0.001)
+    }
+
+    @Test
+    fun streamingCalculationPreservesZeroAltitudeSamplesAroundGpsGaps() {
+        val elevations = listOf(100.0, 100.0, 0.0, 0.0, 110.0, 110.0)
+        val expected = ElevationCalculator.calculate(
+            rawElevations = elevations,
+            minimumChangeThreshold = 3.0,
+            smoothingWindow = 1
+        )
+        val accumulator = ElevationCalculator.StreamingAccumulator(
+            minimumChangeThreshold = 3.0,
+            smoothingWindow = 1
+        )
+        accumulator.addAll(elevations)
+
+        val actual = accumulator.finish()
+
+        assertEquals(expected.gainMeters, actual.gainMeters, 0.001)
+        assertEquals(expected.lossMeters, actual.lossMeters, 0.001)
+        assertTrue(accumulator.hasNonZeroElevation())
+    }
 }

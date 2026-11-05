@@ -962,24 +962,29 @@ class TrackingService : Service() {
      * Compute elevation gain and loss from stored points for the active ride.
      */
     private suspend fun computeElevation(): ElevationCalculator.ElevationResult? = withContext(Dispatchers.IO) {
-        val points = ridePointDao.getPointsForRideOnce(activeRideId)
-        if (points.size < 2) return@withContext null
-
-        val rawElevations = points.map { it.altitudeMeters }
-        // If all altitudes are 0.0 (no elevation recorded), return null
-        if (rawElevations.all { it == 0.0 }) return@withContext null
-
         val threshold = if (usingBarometer) {
             TrackingConstants.ELEVATION_MIN_CHANGE_BAROMETER_METERS
         } else {
             TrackingConstants.ELEVATION_MIN_CHANGE_GPS_METERS
         }
-
-        ElevationCalculator.calculate(
-            rawElevations = rawElevations,
+        val accumulator = ElevationCalculator.StreamingAccumulator(
             minimumChangeThreshold = threshold,
             smoothingWindow = TrackingConstants.ELEVATION_SMOOTHING_WINDOW
         )
+        val pageSize = 1_000
+        var offset = 0
+        while (true) {
+            val page = ridePointDao.getPointsForRidePaged(activeRideId, pageSize, offset)
+            if (page.isEmpty()) break
+            accumulator.addAll(page.asSequence().map { it.altitudeMeters }.asIterable())
+            offset += page.size
+            if (page.size < pageSize) break
+        }
+
+        if (accumulator.sampleCount() < 2 || !accumulator.hasNonZeroElevation()) {
+            return@withContext null
+        }
+        accumulator.finish()
     }
 
     /**
