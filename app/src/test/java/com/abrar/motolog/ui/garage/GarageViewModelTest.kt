@@ -257,6 +257,8 @@ class GarageViewModelTest {
             observeFuelLogs(bikeId).map { logs ->
                 FuelMileageCalculator.calculate(logs, currentOdometerKm = 5350.0)
             }
+        override fun observeLatestFuelLog(bikeId: Long): Flow<FuelLogEntity?> =
+            observeFuelLogs(bikeId).map { logs -> logs.maxByOrNull { it.odometerKm } }
         override suspend fun addFuelLog(bikeId: Long, odometerKm: Double, litres: Double, totalCost: Double, isFullTank: Boolean, notes: String, timestampEpochMs: Long): Long = 1L
         override suspend fun updateFuelLog(log: FuelLogEntity) {}
         override suspend fun deleteFuelLog(log: FuelLogEntity) {}

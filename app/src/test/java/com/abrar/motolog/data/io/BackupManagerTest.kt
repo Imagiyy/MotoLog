@@ -1,6 +1,8 @@
 package com.abrar.motolog.data.io
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.abrar.motolog.data.local.dao.BikeDao
 import com.abrar.motolog.data.local.dao.FuelLogDao
 import com.abrar.motolog.data.local.dao.MaintenanceDao
@@ -23,6 +25,7 @@ import com.abrar.motolog.shared.domain.model.TrackingMode
 import com.abrar.motolog.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -332,6 +335,62 @@ class BackupManagerTest {
         assertEquals(null, restoreJournalDao.get())
     }
 
+    @Test
+    fun restoreDataStoreFailure_keepsJournalForRetry() = runTest(testDispatcher) {
+        bikeDao.insert(BikeEntity(id = 1L, name = "Before", makeModel = "Test"))
+        val source = ByteArrayOutputStream()
+        backupManager.createBackup(source)
+
+        val failingSettings = SettingsRepository(FailingDataStore())
+        val failingManager = BackupManager(
+            bikeDao = bikeDao,
+            rideDao = rideDao,
+            ridePointDao = ridePointDao,
+            maintenanceDao = maintenanceDao,
+            fuelLogDao = fuelLogDao,
+            mileageCycleDao = mileageCycleDao,
+            settingsRepository = failingSettings,
+            database = null,
+            restoreJournalDao = restoreJournalDao
+        )
+
+        assertThrows(IllegalStateException::class.java) {
+            runTest(testDispatcher) {
+                failingManager.restoreBackup(ByteArrayInputStream(source.toByteArray()))
+            }
+        }
+        assertNotNull(restoreJournalDao.get())
+
+        val retryStore = PreferenceDataStoreFactory.create(
+            scope = testScope,
+            produceFile = { tempFolder.newFile("restore_retry.preferences_pb") }
+        )
+        val retryManager = BackupManager(
+            bikeDao = bikeDao,
+            rideDao = rideDao,
+            ridePointDao = ridePointDao,
+            maintenanceDao = maintenanceDao,
+            fuelLogDao = fuelLogDao,
+            mileageCycleDao = mileageCycleDao,
+            settingsRepository = SettingsRepository(retryStore),
+            database = null,
+            restoreJournalDao = restoreJournalDao
+        )
+        retryManager.recoverPendingRestore()
+
+        assertEquals(null, restoreJournalDao.get())
+    }
+
+    private class FailingDataStore : DataStore<Preferences> {
+        override val data: Flow<Preferences> = flowOf(androidx.datastore.preferences.core.emptyPreferences())
+
+        override suspend fun updateData(
+            transform: suspend (t: Preferences) -> Preferences
+        ): Preferences {
+            throw IllegalStateException("simulated DataStore failure")
+        }
+    }
+
     private class FakeBikeDao : BikeDao {
         val bikes = mutableListOf<BikeEntity>()
         override suspend fun insert(bike: BikeEntity): Long { bikes.add(bike); return bike.id }
@@ -425,6 +484,8 @@ class BackupManagerTest {
         override suspend fun getLogsForBikeAscending(bikeId: Long): List<FuelLogEntity> = logs.filter { it.bikeId == bikeId }
         override suspend fun getLogById(id: Long): FuelLogEntity? = logs.find { it.id == id }
         override suspend fun getLatestLogForBike(bikeId: Long): FuelLogEntity? = logs.lastOrNull { it.bikeId == bikeId }
+        override fun observeLatestLogForBike(bikeId: Long): Flow<FuelLogEntity?> =
+            MutableStateFlow(logs.filter { it.bikeId == bikeId }.maxByOrNull { it.odometerKm })
         override suspend fun getAllLogsOnce(): List<FuelLogEntity> = logs.toList()
         override suspend fun insertAll(logsList: List<FuelLogEntity>) { logs.addAll(logsList) }
         override suspend fun deleteAllFuelLogs() { logs.clear() }

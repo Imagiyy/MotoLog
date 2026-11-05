@@ -212,4 +212,21 @@ class GpxImporterTest {
         assertTrue(points[0].timestampEpochMs > 1_500_000_000_000L)
         assertTrue(points[1].timestampEpochMs > points[0].timestampEpochMs)
     }
+
+    @Test
+    fun largeTrack_respectsConfiguredPointLimit() {
+        val xml = buildString {
+            append("""<?xml version="1.0"?><gpx version="1.1"><trk><name>Large</name><trkseg>""")
+            repeat(GpxImporter.MAX_POINTS_PER_TRACK + 500) { index ->
+                append("""<trkpt lat="12.${index % 10_000}" lon="77.${index % 10_000}"/>""")
+            }
+            append("</trkseg></trk></gpx>")
+        }
+
+        val result = GpxImporter.parse(ByteArrayInputStream(xml.toByteArray()))
+
+        assertTrue(result.errors.isEmpty())
+        assertEquals(GpxImporter.MAX_POINTS_PER_TRACK, result.tracks.single().points.size)
+        assertTrue(result.warnings.any { it.contains("per-track limit") })
+    }
 }

@@ -76,4 +76,40 @@ class GpxExporterTest {
         assertTrue(gpxXml.contains("<name>Ride 2</name>"))
         assertEquals(2, gpxXml.split("<trk>").size - 1)
     }
+
+    @Test
+    fun gpxExportStreaming_handlesLargeRide() = kotlinx.coroutines.runBlocking {
+        val ride = RideEntity(
+            id = 1L,
+            startTime = 1700000000000L,
+            endTime = 1700010000000L,
+            distanceMeters = 100_000.0,
+            status = RideStatus.COMPLETED
+        )
+        val points = (0 until 10_000).map { index ->
+            RidePointEntity(
+                id = index.toLong(),
+                rideId = 1L,
+                timestamp = 1700000000000L + index * 1000L,
+                latitude = 12.0 + index / 1_000_000.0,
+                longitude = 77.0 + index / 1_000_000.0,
+                speedMs = 20.0,
+                accuracyMeters = 4f,
+                altitudeMeters = 900.0,
+                isPaused = false,
+                isGap = false
+            )
+        }
+        val out = ByteArrayOutputStream()
+
+        GpxExporter.exportRidesStreaming(
+            rides = listOf(ride),
+            pointsProvider = { points },
+            outputStream = out
+        )
+
+        val xml = out.toString(Charsets.UTF_8.name())
+        assertTrue(xml.length > 1_000_000)
+        assertEquals(10_000, xml.split("<trkpt ").size - 1)
+    }
 }

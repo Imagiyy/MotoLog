@@ -36,7 +36,7 @@ data class NavigationDiagnosticsSnapshot(
  */
 class NavigationDiagnostics {
 
-    private val lock = Any()
+    private val lock = DiagnosticsLock()
 
     private var totalRouteRequests: Long = 0L
     private var successfulRouteRequests: Long = 0L
@@ -58,9 +58,9 @@ class NavigationDiagnostics {
 
     private val json = Json { prettyPrint = true }
 
-    fun recordRouteRequest() = synchronized(lock) { totalRouteRequests++ }
-    fun recordRouteSuccess() = synchronized(lock) { successfulRouteRequests++ }
-    fun recordRouteFailure(category: FailureCategory) = synchronized(lock) {
+    fun recordRouteRequest() = lock.withLock { totalRouteRequests++ }
+    fun recordRouteSuccess() = lock.withLock { successfulRouteRequests++ }
+    fun recordRouteFailure(category: FailureCategory) = lock.withLock {
         failedRouteRequests++
         when (category) {
             FailureCategory.NETWORK -> networkErrors++
@@ -72,20 +72,20 @@ class NavigationDiagnostics {
         }
     }
 
-    fun recordRerouteTriggered() = synchronized(lock) { totalReroutesTriggered++ }
-    fun recordRerouteSuccess() = synchronized(lock) { successfulReroutes++ }
-    fun recordRerouteFailure() = synchronized(lock) { failedReroutes++ }
+    fun recordRerouteTriggered() = lock.withLock { totalReroutesTriggered++ }
+    fun recordRerouteSuccess() = lock.withLock { successfulReroutes++ }
+    fun recordRerouteFailure() = lock.withLock { failedReroutes++ }
 
-    fun recordArrival() = synchronized(lock) { arrivalsConfirmed++ }
-    fun recordCancellation() = synchronized(lock) { cancellations++ }
-    fun recordVoiceAnnouncement() = synchronized(lock) { voiceAnnouncementsSpoken++ }
-    fun recordOffRouteWarning() = synchronized(lock) { offRouteWarningCount++ }
-    fun recordGpsSignalLoss() = synchronized(lock) { gpsSignalLossEvents++ }
+    fun recordArrival() = lock.withLock { arrivalsConfirmed++ }
+    fun recordCancellation() = lock.withLock { cancellations++ }
+    fun recordVoiceAnnouncement() = lock.withLock { voiceAnnouncementsSpoken++ }
+    fun recordOffRouteWarning() = lock.withLock { offRouteWarningCount++ }
+    fun recordGpsSignalLoss() = lock.withLock { gpsSignalLossEvents++ }
 
     /**
      * Create an immutable snapshot of current counters.
      */
-    fun getSnapshot(nowMs: Long = 0L): NavigationDiagnosticsSnapshot = synchronized(lock) {
+    fun getSnapshot(nowMs: Long = 0L): NavigationDiagnosticsSnapshot = lock.withLock {
         NavigationDiagnosticsSnapshot(
             totalRouteRequests = totalRouteRequests,
             successfulRouteRequests = successfulRouteRequests,
@@ -118,7 +118,7 @@ class NavigationDiagnostics {
     /**
      * Clear all counters.
      */
-    fun reset() = synchronized(lock) {
+    fun reset() = lock.withLock {
         totalRouteRequests = 0L
         successfulRouteRequests = 0L
         failedRouteRequests = 0L

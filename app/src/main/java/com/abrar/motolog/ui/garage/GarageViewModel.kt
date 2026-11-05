@@ -68,12 +68,13 @@ class GarageViewModel @Inject constructor(
                         bikes.map { bike ->
                             combine(
                                 garageRepository.observeFuelStats(bike.id),
-                                garageRepository.observeFuelLogCount(bike.id)
-                            ) { stats, count ->
+                                garageRepository.observeFuelLogCount(bike.id),
+                                garageRepository.observeLatestFuelLog(bike.id)
+                            ) { stats, count, latestLog ->
                                 bike.id to FuelSummary(
                                     stats = stats,
                                     count = count,
-                                    latestOdometerKm = garageRepository.getLatestFuelLog(bike.id)?.odometerKm
+                                    latestOdometerKm = latestLog?.odometerKm
                                 )
                             }
                         }

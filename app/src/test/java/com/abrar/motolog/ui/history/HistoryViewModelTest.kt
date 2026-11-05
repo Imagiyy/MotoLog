@@ -136,4 +136,32 @@ class HistoryViewModelTest {
         assertTrue(fakeRepository.ridesFlow.value.isEmpty())
         assertNull(viewModel.uiState.value.recentlyDeletedRide)
     }
+
+    @Test
+    fun loadMore_handlesLargeHistoryInPages() = runTest(testDispatcher) {
+        fakeRepository.seedRides(
+            (0 until 205).map { index ->
+                RideEntity(
+                    id = index.toLong(),
+                    name = "Ride $index",
+                    startTime = index.toLong(),
+                    status = RideStatus.COMPLETED
+                )
+            }
+        )
+
+        viewModel = HistoryViewModel(fakeRepository, settingsRepository)
+        advanceUntilIdle()
+        assertEquals(100, viewModel.uiState.value.rides.size)
+        assertTrue(viewModel.uiState.value.canLoadMore)
+
+        viewModel.loadMore()
+        advanceUntilIdle()
+        assertEquals(200, viewModel.uiState.value.rides.size)
+
+        viewModel.loadMore()
+        advanceUntilIdle()
+        assertEquals(205, viewModel.uiState.value.rides.size)
+        assertTrue(!viewModel.uiState.value.canLoadMore)
+    }
 }

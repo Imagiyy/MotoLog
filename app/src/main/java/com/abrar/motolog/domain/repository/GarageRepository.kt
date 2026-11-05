@@ -47,6 +47,8 @@ interface GarageRepository {
         observeFuelLogs(bikeId).map { it.take(limit) }
     fun observeFuelLogCount(bikeId: Long): Flow<Int> =
         observeFuelLogs(bikeId).map { it.size }
+    fun observeLatestFuelLog(bikeId: Long): Flow<FuelLogEntity?> =
+        observeFuelLogs(bikeId).map { logs -> logs.maxByOrNull { it.odometerKm } }
     fun observeFuelStats(bikeId: Long): Flow<FuelMileageStats>
     suspend fun addFuelLog(
         bikeId: Long,

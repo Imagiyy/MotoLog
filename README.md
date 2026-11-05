@@ -164,7 +164,15 @@ The calculation engine and application are covered by comprehensive unit tests:
 - **App & ViewModel Tests (`:app:testDebugUnitTest`):**
   - Database schema migrations through v10, including restore-journal recovery.
   - Paged history, export, recovery, and elevation processing for large rides.
+  - Large-dataset coverage for 100,000 fuel entries, 50,000-point GPX imports,
+    10,000-point GPX exports, and 205-ride history paging.
+  - Restore failure and retry coverage verifies that a committed database restore
+    remains recoverable when DataStore settings application fails.
   - Lifecycle state transitions, permissions flow, and repository coordination.
+
+Android instrumentation tests require a connected device or emulator. iOS native
+tests require macOS; Linux can compile the iOS target but cannot execute simulator
+tests.
 
 ---
 

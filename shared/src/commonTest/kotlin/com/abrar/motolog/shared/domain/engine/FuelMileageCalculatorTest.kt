@@ -5,8 +5,33 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FuelMileageCalculatorTest {
+
+    @Test
+    fun largeFuelHistoryComputesWithoutNumericalOverflow() {
+        val entries = (0 until 100_000).map { index ->
+            FuelFill(
+                id = index.toLong(),
+                timestampEpochMs = index.toLong(),
+                odometerKm = 10_000.0 + index,
+                litres = 10.0,
+                totalCost = 100.0,
+                isFullTank = true
+            )
+        }
+
+        val stats = FuelMileageCalculator.calculate(
+            entries = entries,
+            currentOdometerKm = 110_000.0
+        )
+
+        assertEquals(1_000_000.0, stats.totalLitres, 0.001)
+        assertEquals(10_000_000.0, stats.totalCost, 0.001)
+        assertTrue(stats.averageMileageKml!!.isFinite())
+        assertTrue(stats.intervals.size == 99_999)
+    }
 
     @Test
     fun emptyListReturnsEmptyStats() {
