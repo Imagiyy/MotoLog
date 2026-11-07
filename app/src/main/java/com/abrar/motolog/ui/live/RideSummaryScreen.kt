@@ -348,8 +348,7 @@ private fun RideSummaryRouteCard(
             // 1. Draw subtle abstract intersecting street lines in the background
             drawAbstractGridLines(width, height)
 
-            // 2. Compute route points & start/end positions
-            val padH = 46.dp.toPx()
+            val padH = 48.dp.toPx()
             val padV = 44.dp.toPx()
             val availableW = width - (padH * 2)
             val availableH = height - (padV * 2)
@@ -359,52 +358,88 @@ private fun RideSummaryRouteCard(
             val endPt: Offset
 
             if (coordinates.size >= 2) {
+                // Approximate mid latitude to compute longitude aspect-ratio scaling
+                val midLatApprox = (coordinates.first().first + coordinates.last().first) / 2.0
+                val latFactor = cos(Math.toRadians(midLatApprox)).coerceAtLeast(0.1)
+
+                // Filter out stationary jitter points (points closer than 3.5m to previous)
+                val filtered = ArrayList<Pair<Double, Double>>(coordinates.size)
+                for (pt in coordinates) {
+                    if (filtered.isEmpty()) {
+                        filtered.add(pt)
+                    } else {
+                        val prev = filtered.last()
+                        val dLatM = (pt.first - prev.first) * 111320.0
+                        val dLonM = (pt.second - prev.second) * 111320.0 * latFactor
+                        if (dLatM * dLatM + dLonM * dLonM >= 12.25) { // >= 3.5m
+                            filtered.add(pt)
+                        }
+                    }
+                }
+                // Ensure at least first and last points are preserved
+                if (filtered.size < 2 && coordinates.size >= 2) {
+                    filtered.clear()
+                    filtered.add(coordinates.first())
+                    filtered.add(coordinates.last())
+                }
+
+                // Compute bounding box
                 var minLat = Double.MAX_VALUE
                 var maxLat = -Double.MAX_VALUE
                 var minLon = Double.MAX_VALUE
                 var maxLon = -Double.MAX_VALUE
 
-                coordinates.forEach { (lat, lon) ->
+                filtered.forEach { (lat, lon) ->
                     if (lat < minLat) minLat = lat
                     if (lat > maxLat) maxLat = lat
                     if (lon < minLon) minLon = lon
                     if (lon > maxLon) maxLon = lon
                 }
 
-                val deltaLat = (maxLat - minLat).coerceAtLeast(0.0001)
-                val deltaLon = (maxLon - minLon).coerceAtLeast(0.0001)
-                val midLat = (minLat + maxLat) / 2.0
-                val latFactor = cos(Math.toRadians(midLat)).coerceAtLeast(0.1)
-                val effectiveDeltaLon = deltaLon * latFactor
+                val centerLat = (minLat + maxLat) / 2.0
+                val centerLon = (minLon + maxLon) / 2.0
+                val effectiveLatFactor = cos(Math.toRadians(centerLat)).coerceAtLeast(0.1)
 
-                val scale = minOf(availableW / effectiveDeltaLon, availableH / deltaLat)
-                val routeW = (effectiveDeltaLon * scale).toFloat()
-                val routeH = (deltaLat * scale).toFloat()
+                // Enforce a minimum geographic span (at least 350m) so tiny GPS jitter is not blown up
+                val minSpanLatDeg = 350.0 / 111320.0
+                val minSpanLonDeg = 350.0 / (111320.0 * effectiveLatFactor)
 
-                val offsetX = padH + (availableW - routeW) / 2f
-                val offsetY = padV + (availableH - routeH) / 2f
+                val rawSpanLat = maxLat - minLat
+                val rawSpanLon = (maxLon - minLon) * effectiveLatFactor
+
+                val effectiveSpanLat = maxOf(rawSpanLat, minSpanLatDeg)
+                val effectiveSpanLon = maxOf(rawSpanLon, minSpanLonDeg)
+
+                // Uniform scale to prevent stretching or distortion
+                val scale = minOf(availableW / effectiveSpanLon, availableH / effectiveSpanLat)
+
+                val routePixelW = (rawSpanLon * scale).toFloat()
+                val routePixelH = (rawSpanLat * scale).toFloat()
+
+                val offsetX = padH + (availableW - routePixelW) / 2f
+                val offsetY = padV + (availableH - routePixelH) / 2f
 
                 fun mapCoord(lat: Double, lon: Double): Offset {
-                    val px = offsetX + (((lon - minLon) * latFactor) * scale).toFloat()
+                    val px = offsetX + (((lon - minLon) * effectiveLatFactor) * scale).toFloat()
                     val py = offsetY + ((maxLat - lat) * scale).toFloat()
                     return Offset(px, py)
                 }
 
-                val first = mapCoord(coordinates.first().first, coordinates.first().second)
-                val last = mapCoord(coordinates.last().first, coordinates.last().second)
-                startPt = first
-                endPt = last
+                // Map all filtered points to pixel offsets
+                val rawPixelPoints = filtered.map { mapCoord(it.first, it.second) }
 
-                routePath.moveTo(first.x, first.y)
-                var prev = first
-                for (i in 1 until coordinates.size) {
-                    val current = mapCoord(coordinates[i].first, coordinates[i].second)
-                    val midX = (prev.x + current.x) / 2f
-                    val midY = (prev.y + current.y) / 2f
-                    routePath.quadraticTo(prev.x, prev.y, midX, midY)
-                    prev = current
+                // Apply Chaikin corner-cutting smoothing to turn straight line steps into a smooth curve
+                val smoothedPoints = smoothPointsChaikin(rawPixelPoints, iterations = 2)
+
+                startPt = rawPixelPoints.first()
+                endPt = rawPixelPoints.last()
+
+                if (smoothedPoints.isNotEmpty()) {
+                    routePath.moveTo(smoothedPoints.first().x, smoothedPoints.first().y)
+                    for (i in 1 until smoothedPoints.size) {
+                        routePath.lineTo(smoothedPoints[i].x, smoothedPoints[i].y)
+                    }
                 }
-                routePath.lineTo(last.x, last.y)
             } else {
                 // Graceful fallback: signature motorcycle ribbon wave curve from screenshot
                 val sx = padH + 10f
@@ -447,37 +482,18 @@ private fun RideSummaryRouteCard(
                     width = 3.5.dp.toPx(),
                     cap = StrokeCap.Round,
                     join = StrokeJoin.Round,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f), 0f)
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 14f), 0f)
                 )
             )
 
-            // 5. Draw Start Marker (White Hollow Ring)
-            val ringRadius = 7.5.dp.toPx()
-            drawCircle(
-                color = Color.White,
-                radius = ringRadius,
-                center = startPt,
-                style = Stroke(width = 2.5.dp.toPx())
-            )
-            drawCircle(
-                color = SummaryCardBg,
-                radius = ringRadius - 1.5.dp.toPx(),
-                center = startPt
-            )
+            // 5. Determine if Start and End are at the same location (round trip / loop)
+            val dx = startPt.x - endPt.x
+            val dy = startPt.y - endPt.y
+            val endpointsDistanceSq = dx * dx + dy * dy
+            val minSeparationPx = 42.dp.toPx()
+            val isLoopOrSameLocation = endpointsDistanceSq < (minSeparationPx * minSeparationPx) ||
+                    startLabel.trim().equals(endLabel.trim(), ignoreCase = true)
 
-            // 6. Draw End Marker (Neon Lime Glowing Dot)
-            drawCircle(
-                color = SummaryHaloGlow,
-                radius = 16.dp.toPx(),
-                center = endPt
-            )
-            drawCircle(
-                color = SummaryElectricLime,
-                radius = 6.5.dp.toPx(),
-                center = endPt
-            )
-
-            // 7. Draw Start City Label
             val labelStyle = TextStyle(
                 color = Color.White,
                 fontSize = 13.sp,
@@ -485,62 +501,167 @@ private fun RideSummaryRouteCard(
                 fontFamily = FontFamily.SansSerif
             )
 
-            val measuredStart = textMeasurer.measure(startLabel, style = labelStyle)
-            val startTextX = (startPt.x - measuredStart.size.width / 2f)
-                .coerceIn(12f, width - measuredStart.size.width - 12f)
-            val startTextY = if (startPt.y + 14.dp.toPx() + measuredStart.size.height <= height) {
-                startPt.y + 14.dp.toPx()
+            if (isLoopOrSameLocation) {
+                // SINGLE UNIFIED MARKER (White ring with glowing lime center) to prevent overlapping mess
+                val pinCenter = Offset((startPt.x + endPt.x) / 2f, (startPt.y + endPt.y) / 2f)
+
+                drawCircle(
+                    color = SummaryHaloGlow,
+                    radius = 16.dp.toPx(),
+                    center = pinCenter
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 8.dp.toPx(),
+                    center = pinCenter,
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+                drawCircle(
+                    color = SummaryElectricLime,
+                    radius = 4.5.dp.toPx(),
+                    center = pinCenter
+                )
+
+                // Single unified label
+                val cleanLabel = startLabel.ifBlank { endLabel }.ifBlank { "Start & Finish" }
+                val measured = textMeasurer.measure(cleanLabel, style = labelStyle)
+                val textX = (pinCenter.x - measured.size.width / 2f)
+                    .coerceIn(12f, width - measured.size.width - 12f)
+                val textY = if (pinCenter.y + 16.dp.toPx() + measured.size.height <= height) {
+                    pinCenter.y + 14.dp.toPx()
+                } else {
+                    pinCenter.y - measured.size.height - 12.dp.toPx()
+                }
+
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = cleanLabel,
+                    topLeft = Offset(textX, textY),
+                    style = labelStyle
+                )
             } else {
-                startPt.y - measuredStart.size.height - 12.dp.toPx()
+                // DISTINCT START AND END MARKERS
+                // Start Marker (White Hollow Ring)
+                val ringRadius = 7.5.dp.toPx()
+                drawCircle(
+                    color = Color.White,
+                    radius = ringRadius,
+                    center = startPt,
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+                drawCircle(
+                    color = SummaryCardBg,
+                    radius = ringRadius - 1.5.dp.toPx(),
+                    center = startPt
+                )
+
+                // End Marker (Neon Lime Glowing Dot)
+                drawCircle(
+                    color = SummaryHaloGlow,
+                    radius = 16.dp.toPx(),
+                    center = endPt
+                )
+                drawCircle(
+                    color = SummaryElectricLime,
+                    radius = 6.5.dp.toPx(),
+                    center = endPt
+                )
+
+                // Measure labels
+                val measuredStart = textMeasurer.measure(startLabel, style = labelStyle)
+                val measuredEnd = textMeasurer.measure(endLabel, style = labelStyle)
+
+                val startTextX = (startPt.x - measuredStart.size.width / 2f)
+                    .coerceIn(12f, width - measuredStart.size.width - 12f)
+                val endTextX = (endPt.x - measuredEnd.size.width / 2f)
+                    .coerceIn(12f, width - measuredEnd.size.width - 12f)
+
+                // Check vertical collision between labels
+                val isNearbyY = kotlin.math.abs(startPt.y - endPt.y) < 36.dp.toPx()
+                val isNearbyX = kotlin.math.abs(startPt.x - endPt.x) < 80.dp.toPx()
+
+                val (startTextY, endTextY) = if (isNearbyX && isNearbyY) {
+                    // Stagger labels: Start above, End below
+                    val sy = (startPt.y - measuredStart.size.height - 12.dp.toPx()).coerceAtLeast(8f)
+                    val ey = (endPt.y + 14.dp.toPx()).coerceAtMost(height - measuredEnd.size.height - 8f)
+                    sy to ey
+                } else {
+                    val sy = if (startPt.y + 14.dp.toPx() + measuredStart.size.height <= height) {
+                        startPt.y + 14.dp.toPx()
+                    } else {
+                        startPt.y - measuredStart.size.height - 12.dp.toPx()
+                    }
+                    val ey = if (endPt.y + 16.dp.toPx() + measuredEnd.size.height <= height) {
+                        endPt.y + 16.dp.toPx()
+                    } else {
+                        endPt.y - measuredEnd.size.height - 12.dp.toPx()
+                    }
+                    sy to ey
+                }
+
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = startLabel,
+                    topLeft = Offset(startTextX, startTextY),
+                    style = labelStyle
+                )
+
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = endLabel,
+                    topLeft = Offset(endTextX, endTextY),
+                    style = labelStyle
+                )
             }
-
-            drawText(
-                textMeasurer = textMeasurer,
-                text = startLabel,
-                topLeft = Offset(startTextX, startTextY),
-                style = labelStyle
-            )
-
-            // 8. Draw End City Label
-            val measuredEnd = textMeasurer.measure(endLabel, style = labelStyle)
-            val endTextX = (endPt.x - measuredEnd.size.width / 2f)
-                .coerceIn(12f, width - measuredEnd.size.width - 12f)
-            val endTextY = if (endPt.y + 16.dp.toPx() + measuredEnd.size.height <= height) {
-                endPt.y + 16.dp.toPx()
-            } else {
-                endPt.y - measuredEnd.size.height - 12.dp.toPx()
-            }
-
-            drawText(
-                textMeasurer = textMeasurer,
-                text = endLabel,
-                topLeft = Offset(endTextX, endTextY),
-                style = labelStyle
-            )
         }
     }
 }
 
 /**
- * Draws the subtle, angled road grid lines seen in the background of the screenshot map card.
+ * Chaikin's corner-cutting algorithm to produce a smooth, flowing curve from raw GPS points.
+ */
+private fun smoothPointsChaikin(points: List<Offset>, iterations: Int = 2): List<Offset> {
+    if (points.size <= 2) return points
+    var current = points
+    repeat(iterations) {
+        val next = ArrayList<Offset>(current.size * 2)
+        next.add(current.first())
+        for (i in 0 until current.lastIndex) {
+            val p0 = current[i]
+            val p1 = current[i + 1]
+            val q = Offset(0.75f * p0.x + 0.25f * p1.x, 0.75f * p0.y + 0.25f * p1.y)
+            val r = Offset(0.25f * p0.x + 0.75f * p1.x, 0.25f * p0.y + 0.75f * p1.y)
+            next.add(q)
+            next.add(r)
+        }
+        next.add(current.last())
+        current = next
+    }
+    return current
+}
+
+/**
+ * Draws subtle, clean street grid lines in the background.
  */
 private fun DrawScope.drawAbstractGridLines(width: Float, height: Float) {
-    val gridStroke = 1.6.dp.toPx()
+    val gridColor = Color(0x18FFFFFF) // Subtle 9% white for a clean, vector map feel
+    val gridStroke = 1.2.dp.toPx()
     val lines = listOf(
-        // Nearly horizontal street lines
-        Offset(0f, height * 0.42f) to Offset(width, height * 0.40f),
-        Offset(0f, height * 0.52f) to Offset(width, height * 0.50f),
-        Offset(0f, height * 0.70f) to Offset(width, height * 0.68f),
-        // Angled diagonal avenue lines
-        Offset(width * 0.12f, height) to Offset(width * 0.88f, 0f),
-        Offset(0f, height * 0.65f) to Offset(width * 0.75f, 0f),
-        Offset(width * 0.35f, height) to Offset(width, height * 0.32f),
-        Offset(0f, height * 0.85f) to Offset(width * 0.50f, 0f)
+        // Horizontal street lines
+        Offset(0f, height * 0.32f) to Offset(width, height * 0.30f),
+        Offset(0f, height * 0.62f) to Offset(width, height * 0.60f),
+        Offset(0f, height * 0.82f) to Offset(width, height * 0.84f),
+        // Vertical avenue lines
+        Offset(width * 0.28f, 0f) to Offset(width * 0.26f, height),
+        Offset(width * 0.72f, 0f) to Offset(width * 0.74f, height),
+        // Diagonal boulevard lines
+        Offset(0f, height * 0.75f) to Offset(width * 0.85f, 0f),
+        Offset(width * 0.20f, height) to Offset(width, height * 0.28f)
     )
 
     lines.forEach { (start, end) ->
         drawLine(
-            color = SummaryGridLine,
+            color = gridColor,
             start = start,
             end = end,
             strokeWidth = gridStroke,
