@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Stop
+import com.abrar.motolog.data.map.OpenFreeMapStyleProvider
 import com.abrar.motolog.shared.domain.model.PauseState
 import com.abrar.motolog.shared.domain.model.RideStats
 import com.abrar.motolog.ui.live.retro.RacingTftDashboard
@@ -418,6 +419,7 @@ fun LiveScreen(
             RideSummaryView(
                 state = state,
                 useMetricUnits = useMetricUnits,
+                mapStyleProvider = viewModel.mapStyleProvider ?: remember { OpenFreeMapStyleProvider() },
                 onStartNewRide = { viewModel.resetToIdle() },
                 onViewDetails = {
                     if (state.rideId > 0) {

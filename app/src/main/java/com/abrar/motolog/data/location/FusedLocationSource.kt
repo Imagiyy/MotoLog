@@ -68,12 +68,25 @@ class FusedLocationSource @Inject constructor(
                         continue
                     }
 
+                    val isMock = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        location.isMock
+                    } else {
+                        @Suppress("DEPRECATION")
+                        location.isFromMockProvider
+                    }
+                    val isEmulator = android.os.Build.HARDWARE.contains("goldfish") ||
+                            android.os.Build.HARDWARE.contains("ranchu") ||
+                            android.os.Build.PRODUCT.contains("sdk") ||
+                            android.os.Build.FINGERPRINT.contains("generic")
+
                     val speedMps = if (location.hasSpeed() && !location.speed.isNaN() && !location.speed.isInfinite() && location.speed >= 0f) {
-                        location.speed
+                        if (location.speed <= 0.05f && (isMock || isEmulator)) null else location.speed
                     } else null
 
                     val accuracyMeters = if (location.hasAccuracy() && !location.accuracy.isNaN() && !location.accuracy.isInfinite() && location.accuracy > 0f) {
                         location.accuracy
+                    } else if (isMock || isEmulator) {
+                        5.0f
                     } else Float.MAX_VALUE
 
                     val altitudeMeters = if (location.hasAltitude() && !location.altitude.isNaN() && !location.altitude.isInfinite()) {
