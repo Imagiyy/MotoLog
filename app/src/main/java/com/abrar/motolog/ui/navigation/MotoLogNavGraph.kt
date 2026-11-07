@@ -208,6 +208,9 @@ fun MotoLogNavGraph(
                     },
                     onNavigateToDestination = {
                         navController.navigate(DestinationRoute)
+                    },
+                    onNavigateToRideDetail = { rideId ->
+                        navController.navigate(RideDetailRoute(rideId))
                     }
                 )
             }

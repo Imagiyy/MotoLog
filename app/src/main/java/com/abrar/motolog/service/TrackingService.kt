@@ -717,7 +717,7 @@ class TrackingService : Service() {
         rideDao.update(finalRide)
 
         // 5. Update shared state
-        trackingRepository.updateState(TrackingSessionState.Stopped(finalStats))
+        trackingRepository.updateState(TrackingSessionState.Stopped(finalStats, completedRide.id))
 
         // 6. Check maintenance reminders for this bike
         try {

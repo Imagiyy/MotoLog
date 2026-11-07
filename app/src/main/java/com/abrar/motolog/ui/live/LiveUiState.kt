@@ -89,6 +89,11 @@ sealed interface LiveUiState {
      */
     @Immutable
     data class Stopped(
-        val stats: RideStats = RideStats()
+        val stats: RideStats = RideStats(),
+        val rideId: Long = 0L,
+        val routeCoordinates: List<Pair<Double, Double>> = emptyList(),
+        val startLocationName: String? = null,
+        val endLocationName: String? = null,
+        val bikeName: String? = null
     ) : LiveUiState
 }

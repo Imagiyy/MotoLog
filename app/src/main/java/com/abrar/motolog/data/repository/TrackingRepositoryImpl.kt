@@ -136,7 +136,7 @@ class TrackingRepositoryImpl @Inject constructor(
             rideDao.update(recoveredRide)
         }
 
-        _sessionState.value = TrackingSessionState.Stopped(recoveredStats)
+        _sessionState.value = TrackingSessionState.Stopped(recoveredStats, activeRide.id)
         try {
             maintenanceNotificationManager.get().checkAndNotify(activeRide.bikeId)
         } catch (e: Exception) {

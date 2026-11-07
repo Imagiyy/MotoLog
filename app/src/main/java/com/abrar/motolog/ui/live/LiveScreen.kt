@@ -128,6 +128,7 @@ fun LiveScreen(
     modifier: Modifier = Modifier,
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDestination: () -> Unit = {},
+    onNavigateToRideDetail: (Long) -> Unit = {},
     viewModel: LiveViewModel = hiltViewModel(),
     navigationViewModel: NavigationViewModel = hiltViewModel()
 ) {
@@ -414,11 +415,15 @@ fun LiveScreen(
         }
 
         is LiveUiState.Stopped -> {
-            TftStoppedView(
-                stats = state.stats,
+            RideSummaryView(
+                state = state,
                 useMetricUnits = useMetricUnits,
-                onResetClick = { viewModel.resetToIdle() },
-                palette = palette,
+                onStartNewRide = { viewModel.resetToIdle() },
+                onViewDetails = {
+                    if (state.rideId > 0) {
+                        onNavigateToRideDetail(state.rideId)
+                    }
+                },
                 modifier = modifier.fillMaxSize()
             )
         }

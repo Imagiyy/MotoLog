@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.abrar.motolog.data.local.dao.RideDao
 import com.abrar.motolog.data.local.dao.RidePointDao
 import com.abrar.motolog.domain.repository.GarageRepository
+import com.abrar.motolog.shared.domain.repository.GeocodingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 
@@ -35,18 +37,22 @@ class LiveViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val garageRepository: GarageRepository? = null,
     private val ridePointDao: RidePointDao? = null,
-    val mapStyleProvider: MapStyleProvider? = null
+    val mapStyleProvider: MapStyleProvider? = null,
+    private val rideDao: RideDao? = null,
+    private val geocodingRepository: GeocodingRepository? = null
 ) : ViewModel() {
 
     constructor(
         trackingRepository: TrackingRepository,
         settingsRepository: SettingsRepository
-    ) : this(trackingRepository, settingsRepository, null, null, null)
+    ) : this(trackingRepository, settingsRepository, null, null, null, null, null)
 
     private val _uiState = MutableStateFlow<LiveUiState>(LiveUiState.Idle)
     val uiState: StateFlow<LiveUiState> = _uiState.asStateFlow()
 
     private var activeRidePointsJob: Job? = null
+    private var locationResolutionJob: Job? = null
+    var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
     private val _routePoints = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
     private var currentActiveBikeName: String? = null
     private var currentTrackingRideId: Long? = null
@@ -210,10 +216,21 @@ class LiveViewModel @Inject constructor(
                         )
                     }
                     is TrackingSessionState.Stopped -> {
+                        val rideId = sessionState.rideId
+                        val coords = if (_routePoints.value.isNotEmpty()) {
+                            _routePoints.value
+                        } else {
+                            rawRoutePoints.toList()
+                        }
                         stopObservingRidePoints()
-                        LiveUiState.Stopped(
-                            stats = sessionState.stats
+                        val stopped = LiveUiState.Stopped(
+                            stats = sessionState.stats,
+                            rideId = rideId,
+                            routeCoordinates = coords,
+                            bikeName = currentActiveBikeName
                         )
+                        resolveLocationNamesAndPointsForStoppedRide(rideId, coords, sessionState.stats)
+                        stopped
                     }
                 }
             }
@@ -298,13 +315,115 @@ class LiveViewModel @Inject constructor(
 
     fun resetToIdle() {
         trackingRepository.resetToIdle()
+        locationResolutionJob?.cancel()
+        _routePoints.value = emptyList()
+        rawRoutePoints.clear()
+        currentTrackingRideId = null
         _uiState.value = LiveUiState.Idle
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        locationResolutionJob?.cancel()
+        activeRidePointsJob?.cancel()
     }
 
     fun recoverRide(activeRide: RideEntity) {
         viewModelScope.launch {
             val stats = trackingRepository.recoverRide(activeRide)
-            _uiState.value = LiveUiState.Stopped(stats)
+            val coords = _routePoints.value.ifEmpty { rawRoutePoints.toList() }
+            _uiState.value = LiveUiState.Stopped(
+                stats = stats,
+                rideId = activeRide.id,
+                routeCoordinates = coords,
+                bikeName = currentActiveBikeName
+            )
+            resolveLocationNamesAndPointsForStoppedRide(activeRide.id, coords, stats)
+        }
+    }
+
+    private fun resolveLocationNamesAndPointsForStoppedRide(
+        rideId: Long,
+        coordinates: List<Pair<Double, Double>>,
+        stats: com.abrar.motolog.shared.domain.model.RideStats
+    ) {
+        locationResolutionJob?.cancel()
+        locationResolutionJob = viewModelScope.launch(ioDispatcher) {
+            val actualCoords = if (coordinates.isNotEmpty()) {
+                coordinates
+            } else if (rideId > 0L && ridePointDao != null) {
+                val entities = ridePointDao.loadPointsForRouteDisplay(rideId)
+                entities.map { Pair(it.latitude, it.longitude) }
+            } else {
+                emptyList()
+            }
+
+            var startName: String? = null
+            var endName: String? = null
+
+            if (actualCoords.isNotEmpty()) {
+                val startPt = actualCoords.first()
+                val endPt = actualCoords.last()
+
+                if (geocodingRepository != null) {
+                    try {
+                        startName = extractCityOrPlace(
+                            geocodingRepository.reverseGeocode(startPt.first, startPt.second).getOrNull()?.displayName
+                        )
+                    } catch (_: Exception) {}
+                    try {
+                        endName = extractCityOrPlace(
+                            geocodingRepository.reverseGeocode(endPt.first, endPt.second).getOrNull()?.displayName
+                        )
+                    } catch (_: Exception) {}
+                }
+            }
+
+            // Update UI state
+            val current = _uiState.value
+            if (current is LiveUiState.Stopped && (current.rideId == rideId || current.rideId == 0L)) {
+                _uiState.value = current.copy(
+                    rideId = if (current.rideId == 0L) rideId else current.rideId,
+                    routeCoordinates = if (current.routeCoordinates.isEmpty()) actualCoords else current.routeCoordinates,
+                    startLocationName = startName ?: current.startLocationName,
+                    endLocationName = endName ?: current.endLocationName
+                )
+            }
+
+            // Also update ride name in Room if applicable
+            if (rideId > 0L && rideDao != null) {
+                try {
+                    val existingRide = rideDao.getRideById(rideId)
+                    if (existingRide != null && (existingRide.name.isBlank() || existingRide.name.endsWith("ride", ignoreCase = true))) {
+                        val computedTitle = when {
+                            startName != null && endName != null && startName != endName -> "$startName → $endName"
+                            startName != null && endName != null -> "$startName Loop"
+                            startName != null -> "$startName Ride"
+                            endName != null -> "Ride to $endName"
+                            else -> null
+                        }
+                        if (computedTitle != null) {
+                            rideDao.update(existingRide.copy(name = computedTitle))
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    private fun extractCityOrPlace(displayName: String?): String? {
+        if (displayName.isNullOrBlank()) return null
+        if (displayName.startsWith("Dropped Pin", ignoreCase = true) || displayName.startsWith("Location:", ignoreCase = true)) {
+            return null
+        }
+        val parts = displayName.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        if (parts.isEmpty()) return null
+
+        val firstHasDigits = parts[0].any { it.isDigit() }
+        return if (firstHasDigits && parts.size > 1) {
+            parts[1]
+        } else {
+            parts[0]
         }
     }
 

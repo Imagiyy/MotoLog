@@ -53,6 +53,7 @@ class LiveViewModelTest {
             trackingRepository = fakeRepository,
             settingsRepository = settingsRepository
         )
+        viewModel.ioDispatcher = testDispatcher
     }
 
     @After
@@ -134,6 +135,50 @@ class LiveViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value is LiveUiState.Stopped)
+    }
+
+    @Test
+    fun stoppedState_resolvesLocationNamesAndCoordinates() = runTest(testDispatcher) {
+        val fakeGeocoding = com.abrar.motolog.fake.FakeGeocodingRepository()
+        fakeGeocoding.reverseGeocodeToReturn = Result.success(
+            com.abrar.motolog.shared.domain.model.Destination(
+                id = "d1",
+                latitude = 32.7767,
+                longitude = -96.7970,
+                displayName = "Dallas, Texas, United States"
+            )
+        )
+
+        val vmWithGeocoding = LiveViewModel(
+            trackingRepository = fakeRepository,
+            settingsRepository = settingsRepository,
+            garageRepository = null,
+            ridePointDao = null,
+            mapStyleProvider = null,
+            rideDao = null,
+            geocodingRepository = fakeGeocoding
+        )
+        vmWithGeocoding.ioDispatcher = testDispatcher
+
+        val stoppedStats = RideStats(
+            totalDistanceMeters = 1500000.0,
+            movingTimeMs = 18720000L,
+            avgMovingSpeedKmh = 135.0
+        )
+        fakeRepository.emitSessionState(
+            TrackingSessionState.Stopped(
+                stats = stoppedStats,
+                rideId = 123L
+            )
+        )
+        advanceUntilIdle()
+
+        val state = vmWithGeocoding.uiState.value
+        assertTrue(state is LiveUiState.Stopped)
+        val stoppedState = state as LiveUiState.Stopped
+        assertEquals(123L, stoppedState.rideId)
+        assertEquals(1500000.0, stoppedState.stats.totalDistanceMeters, 0.1)
+        assertEquals(135.0, stoppedState.stats.avgMovingSpeedKmh, 0.1)
     }
 
     @Test

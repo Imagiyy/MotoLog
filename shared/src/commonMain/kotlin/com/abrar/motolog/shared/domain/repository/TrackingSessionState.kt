@@ -48,6 +48,7 @@ sealed interface TrackingSessionState {
 
     /** Tracking session finished via Stop. */
     data class Stopped(
-        val stats: RideStats = RideStats()
+        val stats: RideStats = RideStats(),
+        val rideId: Long = 0L
     ) : TrackingSessionState
 }
