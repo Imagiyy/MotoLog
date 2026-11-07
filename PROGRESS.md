@@ -952,5 +952,24 @@
   - Unit tests in `PlaceRankingEngineTest`, `SettingsRepositoryTest`, `GraphHopperRoutingRepositoryTest`, and `GraphHopperGeocodingRepositoryTest` covering mode switching, keyless anonymity, photon fallback, deterministic ranking, distance calculation, URL validation, and error states.
   - All tests passed (`:shared:testAndroidHostTest` and `:app:testDebugUnitTest`), `./gradlew assembleDebug` and `./gradlew lintDebug` (0 errors).
 
+---
+
+### Modern Ride Summary Screen & Emulator Ride Simulator
+**Status:** COMPLETED & VERIFIED
+- **Modern Ride Summary Screen**:
+  - Replaces legacy stopped cards with modern ride summary aesthetic matching reference design.
+  - **Top Branding**: Curved road ribbon emblem with bold white `"MotoLog"` and `"RIDE SUMMARY"` subtitle in electric neon lime (`#D4FF00`).
+  - **Stylized Route Preview Card**: Dark charcoal container (`#14171E`) with subtle angled street grid lines, electric lime dashed route polyline (`- - -`) with ambient outer neon glow, white hollow ring marker for the start point, and glowing neon lime pin for the finish point.
+  - **Dynamic Route Heading**: Reverse-geocodes start and finish points automatically via `GeocodingRepository` to display `"Start → Finish"` (e.g. `"Dallas → Houston"`, `"Dallas Loop"`, or fallback), updating the Room database record with the resolved route name.
+  - **3 Primary Telemetry Columns**: Large-digit bold typography for **Distance** (e.g. `1,500 km` / `12.4 km`), **Drive time** (e.g. `5h 12m` / `45m 10s`), and **Avg speed** (e.g. `135 km/h` / `mph`).
+  - **Glove-Friendly Actions**: Primary high-visibility `"START NEW RIDE"` button (resets back to idle tracking) and secondary `"VIEW FULL DETAILS & EXPORT"` button (and card tap) navigating to `RideDetailScreen`.
+  - **Responsive Dual-Orientation Support**: Seamless adaptive layouts for portrait and landscape handlebar phone mounts.
+- **Emulator GPX Simulation Script**:
+  - Created `scripts/simulate_ride.py` supporting real-time and accelerated playback (`--speed`) of test fixtures (`city_ride`, `highway_ride`, `stop_and_go`, etc.) into running emulators via `adb emu geo fix`.
+- **Verification**:
+  - Unit tests in `LiveViewModelTest` covering stopped state transitions, stats, and geocoded location resolution.
+  - All 172 tests passed (`./gradlew testDebugUnitTest`), `./gradlew assembleDebug` and `./gradlew lintDebug` (0 errors).
+
+
 
 
